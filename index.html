@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Z3N0 SLITHER — THE SERPENT REALM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* ======================= VARIABLES ======================= */
+:root {
+  --void: #000008;
+  --deep: #05050f;
+  --panel: rgba(0,255,140,0.04);
+  --border: rgba(0,255,140,0.2);
+  --glow: #00ff8c;
+  --glow2: #ff2244;
+  --glow3: #aa44ff;
+  --gold: #ffd700;
+  --text: #c8ffd4;
+  --dim: rgba(200,255,212,0.5);
+  --owner: #ffd700;
+}
+
+/* ======================= RESET ======================= */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--void);}
+body{font-family:'Rajdhani',sans-serif;color:var(--text);}
+
+/* ======================= SCANLINES ======================= */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,140,0.015) 2px,rgba(0,255,140,0.015) 4px);
+  pointer-events:none;z-index:9999;
+}
+
+/* ======================= CANVAS ======================= */
+#gameCanvas{
+  position:fixed;inset:0;
+  display:none;
+  cursor:none;
+}
+
+/* ======================= CUSTOM CURSOR ======================= */
+#cursor{
+  position:fixed;
+  width:20px;height:20px;
+  border:2px solid var(--glow);
+  border-radius:50%;
+  pointer-events:none;
+  z-index:10000;
+  transform:translate(-50%,-50%);
+  transition:width 0.1s,height 0.1s;
+  box-shadow:0 0 10px var(--glow),inset 0 0 6px rgba(0,255,140,0.3);
+}
+#cursor::after{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  width:4px;height:4px;
+  background:var(--glow);
+  border-radius:50%;
+  transform:translate(-50%,-50%);
+}
+
+/* ======================= SCREENS ======================= */
+.screen{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;
+}
+.screen.hidden{display:none!important;}
+
+/* ======================= MENU ======================= */
+#menuScreen{
+  background:radial-gradient(ellipse at 50% 30%, rgba(0,255,140,0.08) 0%, transparent 60%),
+             radial-gradient(ellipse at 80% 70%, rgba(170,68,255,0.06) 0%, transparent 50%),
+             var(--void);
+  flex-direction:column;
+  gap:0;
+}
+
+.menu-bg-particles{
+  position:absolute;inset:0;overflow:hidden;pointer-events:none;
+}
+.menu-particle{
+  position:absolute;
+  width:2px;height:2px;
+  background:var(--glow);
+  border-radius:50%;
+  animation:float-up linear infinite;
+  opacity:0;
+}
+@keyframes float-up{
+  0%{opacity:0;transform:translateY(100vh) scale(1);}
+  10%{opacity:1;}
+  90%{opacity:0.5;}
+  100%{opacity:0;transform:translateY(-20px) scale(0);}
+}
+
+.logo-wrap{
+  position:relative;
+  text-align:center;
+  margin-bottom:40px;
+}
+.logo-z3n0{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(60px,10vw,120px);
+  font-weight:900;
+  background:linear-gradient(135deg,#00ff8c,#aa44ff,#ff2244,#ffd700,#00ff8c);
+  background-size:300% 300%;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:gradientShift 3s ease infinite;
+  letter-spacing:-2px;
+  line-height:1;
+  filter:drop-shadow(0 0 30px rgba(0,255,140,0.5));
+}
+@keyframes gradientShift{
+  0%,100%{background-position:0% 50%;}
+  50%{background-position:100% 50%;}
+}
+.logo-sub{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(12px,2vw,18px);
+  letter-spacing:8px;
+  color:var(--dim);
+  margin-top:4px;
+  animation:pulse 2s ease infinite;
+}
+@keyframes pulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
+
+.owner-crown{
+  position:absolute;
+  top:-30px;left:50%;transform:translateX(-50%);
+  font-size:30px;
+  animation:crown-bounce 1.5s ease infinite;
+}
+@keyframes crown-bounce{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-8px);}}
+
+/* ======================= MENU PANEL ======================= */
+.menu-panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:32px;
+  width:min(440px, 90vw);
+  backdrop-filter:blur(20px);
+  box-shadow:0 0 60px rgba(0,255,140,0.05),inset 0 0 60px rgba(0,255,140,0.02);
+  position:relative;
+}
+.menu-panel::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,transparent,var(--glow),transparent);
+}
+
+.input-group{
+  display:flex;flex-direction:column;gap:6px;
+  margin-bottom:16px;
+}
+.input-label{
+  font-family:'Orbitron',monospace;
+  font-size:10px;letter-spacing:3px;
+  color:var(--dim);text-transform:uppercase;
+}
+.game-input{
+  background:rgba(0,255,140,0.04);
+  border:1px solid rgba(0,255,140,0.15);
+  border-radius:2px;
+  padding:12px 16px;
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  font-size:18px;font-weight:500;
+  outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  width:100%;
+}
+.game-input:focus{
+  border-color:var(--glow);
+  box-shadow:0 0 20px rgba(0,255,140,0.1);
+}
+
+/* ======================= SKIN SELECTOR ======================= */
+.skin-selector{
+  display:grid;grid-template-columns:repeat(5,1fr);gap:8px;
+  margin-bottom:20px;
+}
+.skin-opt{
+  aspect-ratio:1;
+  border-radius:4px;
+  border:2px solid rgba(255,255,255,0.1);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+.skin-opt:hover{transform:scale(1.1);border-color:white;}
+.skin-opt.selected{
+  border-color:var(--glow);
+  box-shadow:0 0 15px rgba(0,255,140,0.4);
+  transform:scale(1.15);
+}
+.skin-opt.owner-only{
+  border-color:var(--gold);
+  box-shadow:0 0 10px rgba(255,215,0,0.3);
+}
+.skin-opt.owner-only::after{
+  content:'👑';
+  position:absolute;bottom:1px;right:1px;font-size:10px;
+}
+.skin-opt.locked{
+  opacity:0.3;filter:grayscale(1);cursor:not-allowed;
+}
+
+/* ======================= BUTTONS ======================= */
+.btn{
+  font-family:'Orbitron',monospace;
+  font-size:12px;letter-spacing:2px;
+  padding:14px 28px;
+  border-radius:2px;
+  border:none;cursor:pointer;
+  text-transform:uppercase;
+  transition:all 0.2s;
+  position:relative;overflow:hidden;
+  width:100%;
+}
+.btn::before{
+  content:'';
+  position:absolute;inset:0;
+  background:white;opacity:0;
+  transition:opacity 0.2s;
+}
+.btn:hover::before{opacity:0.05;}
+.btn:active::before{opacity:0.1;}
+
+.btn-primary{
+  background:linear-gradient(135deg,rgba(0,255,140,0.2),rgba(0,255,140,0.1));
+  color:var(--glow);
+  border:1px solid var(--glow);
+  box-shadow:0 0 20px rgba(0,255,140,0.15);
+}
+.btn-primary:hover{
+  box-shadow:0 0 40px rgba(0,255,140,0.3);
+  transform:translateY(-1px);
+}
+.btn-danger{
+  background:linear-gradient(135deg,rgba(255,34,68,0.2),rgba(255,34,68,0.1));
+  color:var(--glow2);
+  border:1px solid var(--glow2);
+}
+.btn-gold{
+  background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,215,0,0.1));
+  color:var(--gold);
+  border:1px solid var(--gold);
+}
+.btn-sm{
+  padding:8px 16px;font-size:10px;width:auto;
+}
+
+.btn-row{
+  display:flex;gap:8px;margin-top:8px;
+}
+
+/* ======================= HUD ======================= */
+#hud{
+  position:fixed;inset:0;
+  pointer-events:none;
+  z-index:200;
+  display:none;
+}
+
+/* Score */
+#hud-score{
+  position:absolute;top:20px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,8,0.8);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:8px 24px;
+  text-align:center;
+  backdrop-filter:blur(10px);
+}
+#hud-score .val{
+  font-family:'Orbitron',monospace;
+  font-size:28px;font-weight:900;
+  color:var(--glow);
+  text-shadow:0 0 20px var(--glow);
+}
+#hud-score .label{
+  font-size:10px;letter-spacing:3px;color:var(--dim);
+}
+
+/* Minimap */
+#minimap{
+  position:absolute;bottom:20px;right:20px;
+  width:160px;height:160px;
+  background:rgba(0,0,8,0.85);
+  border:1px solid var(--border);
+  border-radius:2px;
+  overflow:hidden;
+}
+#minimapCanvas{width:100%;height:100%;}
+
+/* Leaderboard */
+#leaderboard{
+  position:absolute;top:20px;right:20px;
+  width:220px;
+  background:rgba(0,0,8,0.85);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:12px;
+  backdrop-filter:blur(10px);
+}
+#leaderboard h3{
+  font-family:'Orbitron',monospace;
+  font-size:10px;letter-spacing:3px;
+  color:var(--glow);
+  margin-bottom:10px;
+  border-bottom:1px solid var(--border);
+  padding-bottom:6px;
+}
+.lb-entry{
+  display:flex;align-items:center;gap:8px;
+  padding:4px 0;
+  font-size:13px;font-weight:500;
+  border-bottom:1px solid rgba(0,255,140,0.05);
+}
+.lb-rank{
+  font-family:'Orbitron',monospace;
+  font-size:10px;color:var(--dim);width:16px;flex-shrink:0;
+}
+.lb-rank.top1{color:var(--gold);}
+.lb-rank.top2{color:#c0c0c0;}
+.lb-rank.top3{color:#cd7f32;}
+.lb-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-len{
+  font-family:'Space Mono',monospace;
+  font-size:11px;color:var(--dim);
+}
+.lb-name.is-owner{color:var(--gold);}
+
+/* KillFeed */
+#killfeed{
+  position:absolute;top:20px;left:20px;
+  width:280px;
+  display:flex;flex-direction:column;gap:4px;
+  pointer-events:none;
+}
+.kf-entry{
+  background:rgba(0,0,8,0.8);
+  border-left:2px solid var(--glow2);
+  padding:6px 10px;
+  font-size:12px;
+  animation:kf-in 0.3s ease,kf-out 0.3s ease 4.7s forwards;
+  border-radius:0 2px 2px 0;
+}
+@keyframes kf-in{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}
+@keyframes kf-out{to{opacity:0;transform:translateX(-20px);}}
+
+/* Boost bar */
+#boostbar{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  width:200px;
+  background:rgba(0,0,8,0.8);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:8px 12px;
+  text-align:center;
+}
+.boost-label{font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;}
+.boost-track{background:rgba(255,255,255,0.05);border-radius:2px;height:4px;overflow:hidden;}
+.boost-fill{height:100%;background:linear-gradient(90deg,var(--glow),#00ffff);border-radius:2px;transition:width 0.1s;width:100%;}
+
+/* Owner tag */
+#owner-tag-hud{
+  position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
+  display:none;
+  background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05));
+  border:1px solid var(--gold);
+  border-radius:2px;
+  padding:4px 16px;
+  font-family:'Orbitron',monospace;
+  font-size:11px;
+  letter-spacing:3px;
+  color:var(--gold);
+}
+
+/* Event banner */
+#eventBanner{
+  position:absolute;top:80px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,rgba(170,68,255,0.3),rgba(255,34,68,0.3));
+  border:1px solid var(--glow3);
+  border-radius:2px;
+  padding:10px 24px;
+  text-align:center;
+  display:none;
+  animation:event-pulse 1s ease infinite;
+}
+@keyframes event-pulse{0%,100%{box-shadow:0 0 20px rgba(170,68,255,0.3);}50%{box-shadow:0 0 40px rgba(170,68,255,0.6);}}
+.event-title{
+  font-family:'Orbitron',monospace;
+  font-size:14px;letter-spacing:2px;
+  background:linear-gradient(90deg,var(--glow3),var(--glow2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+/* System message */
+#sysmsg{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(0,0,8,0.9);
+  border:1px solid var(--glow3);
+  border-radius:2px;
+  padding:12px 24px;
+  font-family:'Orbitron',monospace;
+  font-size:14px;letter-spacing:2px;
+  color:var(--glow3);
+  display:none;
+  text-align:center;
+  z-index:300;
+}
+
+/* ======================= DEATH SCREEN ======================= */
+#deathScreen{
+  background:rgba(0,0,8,0.95);
+  flex-direction:column;gap:24px;
+  z-index:500;
+}
+.death-title{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(40px,8vw,80px);font-weight:900;
+  color:var(--glow2);
+  text-shadow:0 0 40px rgba(255,34,68,0.6);
+  animation:glitch 0.5s ease infinite alternate;
+}
+@keyframes glitch{
+  0%{text-shadow:2px 0 var(--glow),−2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}
+  100%{text-shadow:-2px 0 var(--glow),2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}
+}
+.death-info{
+  font-size:18px;color:var(--dim);letter-spacing:2px;text-align:center;
+}
+.death-stats{
+  display:flex;gap:32px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:2px;padding:16px 32px;
+}
+.death-stat{text-align:center;}
+.death-stat .val{font-family:'Orbitron',monospace;font-size:28px;color:var(--glow);}
+.death-stat .lbl{font-size:11px;letter-spacing:2px;color:var(--dim);}
+.death-buttons{display:flex;gap:12px;}
+
+/* ======================= OWNER PANEL ======================= */
+#ownerPanel{
+  position:fixed;inset:0;
+  z-index:600;
+  display:flex;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(10px);
+}
+#ownerPanel.hidden{display:none!important;}
+
+.owner-sidebar{
+  width:220px;
+  background:rgba(0,0,0,0.9);
+  border-right:1px solid rgba(255,215,0,0.2);
+  display:flex;flex-direction:column;
+  padding:0;
+  flex-shrink:0;
+}
+.owner-sidebar-header{
+  padding:24px 16px;
+  border-bottom:1px solid rgba(255,215,0,0.2);
+  text-align:center;
+}
+.owner-sidebar-header .crown-big{font-size:36px;display:block;margin-bottom:8px;}
+.owner-sidebar-header h2{
+  font-family:'Orbitron',monospace;
+  font-size:14px;letter-spacing:2px;
+  color:var(--gold);
+}
+.owner-sidebar-header p{font-size:11px;color:rgba(255,215,0,0.5);}
+
+.owner-nav{
+  display:flex;flex-direction:column;padding:12px 0;flex:1;
+}
+.owner-nav-btn{
+  padding:12px 20px;
+  display:flex;align-items:center;gap:10px;
+  cursor:pointer;
+  transition:all 0.15s;
+  border-left:3px solid transparent;
+  font-size:13px;font-weight:600;
+  color:rgba(255,215,0,0.5);
+  background:none;border-top:none;border-right:none;border-bottom:none;
+  text-align:left;
+  font-family:'Rajdhani',sans-serif;
+}
+.owner-nav-btn:hover{
+  background:rgba(255,215,0,0.05);
+  color:var(--gold);
+  border-left-color:rgba(255,215,0,0.3);
+}
+.owner-nav-btn.active{
+  background:rgba(255,215,0,0.08);
+  color:var(--gold);
+  border-left-color:var(--gold);
+}
+.owner-nav-icon{font-size:16px;width:20px;}
+
+.owner-main{
+  flex:1;
+  background:rgba(0,0,8,0.95);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.owner-topbar{
+  padding:16px 24px;
+  border-bottom:1px solid rgba(255,215,0,0.1);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.owner-topbar h1{
+  font-family:'Orbitron',monospace;
+  font-size:16px;letter-spacing:3px;
+  color:var(--gold);
+}
+.owner-content{
+  flex:1;overflow-y:auto;padding:24px;
+}
+.owner-content::-webkit-scrollbar{width:4px;}
+.owner-content::-webkit-scrollbar-track{background:transparent;}
+.owner-content::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.2);border-radius:2px;}
+
+/* Owner tabs */
+.owner-tab{display:none;}
+.owner-tab.active{display:block;}
+
+/* Cards */
+.o-card{
+  background:rgba(255,215,0,0.03);
+  border:1px solid rgba(255,215,0,0.1);
+  border-radius:4px;
+  padding:20px;
+  margin-bottom:16px;
+}
+.o-card h3{
+  font-family:'Orbitron',monospace;
+  font-size:11px;letter-spacing:3px;
+  color:rgba(255,215,0,0.6);
+  margin-bottom:16px;
+  border-bottom:1px solid rgba(255,215,0,0.1);
+  padding-bottom:8px;
+}
+
+/* Player table */
+.player-table{width:100%;border-collapse:collapse;}
+.player-table th{
+  font-family:'Orbitron',monospace;
+  font-size:9px;letter-spacing:2px;
+  color:rgba(255,215,0,0.4);
+  padding:6px 8px;
+  text-align:left;
+  border-bottom:1px solid rgba(255,215,0,0.1);
+}
+.player-table td{
+  padding:8px 8px;
+  font-size:13px;
+  border-bottom:1px solid rgba(255,215,0,0.05);
+  vertical-align:middle;
+}
+.player-table tr:hover td{background:rgba(255,215,0,0.03);}
+
+/* Owner inputs */
+.o-input{
+  background:rgba(255,215,0,0.04);
+  border:1px solid rgba(255,215,0,0.15);
+  border-radius:2px;
+  padding:10px 14px;
+  color:var(--gold);
+  font-family:'Rajdhani',sans-serif;
+  font-size:15px;
+  outline:none;
+  width:100%;
+  margin-bottom:8px;
+}
+.o-input:focus{border-color:var(--gold);box-shadow:0 0 15px rgba(255,215,0,0.1);}
+
+.o-select{
+  background:rgba(0,0,0,0.5);
+  border:1px solid rgba(255,215,0,0.15);
+  border-radius:2px;
+  padding:10px 14px;
+  color:var(--gold);
+  font-family:'Rajdhani',sans-serif;
+  font-size:15px;
+  outline:none;
+  width:100%;
+  margin-bottom:8px;
+  cursor:pointer;
+}
+
+/* Event cards */
+.event-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:12px;
+}
+.event-card{
+  background:rgba(170,68,255,0.05);
+  border:1px solid rgba(170,68,255,0.2);
+  border-radius:4px;
+  padding:16px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.event-card:hover{
+  background:rgba(170,68,255,0.1);
+  border-color:var(--glow3);
+  transform:translateY(-2px);
+}
+.event-card .event-icon{font-size:32px;display:block;margin-bottom:8px;}
+.event-card .event-name{
+  font-family:'Orbitron',monospace;
+  font-size:10px;letter-spacing:1px;
+  color:var(--glow3);
+}
+
+/* Stats grid */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  margin-bottom:16px;
+}
+.stat-card{
+  background:rgba(255,215,0,0.03);
+  border:1px solid rgba(255,215,0,0.1);
+  border-radius:4px;
+  padding:16px;
+  text-align:center;
+}
+.stat-card .sv{
+  font-family:'Orbitron',monospace;
+  font-size:28px;font-weight:900;
+  color:var(--gold);
+}
+.stat-card .sl{font-size:10px;letter-spacing:2px;color:rgba(255,215,0,0.4);}
+
+/* Alert */
+.o-alert{
+  padding:10px 14px;border-radius:2px;
+  margin-bottom:12px;font-size:13px;
+  display:none;
+}
+.o-alert.success{background:rgba(0,255,140,0.1);border:1px solid var(--glow);color:var(--glow);}
+.o-alert.error{background:rgba(255,34,68,0.1);border:1px solid var(--glow2);color:var(--glow2);}
+
+/* ======================= TOAST ======================= */
+#toast-container{
+  position:fixed;bottom:100px;left:50%;transform:translateX(-50%);
+  z-index:1000;
+  display:flex;flex-direction:column;gap:8px;align-items:center;
+}
+.toast{
+  background:rgba(0,0,8,0.95);
+  border:1px solid var(--glow);
+  border-radius:2px;
+  padding:10px 20px;
+  font-family:'Orbitron',monospace;
+  font-size:11px;letter-spacing:2px;
+  color:var(--glow);
+  animation:toast-in 0.3s ease;
+  white-space:nowrap;
+}
+.toast.error{border-color:var(--glow2);color:var(--glow2);}
+.toast.gold{border-color:var(--gold);color:var(--gold);}
+@keyframes toast-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ======================= OWNER BROADCAST BANNER ======================= */
+#broadcastBanner{
+  position:fixed;bottom:0;left:0;right:0;
+  background:linear-gradient(90deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05),rgba(255,215,0,0.15));
+  border-top:1px solid rgba(255,215,0,0.3);
+  padding:10px 24px;
+  font-family:'Orbitron',monospace;
+  font-size:12px;letter-spacing:2px;
+  color:var(--gold);
+  text-align:center;
+  z-index:800;
+  display:none;
+  animation:broadcast-glow 2s ease infinite;
+}
+@keyframes broadcast-glow{0%,100%{box-shadow:0 -4px 20px rgba(255,215,0,0.1);}50%{box-shadow:0 -4px 40px rgba(255,215,0,0.2);}}
+
+/* ======================= MUSIC CONTROLS ======================= */
+#musicControls{
+  position:fixed;bottom:20px;left:20px;
+  z-index:300;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,8,0.8);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:8px 12px;
+  pointer-events:auto;
+}
+.music-btn{
+  background:none;border:none;cursor:pointer;
+  font-size:16px;padding:2px;
+  opacity:0.6;transition:opacity 0.2s;
+}
+.music-btn:hover{opacity:1;}
+.music-vis{
+  display:flex;gap:2px;align-items:center;height:16px;
+}
+.music-bar{
+  width:3px;background:var(--glow);border-radius:2px;
+  animation:music-bounce linear infinite;
+}
+.music-bar:nth-child(1){height:6px;animation-duration:0.4s;}
+.music-bar:nth-child(2){height:12px;animation-duration:0.6s;}
+.music-bar:nth-child(3){height:8px;animation-duration:0.5s;}
+.music-bar:nth-child(4){height:14px;animation-duration:0.7s;}
+.music-bar:nth-child(5){height:6px;animation-duration:0.45s;}
+@keyframes music-bounce{
+  0%,100%{transform:scaleY(1);}
+  50%{transform:scaleY(0.3);}
+}
+.music-paused .music-bar{animation-play-state:paused;}
+
+/* ======================= RESPONSIVE ======================= */
+@media(max-width:600px){
+  .menu-panel{padding:20px;}
+  .skin-selector{grid-template-columns:repeat(5,1fr);}
+  .owner-sidebar{width:60px;}
+  .owner-nav-btn span{display:none;}
+  .owner-sidebar-header h2,.owner-sidebar-header p,.crown-text{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div id="cursor"></div>
+
+<!-- ==================== MENU SCREEN ==================== -->
+<div class="screen" id="menuScreen">
+  <div class="menu-bg-particles" id="bgParticles"></div>
+  
+  <div style="display:flex;flex-direction:column;align-items:center;gap:32px;width:100%;max-width:500px;padding:20px;z-index:1;">
+    
+    <div class="logo-wrap">
+      <span class="owner-crown">👑</span>
+      <div class="logo-z3n0">Z3N0</div>
+      <div class="logo-sub">SERPENT REALM · EST. 2024</div>
+    </div>
+
+    <div class="menu-panel">
+      <div class="input-group">
+        <span class="input-label">Your Name</span>
+        <input class="game-input" id="nameInput" type="text" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <span class="input-label">Choose Skin</span>
+        <div class="skin-selector" id="skinSelector">
+          <!-- populated by JS -->
+        </div>
+      </div>
+
+      <div class="input-group" id="ownerPassGroup" style="display:none;">
+        <span class="input-label">🔐 Owner Code</span>
+        <input class="game-input" id="ownerPass" type="password" placeholder="Enter owner password..." autocomplete="off">
+      </div>
+
+      <button class="btn btn-primary" id="playBtn" style="margin-bottom:8px;">
+        ▶ ENTER THE REALM
+      </button>
+      <div class="btn-row">
+        <button class="btn btn-gold btn-sm" id="ownerToggleBtn">👑 OWNER</button>
+        <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);" id="howToBtn">? HOW TO PLAY</button>
+      </div>
+    </div>
+
+    <div id="menuStats" style="display:flex;gap:24px;font-size:13px;color:var(--dim);">
+      <span>🐍 <span id="statPlayers">0</span> online</span>
+      <span>🌟 <span id="statOrbs">0</span> orbs</span>
+      <span id="statEvent" style="display:none;color:var(--glow3);">⚡ EVENT ACTIVE</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== GAME CANVAS ==================== -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- ==================== HUD ==================== -->
+<div id="hud">
+  <div id="hud-score">
+    <div class="val" id="scoreVal">0</div>
+    <div class="label">SCORE · <span id="lengthVal">0</span> SEGMENTS</div>
+  </div>
+
+  <div id="killfeed"></div>
+
+  <div id="leaderboard">
+    <h3>👑 LEADERBOARD</h3>
+    <div id="lbList"></div>
+  </div>
+
+  <div id="minimap">
+    <canvas id="minimapCanvas" width="160" height="160"></canvas>
+  </div>
+
+  <div id="boostbar" style="pointer-events:auto;">
+    <div class="boost-label">BOOST [HOLD CLICK]</div>
+    <div class="boost-track"><div class="boost-fill" id="boostFill"></div></div>
+  </div>
+
+  <div id="owner-tag-hud">👑 Z3N0 · OWNER</div>
+
+  <div id="eventBanner">
+    <div class="event-title" id="eventTitle">EVENT ACTIVE</div>
+  </div>
+
+  <div id="sysmsg"></div>
+</div>
+
+<!-- ==================== DEATH SCREEN ==================== -->
+<div class="screen hidden" id="deathScreen">
+  <div class="death-title">ELIMINATED</div>
+  <div class="death-info" id="deathKiller">Killed by the void</div>
+  <div class="death-stats">
+    <div class="death-stat">
+      <div class="val" id="deathScore">0</div>
+      <div class="lbl">SCORE</div>
+    </div>
+    <div class="death-stat">
+      <div class="val" id="deathLength">0</div>
+      <div class="lbl">MAX LENGTH</div>
+    </div>
+    <div class="death-stat">
+      <div class="val" id="deathRank">—</div>
+      <div class="lbl">RANK</div>
+    </div>
+  </div>
+  <div class="death-buttons">
+    <button class="btn btn-primary" id="respawnBtn">↺ RESPAWN</button>
+    <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);" id="menuBtn">MENU</button>
+  </div>
+</div>
+
+<!-- ==================== OWNER PANEL ==================== -->
+<div id="ownerPanel" class="hidden">
+  <div class="owner-sidebar">
+    <div class="owner-sidebar-header">
+      <span class="crown-big">👑</span>
+      <h2 class="crown-text">Z3N0</h2>
+      <p>OWNER PANEL</p>
+    </div>
+    <nav class="owner-nav">
+      <button class="owner-nav-btn active" data-tab="dashboard"><span class="owner-nav-icon">📊</span><span>Dashboard</span></button>
+      <button class="owner-nav-btn" data-tab="players"><span class="owner-nav-icon">👥</span><span>Players</span></button>
+      <button class="owner-nav-btn" data-tab="actions"><span class="owner-nav-icon">⚡</span><span>Actions</span></button>
+      <button class="owner-nav-btn" data-tab="events"><span class="owner-nav-icon">🌟</span><span>Events</span></button>
+      <button class="owner-nav-btn" data-tab="broadcast"><span class="owner-nav-icon">📢</span><span>Broadcast</span></button>
+      <button class="owner-nav-btn" data-tab="skins"><span class="owner-nav-icon">🎨</span><span>Give Skins</span></button>
+    </nav>
+  </div>
+
+  <div class="owner-main">
+    <div class="owner-topbar">
+      <h1>OWNER CONTROL CENTER</h1>
+      <button class="btn btn-sm btn-danger" id="closeOwnerPanel">✕ CLOSE</button>
+    </div>
+
+    <div class="owner-content">
+      <div id="ownerAlert" class="o-alert"></div>
+
+      <!-- DASHBOARD -->
+      <div class="owner-tab active" id="tab-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="sv" id="os-players">0</div><div class="sl">PLAYERS</div></div>
+          <div class="stat-card"><div class="sv" id="os-orbs">0</div><div class="sl">ORBS</div></div>
+          <div class="stat-card"><div class="sv" id="os-event">NONE</div><div class="sl">EVENT</div></div>
+        </div>
+        <div class="o-card">
+          <h3>WELCOME, GOD</h3>
+          <p style="font-size:14px;line-height:1.6;color:rgba(255,215,0,0.6);">
+            You are Z3N0 — the supreme ruler of the Serpent Realm. Every soul in this world bends to your will.
+            Use your powers wisely. Or don't. It's your world. 👑
+          </p>
+        </div>
+        <div class="o-card">
+          <h3>QUICK ACTIONS</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','speedBoost')">⚡ Hyperspeed</button>
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','orbFrenzy')">🌟 Orb Frenzy</button>
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','growAll')">🐍 Titan Rise</button>
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','shrinkAll')">💀 Death Shrink</button>
+            <button class="btn btn-danger btn-sm" onclick="ownerAction('endEvent')">✕ End Event</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- PLAYERS -->
+      <div class="owner-tab" id="tab-players">
+        <div class="o-card">
+          <h3>LIVE PLAYERS</h3>
+          <button class="btn btn-gold btn-sm" onclick="refreshPlayers()" style="margin-bottom:12px;">↺ REFRESH</button>
+          <div style="overflow-x:auto;">
+            <table class="player-table">
+              <thead>
+                <tr>
+                  <th>NAME</th>
+                  <th>LENGTH</th>
+                  <th>SCORE</th>
+                  <th>SKIN</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="playerTableBody">
+                <tr><td colspan="5" style="text-align:center;color:var(--dim);padding:20px;">Click refresh to load players</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="owner-tab" id="tab-actions">
+        <div class="o-card">
+          <h3>GIVE SIZE</h3>
+          <select class="o-select" id="sizeTarget"></select>
+          <input class="o-input" id="sizeAmount" type="number" placeholder="Size amount (segments)" value="50">
+          <button class="btn btn-gold" onclick="doGiveSize()">📏 GRANT SIZE</button>
+        </div>
+        <div class="o-card">
+          <h3>SWAP SIZE</h3>
+          <select class="o-select" id="swapP1"></select>
+          <select class="o-select" id="swapP2"></select>
+          <button class="btn btn-gold" onclick="doSwapSize()">🔄 SWAP</button>
+        </div>
+        <div class="o-card">
+          <h3>KICK PLAYER</h3>
+          <select class="o-select" id="kickTarget"></select>
+          <input class="o-input" id="kickReason" placeholder="Kick reason (optional)">
+          <button class="btn btn-danger" onclick="doKick()">🚫 KICK</button>
+        </div>
+        <div class="o-card">
+          <h3>INSTA-KILL</h3>
+          <select class="o-select" id="killTarget"></select>
+          <button class="btn btn-danger" onclick="doInstaKill()">☠️ EXECUTE</button>
+        </div>
+      </div>
+
+      <!-- EVENTS -->
+      <div class="owner-tab" id="tab-events">
+        <div class="o-card">
+          <h3>LIVE EVENTS</h3>
+          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:16px;">Events last 60 seconds and affect all players.</p>
+          <div class="event-grid">
+            <div class="event-card" onclick="ownerAction('startEvent','speedBoost')">
+              <span class="event-icon">⚡</span>
+              <div class="event-name">HYPERSPEED FRENZY</div>
+            </div>
+            <div class="event-card" onclick="ownerAction('startEvent','orbFrenzy')">
+              <span class="event-icon">🌟</span>
+              <div class="event-name">ORB OVERLOAD</div>
+            </div>
+            <div class="event-card" onclick="ownerAction('startEvent','shrinkAll')">
+              <span class="event-icon">💀</span>
+              <div class="event-name">DEATH SHRINK</div>
+            </div>
+            <div class="event-card" onclick="ownerAction('startEvent','growAll')">
+              <span class="event-icon">🐍</span>
+              <div class="event-name">TITAN RISE</div>
+            </div>
+            <div class="event-card" onclick="ownerAction('startEvent','rainbow')">
+              <span class="event-icon">🌈</span>
+              <div class="event-name">RAINBOW CHAOS</div>
+            </div>
+            <div class="event-card" onclick="ownerAction('startEvent','darkness')">
+              <span class="event-icon">🌑</span>
+              <div class="event-name">BLACKOUT</div>
+            </div>
+          </div>
+          <button class="btn btn-danger" style="margin-top:16px;" onclick="ownerAction('endEvent')">✕ END CURRENT EVENT</button>
+        </div>
+      </div>
+
+      <!-- BROADCAST -->
+      <div class="owner-tab" id="tab-broadcast">
+        <div class="o-card">
+          <h3>SERVER BROADCAST</h3>
+          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:16px;">Send a message to all players in the game.</p>
+          <textarea class="o-input" id="broadcastMsg" placeholder="Type your message..." rows="3" style="resize:vertical;"></textarea>
+          <button class="btn btn-gold" onclick="doBroadcast()">📢 BROADCAST TO ALL</button>
+        </div>
+      </div>
+
+      <!-- SKINS -->
+      <div class="owner-tab" id="tab-skins">
+        <div class="o-card">
+          <h3>GRANT SKIN</h3>
+          <select class="o-select" id="skinTarget"></select>
+          <select class="o-select" id="skinToGive">
+            <option value="rainbow_god">🌈 Rainbow God (Owner Only)</option>
+            <option value="void_lord">🌑 Void Lord (Owner Only)</option>
+            <option value="galaxy_emperor">🌌 Galaxy Emperor (Owner Only)</option>
+            <option value="neon_death">⚡ Neon Death (Owner Only)</option>
+            <option value="chrome_divine">✨ Chrome Divine (Owner Only)</option>
+            <option value="fire">🔥 Fire</option>
+            <option value="ice">❄️ Ice</option>
+            <option value="gold">💛 Gold</option>
+            <option value="toxic">☣️ Toxic</option>
+          </select>
+          <button class="btn btn-gold" onclick="doGiveSkin()">🎨 GRANT SKIN</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOASTS ==================== -->
+<div id="toast-container"></div>
+
+<!-- ==================== MUSIC CONTROLS ==================== -->
+<div id="musicControls" style="display:none;">
+  <button class="music-btn" id="musicToggle">🎵</button>
+  <div class="music-vis" id="musicVis">
+    <div class="music-bar"></div>
+    <div class="music-bar"></div>
+    <div class="music-bar"></div>
+    <div class="music-bar"></div>
+    <div class="music-bar"></div>
+  </div>
+  <span style="font-size:10px;color:var(--dim);font-family:Orbitron,monospace;letter-spacing:1px;">MUSIC</span>
+</div>
+
+<!-- ==================== BROADCAST BANNER ==================== -->
+<div id="broadcastBanner">
+  <span>👑 Z3N0: </span><span id="broadcastText"></span>
+</div>
+
+<script>
+// ================================================================
+//  SKIN DEFINITIONS
+// ================================================================
+const SKINS = {
+  classic: { name:'Classic', emoji:'🐍', colors:['#00ff8c','#00cc70'], glow:'#00ff8c' },
+  fire: { name:'Fire', emoji:'🔥', colors:['#ff4400','#ff8800'], glow:'#ff6600' },
+  ice: { name:'Ice', emoji:'❄️', colors:['#00ccff','#0066ff'], glow:'#00ccff' },
+  toxic: { name:'Toxic', emoji:'☣️', colors:['#88ff00','#44aa00'], glow:'#88ff00' },
+  gold: { name:'Gold', emoji:'⭐', colors:['#ffd700','#ffaa00'], glow:'#ffd700' },
+  midnight: { name:'Midnight', emoji:'🌙', colors:['#4400ff','#8800ff'], glow:'#6600ff' },
+  sunset: { name:'Sunset', emoji:'🌅', colors:['#ff0066','#ff8800'], glow:'#ff4488' },
+  ocean: { name:'Ocean', emoji:'🌊', colors:['#0044ff','#00ffcc'], glow:'#00aaff' },
+  lava: { name:'Lava', emoji:'🌋', colors:['#ff2200','#ffdd00'], glow:'#ff4400' },
+  forest: { name:'Forest', emoji:'🌲', colors:['#006600','#88cc00'], glow:'#44aa00' },
+  // OWNER ONLY
+  rainbow_god: { name:'Rainbow God', emoji:'🌈', colors:['rainbow'], glow:'#ffffff', ownerOnly:true },
+  void_lord: { name:'Void Lord', emoji:'🌑', colors:['#110011','#440044'], glow:'#aa00ff', ownerOnly:true },
+  galaxy_emperor: { name:'Galaxy', emoji:'🌌', colors:['#000033','#0000aa'], glow:'#4488ff', ownerOnly:true, stars:true },
+  neon_death: { name:'Neon Death', emoji:'⚡', colors:['#ff0000','#00ffff'], glow:'#ffffff', ownerOnly:true },
+  chrome_divine: { name:'Chrome', emoji:'✨', colors:['#888888','#ffffff'], glow:'#ffffff', ownerOnly:true },
+};
+
+// ================================================================
+//  STATE
+// ================================================================
+let socket = null;
+let myPlayerId = null;
+let isOwner = false;
+let gameState = { players:{}, leaderboard:[], activeEvent:null };
+let myAngle = 0;
+let boosting = false;
+let boostEnergy = 100;
+let selectedSkin = 'classic';
+let ownerPass = '';
+let currentPlayerList = [];
+let gameActive = false;
+let myDeathScore = 0;
+let myDeathLength = 0;
+let cameraX = 0, cameraY = 0;
+let MAP_SIZE = 6000;
+let orbsLocal = {};
+let rainbowT = 0;
+let musicPlaying = false;
+let audioCtx = null;
+let musicInterval = null;
+let myName = '';
+
+// ================================================================
+//  CURSOR
+// ================================================================
+const cursor = document.getElementById('cursor');
+let mouseX = 0, mouseY = 0;
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top = mouseY + 'px';
+});
+
+// ================================================================
+//  PARTICLES (menu)
+// ================================================================
+function spawnMenuParticles() {
+  const container = document.getElementById('bgParticles');
+  for (let i = 0; i < 50; i++) {
+    const p = document.createElement('div');
+    p.className = 'menu-particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.animationDuration = (Math.random() * 6 + 4) + 's';
+    p.style.animationDelay = (Math.random() * 6) + 's';
+    p.style.width = p.style.height = (Math.random() * 3 + 1) + 'px';
+    const colors = ['#00ff8c','#aa44ff','#ff2244','#ffd700','#00ccff'];
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    container.appendChild(p);
+  }
+}
+spawnMenuParticles();
+
+// ================================================================
+//  SKIN SELECTOR
+// ================================================================
+function buildSkinSelector() {
+  const container = document.getElementById('skinSelector');
+  container.innerHTML = '';
+  const skinKeys = Object.keys(SKINS);
+  skinKeys.forEach(key => {
+    const skin = SKINS[key];
+    const div = document.createElement('div');
+    div.className = 'skin-opt' + (skin.ownerOnly?' owner-only':'') + (key===selectedSkin?' selected':'');
+    if (skin.ownerOnly && !isOwner) div.classList.add('locked');
+    div.title = skin.name + (skin.ownerOnly?' (Owner Only)':'');
+    div.style.background = skin.ownerOnly
+      ? 'linear-gradient(135deg,rgba(255,215,0,0.2),rgba(170,68,255,0.2))'
+      : `linear-gradient(135deg,${skin.colors[0]||'#333'},${skin.colors[1]||skin.colors[0]||'#333'})`;
+    div.innerHTML = `<span style="font-size:18px;text-shadow:0 0 10px ${skin.glow}">${skin.emoji}</span>`;
+    div.onclick = () => {
+      if (skin.ownerOnly && !isOwner) {
+        showToast('Owner only skin!','error'); return;
+      }
+      selectedSkin = key;
+      document.querySelectorAll('.skin-opt').forEach(s=>s.classList.remove('selected'));
+      div.classList.add('selected');
+    };
+    container.appendChild(div);
+  });
+}
+buildSkinSelector();
+
+// ================================================================
+//  OWNER TOGGLE
+// ================================================================
+document.getElementById('ownerToggleBtn').onclick = () => {
+  const g = document.getElementById('ownerPassGroup');
+  g.style.display = g.style.display==='none'?'':'none';
+};
+
+// ================================================================
+//  MUSIC (web audio synthesis — no external files needed)
+// ================================================================
+function initMusic() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  playMusic();
+}
+
+function playMusic() {
+  if (!audioCtx) return;
+  musicPlaying = true;
+  document.getElementById('musicVis').classList.remove('music-paused');
+  document.getElementById('musicToggle').textContent = '🎵';
+  scheduleMusicNotes();
+}
+
+function pauseMusic() {
+  musicPlaying = false;
+  document.getElementById('musicVis').classList.add('music-paused');
+  document.getElementById('musicToggle').textContent = '⏸';
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+}
+
+let noteIndex = 0;
+const melody = [261,293,329,349,392,440,493,523,493,440,392,349,329,293,261,293,329,392,440,493,523,587,523,493,440,392,349,329];
+const bassline = [65,73,82,87,98,110,65,73];
+
+function playNote(freq, type, duration, gain, time) {
+  if (!audioCtx || !musicPlaying) return;
+  const osc = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 2000;
+  osc.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, time);
+  gainNode.gain.setValueAtTime(0, time);
+  gainNode.gain.linearRampToValueAtTime(gain, time + 0.02);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
+  osc.start(time);
+  osc.stop(time + duration + 0.05);
+}
+
+function scheduleMusicNotes() {
+  if (musicInterval) clearInterval(musicInterval);
+  const tempo = 0.18;
+  let beat = 0;
+  musicInterval = setInterval(() => {
+    if (!musicPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const mNote = melody[noteIndex % melody.length];
+    const bNote = bassline[beat % bassline.length];
+    playNote(mNote, 'triangle', tempo * 1.5, 0.08, now);
+    playNote(mNote * 2, 'sine', tempo, 0.03, now + 0.05);
+    if (beat % 2 === 0) playNote(bNote, 'sawtooth', tempo * 2, 0.06, now);
+    if (beat % 4 === 0) {
+      // kick
+      const k = audioCtx.createOscillator();
+      const kg = audioCtx.createGain();
+      k.connect(kg); kg.connect(audioCtx.destination);
+      k.frequency.setValueAtTime(150, now);
+      k.frequency.exponentialRampToValueAtTime(0.001, now + 0.3);
+      kg.gain.setValueAtTime(0.3, now);
+      kg.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      k.start(now); k.stop(now + 0.35);
+    }
+    noteIndex++;
+    beat++;
+  }, tempo * 1000);
+}
+
+document.getElementById('musicToggle').onclick = () => {
+  if (!audioCtx) { initMusic(); return; }
+  if (musicPlaying) pauseMusic(); else playMusic();
+};
+
+// ================================================================
+//  PLAY BUTTON
+// ================================================================
+document.getElementById('playBtn').onclick = () => {
+  const name = document.getElementById('nameInput').value.trim() || 'Snake';
+  const pass = document.getElementById('ownerPass').value;
+  myName = name;
+  ownerPass = pass;
+  connectAndJoin(name, selectedSkin, pass);
+};
+
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('playBtn').click();
+});
+
+// ================================================================
+//  SOCKET CONNECTION
+// ================================================================
+function connectAndJoin(name, skin, password) {
+  if (socket) socket.disconnect();
+  socket = io();
+
+  socket.on('connect', () => {
+    socket.emit('joinGame', { name, skin, password });
+  });
+
+  socket.on('joined', (data) => {
+    myPlayerId = data.playerId;
+    isOwner = data.isOwner;
+    MAP_SIZE = data.mapSize;
+    orbsLocal = {};
+    data.orbs.forEach(o => orbsLocal[o.id] = o);
+    startGame();
+    if (isOwner) {
+      document.getElementById('owner-tag-hud').style.display = 'block';
+      buildSkinSelector();
+      showToast('👑 Welcome back, Z3N0','gold');
+    }
+    initMusic();
+  });
+
+  socket.on('gameState', (data) => {
+    gameState = data;
+  });
+
+  socket.on('orbEaten', ({ oid, newOrb }) => {
+    delete orbsLocal[oid];
+    orbsLocal[newOrb.id] = newOrb;
+  });
+
+  socket.on('orbSpawned', (orb) => {
+    orbsLocal[orb.id] = orb;
+  });
+
+  socket.on('orbFrenzy', (orbs) => {
+    orbs.forEach(o => orbsLocal[o.id] = o);
+  });
+
+  socket.on('playerDied', ({ id, killerName, droppedOrbs }) => {
+    if (droppedOrbs) droppedOrbs.forEach(o => orbsLocal[o.id] = o);
+    if (id !== myPlayerId) addKillFeed(id, killerName);
+  });
+
+  socket.on('youDied', ({ killerName }) => {
+    handleDeath(killerName);
+  });
+
+  socket.on('playerLeft', (id) => {
+    // handled via gameState
+  });
+
+  socket.on('killed', () => {});
+
+  socket.on('kicked', ({ reason }) => {
+    socket.disconnect();
+    showScreen('menuScreen');
+    showToast('🚫 ' + (reason || 'Kicked by owner.'), 'error');
+    gameActive = false;
+    document.getElementById('hud').style.display = 'none';
+    document.getElementById('gameCanvas').style.display = 'none';
+    document.getElementById('musicControls').style.display = 'none';
+  });
+
+  socket.on('systemMessage', ({ message: msg }) => {
+    // handle as string
+    showSystemMsg(msg || '');
+  });
+
+  // Corrected: server sends string not object
+  socket.on('systemMessage', (data) => {
+    const msg = typeof data === 'string' ? data : data.message || '';
+    showSystemMsg(msg);
+  });
+
+  socket.on('skinGranted', ({ skin: newSkin }) => {
+    selectedSkin = newSkin;
+    showToast(`🎨 Skin granted: ${SKINS[newSkin]?.name || newSkin}`, 'gold');
+  });
+
+  socket.on('killConfirmed', ({ victimName }) => {
+    showToast(`💀 You eliminated ${victimName}`);
+  });
+
+  socket.on('liveEvent', (event) => {
+    const banner = document.getElementById('eventBanner');
+    const title = document.getElementById('eventTitle');
+    banner.style.display = 'block';
+    title.textContent = event.name;
+    const statEvent = document.getElementById('statEvent');
+    statEvent.style.display = 'inline';
+    showToast('⚡ ' + event.name + ' STARTED!', 'gold');
+  });
+
+  socket.on('eventEnded', () => {
+    document.getElementById('eventBanner').style.display = 'none';
+    document.getElementById('statEvent').style.display = 'none';
+    showToast('Event ended.');
+  });
+
+  socket.on('ownerBroadcast', ({ message }) => {
+    const banner = document.getElementById('broadcastBanner');
+    document.getElementById('broadcastText').textContent = message;
+    banner.style.display = 'block';
+    setTimeout(() => banner.style.display = 'none', 8000);
+  });
+
+  socket.on('ownerSuccess', (msg) => {
+    showOwnerAlert(msg, 'success');
+    refreshPlayers();
+  });
+
+  socket.on('ownerError', (msg) => {
+    showOwnerAlert(msg, 'error');
+  });
+
+  socket.on('playerList', (list) => {
+    currentPlayerList = list;
+    renderPlayerTable(list);
+    populateSelects(list);
+  });
+
+  socket.on('disconnect', () => {
+    if (gameActive) showToast('Disconnected from server', 'error');
+  });
+}
+
+// ================================================================
+//  GAME START/STOP
+// ================================================================
+function startGame() {
+  gameActive = true;
+  showScreen('game');
+  document.getElementById('gameCanvas').style.display = 'block';
+  document.getElementById('hud').style.display = 'block';
+  document.getElementById('musicControls').style.display = 'flex';
+  document.getElementById('deathScreen').classList.add('hidden');
+  setupCanvas();
+  requestAnimationFrame(gameLoop);
+}
+
+function handleDeath(killerName) {
+  gameActive = false;
+  const myP = gameState.players[myPlayerId];
+  myDeathScore = myP ? myP.score || 0 : 0;
+  myDeathLength = myP ? (myP.segments||[]).length : 0;
+  
+  document.getElementById('deathKiller').textContent = `Eliminated by ${killerName || 'the void'}`;
+  document.getElementById('deathScore').textContent = myDeathScore;
+  document.getElementById('deathLength').textContent = myDeathLength;
+  
+  const rank = gameState.leaderboard.findIndex(e => e.id === myPlayerId);
+  document.getElementById('deathRank').textContent = rank >= 0 ? '#' + (rank+1) : '—';
+  
+  document.getElementById('deathScreen').classList.remove('hidden');
+}
+
+document.getElementById('respawnBtn').onclick = () => {
+  document.getElementById('deathScreen').classList.add('hidden');
+  connectAndJoin(myName, selectedSkin, ownerPass);
+};
+document.getElementById('menuBtn').onclick = () => {
+  document.getElementById('deathScreen').classList.add('hidden');
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('gameCanvas').style.display = 'none';
+  document.getElementById('musicControls').style.display = 'none';
+  showScreen('menuScreen');
+  if (socket) socket.disconnect();
+  gameActive = false;
+};
+
+// ================================================================
+//  CANVAS SETUP
+// ================================================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function setupCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', setupCanvas);
+
+// ================================================================
+//  INPUT
+// ================================================================
+canvas.addEventListener('mousemove', (e) => {
+  if (!gameActive || !myPlayerId) return;
+  const me = gameState.players[myPlayerId];
+  if (!me || !me.segments || !me.segments.length) return;
+  const head = me.segments[0];
+  const sx = (head.x - cameraX);
+  const sy = (head.y - cameraY);
+  myAngle = Math.atan2(e.clientY - sy, e.clientX - sx);
+  socket.emit('input', { angle: myAngle, boosting });
+});
+
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button === 0 || e.button === 2) {
+    boosting = true;
+    socket.emit('input', { angle: myAngle, boosting: true });
+  }
+});
+canvas.addEventListener('mouseup', (e) => {
+  boosting = false;
+  socket.emit('input', { angle: myAngle, boosting: false });
+});
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// Mobile
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const me = gameState.players[myPlayerId];
+  if (!me || !me.segments || !me.segments.length) return;
+  const head = me.segments[0];
+  const sx = head.x - cameraX;
+  const sy = head.y - cameraY;
+  myAngle = Math.atan2(touch.clientY - sy, touch.clientX - sx);
+  socket.emit('input', { angle: myAngle, boosting });
+}, { passive: false });
+canvas.addEventListener('touchstart', e => {
+  boosting = true;
+  socket.emit('input', { angle: myAngle, boosting: true });
+});
+canvas.addEventListener('touchend', e => {
+  boosting = false;
+  socket.emit('input', { angle: myAngle, boosting: false });
+});
+
+// ================================================================
+//  RENDER
+// ================================================================
+let frameCount = 0;
+
+function gameLoop() {
+  if (!gameActive) return;
+  requestAnimationFrame(gameLoop);
+  
+  frameCount++;
+  rainbowT += 0.02;
+
+  const me = gameState.players[myPlayerId];
+  if (me && me.segments && me.segments.length) {
+    const head = me.segments[0];
+    cameraX = head.x - canvas.width / 2;
+    cameraY = head.y - canvas.height / 2;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Background
+  drawBackground();
+
+  // Grid
+  drawGrid();
+
+  // Orbs
+  drawOrbs();
+
+  // Snakes
+  for (const pid in gameState.players) {
+    drawSnake(gameState.players[pid], pid === myPlayerId);
+  }
+
+  // Border
+  drawBorder();
+
+  // HUD updates
+  updateHUD();
+}
+
+function drawBackground() {
+  const grad = ctx.createRadialGradient(canvas.width/2,canvas.height/2,0,canvas.width/2,canvas.height/2,canvas.width);
+  grad.addColorStop(0,'#05050f');
+  grad.addColorStop(1,'#000008');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+function drawGrid() {
+  const gridSize = 80;
+  const offX = (-cameraX) % gridSize;
+  const offY = (-cameraY) % gridSize;
+  ctx.strokeStyle = 'rgba(0,255,140,0.04)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = offX; x < canvas.width; x += gridSize) {
+    ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
+  }
+  for (let y = offY; y < canvas.height; y += gridSize) {
+    ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
+  }
+  ctx.stroke();
+}
+
+function drawOrbs() {
+  for (const oid in orbsLocal) {
+    const orb = orbsLocal[oid];
+    const sx = orb.x - cameraX;
+    const sy = orb.y - cameraY;
+    if (sx < -30 || sx > canvas.width+30 || sy < -30 || sy > canvas.height+30) continue;
+    
+    const pulse = Math.sin(frameCount * 0.08 + orb.x * 0.01) * 0.3 + 0.7;
+    const r = orb.size * pulse;
+
+    ctx.beginPath();
+    const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * 2);
+    grad.addColorStop(0, orb.color);
+    grad.addColorStop(0.5, orb.color + '88');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.arc(sx, sy, r * 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(sx, sy, r, 0, Math.PI * 2);
+    ctx.fillStyle = orb.color;
+    ctx.fill();
+  }
+}
+
+function getSkinColors(player) {
+  const skin = SKINS[player.skin] || SKINS.classic;
+  if (skin.colors[0] === 'rainbow') {
+    const h = (rainbowT * 60) % 360;
+    return [`hsl(${h},100%,50%)`, `hsl(${(h+60)%360},100%,60%)`];
+  }
+  if (player.grantedSkin && SKINS[player.grantedSkin]) {
+    const gs = SKINS[player.grantedSkin];
+    if (gs.colors[0] === 'rainbow') {
+      const h = (rainbowT * 60) % 360;
+      return [`hsl(${h},100%,50%)`, `hsl(${(h+60)%360},100%,60%)`];
+    }
+    return gs.colors;
+  }
+  return skin.colors;
+}
+
+function getSkinGlow(player) {
+  const s = SKINS[player.grantedSkin || player.skin] || SKINS.classic;
+  if (s.colors[0] === 'rainbow') {
+    const h = (rainbowT * 60) % 360;
+    return `hsl(${h},100%,60%)`;
+  }
+  return s.glow;
+}
+
+function drawSnake(player, isMe) {
+  if (!player.segments || player.segments.length < 2) return;
+  const segs = player.segments;
+  const colors = getSkinColors(player);
+  const glowColor = getSkinGlow(player);
+  const w = player.width || 8;
+
+  // Draw body
+  for (let i = segs.length - 1; i >= 0; i--) {
+    const seg = segs[i];
+    const sx = seg.x - cameraX;
+    const sy = seg.y - cameraY;
+    if (sx < -w-20 || sx > canvas.width+w+20 || sy < -w-20 || sy > canvas.height+w+20) continue;
+
+    const t = i / segs.length;
+    const alpha = 0.3 + 0.7 * (1 - t * 0.5);
+    const segW = w * (1 - t * 0.3);
+
+    if (i === 0) {
+      // Head - bigger and glowy
+      if (isMe || player.isOwner) {
+        ctx.shadowColor = glowColor;
+        ctx.shadowBlur = 20;
+      }
+      ctx.beginPath();
+      ctx.arc(sx, sy, segW + 2, 0, Math.PI * 2);
+      const headGrad = ctx.createRadialGradient(sx - segW*0.3, sy - segW*0.3, 0, sx, sy, segW + 2);
+      headGrad.addColorStop(0, colors[1] || colors[0]);
+      headGrad.addColorStop(1, colors[0]);
+      ctx.fillStyle = headGrad;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Eyes
+      const eyeAngle = player.angle || 0;
+      const eyeD = segW * 0.5;
+      const ex1 = sx + Math.cos(eyeAngle - 0.5) * eyeD;
+      const ey1 = sy + Math.sin(eyeAngle - 0.5) * eyeD;
+      const ex2 = sx + Math.cos(eyeAngle + 0.5) * eyeD;
+      const ey2 = sy + Math.sin(eyeAngle + 0.5) * eyeD;
+      ctx.beginPath(); ctx.arc(ex1, ey1, 2, 0, Math.PI*2); ctx.fillStyle='white'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex2, ey2, 2, 0, Math.PI*2); ctx.fillStyle='white'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex1 + Math.cos(eyeAngle)*1, ey1 + Math.sin(eyeAngle)*1, 1, 0, Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex2 + Math.cos(eyeAngle)*1, ey2 + Math.sin(eyeAngle)*1, 1, 0, Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+
+      // Owner crown
+      if (player.isOwner) {
+        ctx.font = `${segW * 1.5}px serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('👑', sx, sy - segW - 2);
+      }
+
+    } else {
+      // Body segments
+      ctx.beginPath();
+      ctx.arc(sx, sy, segW, 0, Math.PI * 2);
+      
+      const segGrad = ctx.createRadialGradient(sx - segW*0.2, sy - segW*0.2, 0, sx, sy, segW);
+      const baseColor = colors[i % 2 === 0 ? 0 : 1] || colors[0];
+      segGrad.addColorStop(0, baseColor + 'ff');
+      segGrad.addColorStop(1, baseColor + Math.floor(alpha * 255).toString(16).padStart(2,'0'));
+      ctx.fillStyle = segGrad;
+      ctx.fill();
+
+      // Boost particle trail
+      if (player.boosting && i < 5 && Math.random() < 0.4) {
+        ctx.beginPath();
+        ctx.arc(sx + (Math.random()-0.5)*10, sy + (Math.random()-0.5)*10, 3, 0, Math.PI*2);
+        ctx.fillStyle = glowColor + '88';
+        ctx.fill();
+      }
+    }
+  }
+
+  // Name tag
+  const head = segs[0];
+  const hsx = head.x - cameraX;
+  const hsy = head.y - cameraY;
+  if (hsx > -50 && hsx < canvas.width+50 && hsy > -50 && hsy < canvas.height+50) {
+    ctx.font = `bold ${Math.max(10, w + 4)}px Rajdhani,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    
+    const nameY = hsy - w - 8;
+    const nameText = (player.isOwner ? '👑 ' : '') + (player.name || 'Snake');
+    
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    const tw = ctx.measureText(nameText).width;
+    ctx.fillRect(hsx - tw/2 - 4, nameY - 14, tw + 8, 16);
+    
+    ctx.fillStyle = player.isOwner ? '#ffd700' : (isMe ? '#ffffff' : '#ccffdd');
+    ctx.fillText(nameText, hsx, nameY);
+    ctx.textBaseline = 'alphabetic';
+  }
+}
+
+function drawBorder() {
+  const bx = -cameraX, by = -cameraY;
+  const bw = MAP_SIZE, bh = MAP_SIZE;
+  
+  ctx.strokeStyle = 'rgba(255,34,68,0.6)';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([20, 10]);
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.setLineDash([]);
+  
+  // Glow
+  ctx.shadowColor = '#ff2244';
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = 'rgba(255,34,68,0.3)';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.shadowBlur = 0;
+}
+
+// ================================================================
+//  HUD UPDATES
+// ================================================================
+function updateHUD() {
+  const me = gameState.players[myPlayerId];
+  if (me) {
+    document.getElementById('scoreVal').textContent = me.score || 0;
+    document.getElementById('lengthVal').textContent = (me.segments || []).length;
+    
+    if (boosting) {
+      boostEnergy = Math.max(0, boostEnergy - 0.5);
+    } else {
+      boostEnergy = Math.min(100, boostEnergy + 0.3);
+    }
+    document.getElementById('boostFill').style.width = boostEnergy + '%';
+  }
+
+  // Leaderboard
+  const lb = gameState.leaderboard || [];
+  const lbList = document.getElementById('lbList');
+  lbList.innerHTML = lb.map((e, i) => {
+    const rankClass = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const rankSymbol = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    return `<div class="lb-entry">
+      <div class="lb-rank ${rankClass}">${rankSymbol}</div>
+      <div class="lb-name ${e.isOwner?'is-owner':''}">${e.isOwner?'👑 ':''}${e.name}</div>
+      <div class="lb-len">${e.length}</div>
+    </div>`;
+  }).join('');
+
+  // Minimap
+  drawMinimap();
+}
+
+function drawMinimap() {
+  const mmc = document.getElementById('minimapCanvas');
+  const mCtx = mmc.getContext('2d');
+  const W = mmc.width, H = mmc.height;
+  const scale = W / MAP_SIZE;
+  
+  mCtx.fillStyle = 'rgba(0,0,8,0.9)';
+  mCtx.fillRect(0,0,W,H);
+  
+  // Orbs (dots)
+  for (const oid in orbsLocal) {
+    const o = orbsLocal[oid];
+    mCtx.fillStyle = o.color + '66';
+    mCtx.fillRect(o.x * scale - 0.5, o.y * scale - 0.5, 1, 1);
+  }
+
+  // Players
+  for (const pid in gameState.players) {
+    const p = gameState.players[pid];
+    if (!p.segments || !p.segments.length) continue;
+    const head = p.segments[0];
+    const mx = head.x * scale, my = head.y * scale;
+    mCtx.beginPath();
+    mCtx.arc(mx, my, pid === myPlayerId ? 4 : 2.5, 0, Math.PI*2);
+    mCtx.fillStyle = pid === myPlayerId ? '#00ff8c' : (p.isOwner ? '#ffd700' : '#ffffff88');
+    mCtx.fill();
+  }
+
+  // Border
+  mCtx.strokeStyle = 'rgba(255,34,68,0.5)';
+  mCtx.lineWidth = 1;
+  mCtx.strokeRect(0,0,W,H);
+}
+
+// ================================================================
+//  KILL FEED
+// ================================================================
+function addKillFeed(killedId, killerName) {
+  const killedName = gameState.players[killedId]?.name || 'Someone';
+  const kf = document.getElementById('killfeed');
+  const entry = document.createElement('div');
+  entry.className = 'kf-entry';
+  entry.innerHTML = `<span style="color:#aaa;">${killedName}</span> <span style="color:#ff2244;">✕</span> <span style="color:#00ff8c;">${killerName}</span>`;
+  kf.appendChild(entry);
+  setTimeout(() => entry.remove(), 5000);
+}
+
+// ================================================================
+//  SYSTEM MESSAGE
+// ================================================================
+function showSystemMsg(msg) {
+  const el = document.getElementById('sysmsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 4000);
+}
+
+// ================================================================
+//  TOAST
+// ================================================================
+function showToast(msg, type) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type ? ' '+type : '');
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s';
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}
+
+// ================================================================
+//  SCREENS
+// ================================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  if (name === 'menuScreen') document.getElementById('menuScreen').classList.remove('hidden');
+}
+
+// ================================================================
+//  OWNER PANEL
+// ================================================================
+document.getElementById('closeOwnerPanel').onclick = () => {
+  document.getElementById('ownerPanel').classList.add('hidden');
+};
+
+// Nav tabs
+document.querySelectorAll('.owner-nav-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.owner-nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.owner-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = document.getElementById('tab-' + btn.dataset.tab);
+    if (tab) tab.classList.add('active');
+    if (btn.dataset.tab === 'players' || btn.dataset.tab === 'actions' || btn.dataset.tab === 'skins') {
+      refreshPlayers();
+    }
+    updateOwnerStats();
+  };
+});
+
+function openOwnerPanel() {
+  document.getElementById('ownerPanel').classList.remove('hidden');
+  updateOwnerStats();
+  refreshPlayers();
+}
+
+// Keyboard shortcut to open owner panel
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'F1' || (e.ctrlKey && e.key === 'o')) {
+    e.preventDefault();
+    if (isOwner) openOwnerPanel();
+  }
+  if (e.key === 'Escape') {
+    document.getElementById('ownerPanel').classList.add('hidden');
+  }
+});
+
+// Make owner tag clickable
+document.getElementById('owner-tag-hud').style.pointerEvents = 'auto';
+document.getElementById('owner-tag-hud').style.cursor = 'pointer';
+document.getElementById('owner-tag-hud').onclick = openOwnerPanel;
+
+// Owner panel from menu
+document.getElementById('ownerToggleBtn').addEventListener('dblclick', () => {
+  const pass = document.getElementById('ownerPass').value;
+  if (pass === 'Z3N0ISKING') {
+    isOwner = true;
+    buildSkinSelector();
+    openOwnerPanel();
+  }
+});
+
+function updateOwnerStats() {
+  fetch('/api/stats').then(r=>r.json()).then(d => {
+    document.getElementById('os-players').textContent = d.players;
+    document.getElementById('os-orbs').textContent = d.orbs;
+    document.getElementById('os-event').textContent = d.activeEvent || 'NONE';
+  }).catch(()=>{});
+}
+
+function refreshPlayers() {
+  if (!socket) return;
+  socket.emit('ownerAction', { action: 'getPlayers', password: ownerPass || 'Z3N0ISKING' });
+}
+
+function renderPlayerTable(list) {
+  const tbody = document.getElementById('playerTableBody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:rgba(255,215,0,0.3);padding:20px;">No players online</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(p => `
+    <tr>
+      <td><span style="color:${p.isOwner?'#ffd700':'rgba(255,215,0,0.8)'}">${p.isOwner?'👑 ':''}${p.name}</span></td>
+      <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.length}</td>
+      <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.score}</td>
+      <td style="font-size:12px;color:rgba(255,215,0,0.5);">${p.skin}</td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn btn-danger btn-sm" onclick="quickKill('${p.id}','${escHtml(p.name)}')">☠️</button>
+          <button class="btn btn-sm" style="border:1px solid rgba(255,34,68,0.3);color:rgba(255,34,68,0.6);padding:6px 8px;font-size:9px;" onclick="quickKick('${p.id}','${escHtml(p.name)}')">🚫</button>
+          <button class="btn btn-gold btn-sm" onclick="quickSize('${p.id}','${escHtml(p.name)}')">📏</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function escHtml(str) { return str.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+function populateSelects(list) {
+  const selects = ['sizeTarget','swapP1','swapP2','kickTarget','killTarget','skinTarget'];
+  selects.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    sel.innerHTML = list.map(p => `<option value="${p.id}">${p.isOwner?'👑 ':''}${p.name} (len:${p.length})</option>`).join('');
+  });
+}
+
+function showOwnerAlert(msg, type) {
+  const el = document.getElementById('ownerAlert');
+  el.textContent = msg;
+  el.className = 'o-alert ' + type;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// ================================================================
+//  OWNER ACTIONS
+// ================================================================
+function ownerAction(action, value, targetId) {
+  if (!socket) { showToast('Not connected','error'); return; }
+  socket.emit('ownerAction', { action, value, targetId, password: ownerPass || 'Z3N0ISKING' });
+}
+
+function doGiveSize() {
+  const target = document.getElementById('sizeTarget').value;
+  const amount = document.getElementById('sizeAmount').value;
+  ownerAction('giveSize', amount, target);
+}
+
+function doSwapSize() {
+  const p1 = document.getElementById('swapP1').value;
+  const p2 = document.getElementById('swapP2').value;
+  ownerAction('swapSize', p2, p1);
+}
+
+function doKick() {
+  const target = document.getElementById('kickTarget').value;
+  const reason = document.getElementById('kickReason').value || 'Kicked by owner.';
+  ownerAction('kick', reason, target);
+}
+
+function doInstaKill() {
+  const target = document.getElementById('killTarget').value;
+  ownerAction('instaKill', null, target);
+}
+
+function doGiveSkin() {
+  const target = document.getElementById('skinTarget').value;
+  const skin = document.getElementById('skinToGive').value;
+  ownerAction('giveSkin', skin, target);
+}
+
+function doBroadcast() {
+  const msg = document.getElementById('broadcastMsg').value.trim();
+  if (!msg) return;
+  ownerAction('broadcast', msg);
+  document.getElementById('broadcastMsg').value = '';
+}
+
+function quickKill(id, name) {
+  if (!confirm(`Insta-kill ${name}?`)) return;
+  ownerAction('instaKill', null, id);
+}
+
+function quickKick(id, name) {
+  const reason = prompt(`Kick reason for ${name}:`, 'Kicked by Z3N0');
+  if (reason === null) return;
+  ownerAction('kick', reason, id);
+}
+
+function quickSize(id, name) {
+  const amount = prompt(`Give size to ${name}:`, '50');
+  if (!amount) return;
+  ownerAction('giveSize', amount, id);
+}
+
+// ================================================================
+//  MENU STATS UPDATE
+// ================================================================
+setInterval(() => {
+  fetch('/api/stats').then(r=>r.json()).then(d => {
+    document.getElementById('statPlayers').textContent = d.players;
+    document.getElementById('statOrbs').textContent = d.orbs;
+    if (d.activeEvent) document.getElementById('statEvent').style.display = 'inline';
+    else document.getElementById('statEvent').style.display = 'none';
+  }).catch(()=>{});
+}, 3000);
+
+// ================================================================
+//  HOW TO PLAY
+// ================================================================
+document.getElementById('howToBtn').onclick = () => {
+  alert('🐍 HOW TO PLAY\n\nMove your mouse to steer your snake.\nHold left click to BOOST (sheds orbs).\nEat glowing orbs to grow.\nKill others by making them run into your body.\nAvoid the red border.\n\nIf you are Z3N0, press F1 to open the Owner Panel.');
+};
+
+// ================================================================
+//  INIT
+// ================================================================
+// Auto-populate name
+document.getElementById('nameInput').focus();
+</script>
+</body>
+</html>
