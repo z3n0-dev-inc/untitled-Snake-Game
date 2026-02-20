@@ -568,21 +568,20 @@ app.post('/api/playfab/link', async (req, res) => {
   if (!playerName) return res.status(400).json({ error: 'playerName required' });
 
   try {
-    // Login / register with a custom ID derived from the player name
+    // Use Server API (LoginWithServerCustomId) — works with X-SecretKey, no TitleId needed
     const customId = 'z3n0_' + playerName.toLowerCase().replace(/[^a-z0-9]/g,'_');
-    const loginRes = await playfabRequest('/Client/LoginWithCustomID', {
-      TitleId: PLAYFAB_TITLE_ID,
-      CustomId: customId,
-      CreateAccount: true
+    const loginRes = await playfabRequest('/Server/LoginWithServerCustomId', {
+      ServerCustomId: customId,
+      CreateAccount: true,
+      InfoRequestParameters: { GetUserAccountInfo: true }
     });
 
     if (loginRes.code !== 200) {
-      return res.status(400).json({ error: loginRes.errorMessage || 'PlayFab login failed' });
+      return res.status(400).json({ error: loginRes.errorMessage || `PlayFab login failed (code ${loginRes.code})` });
     }
 
-    const sessionTicket = loginRes.data.SessionTicket;
-    const playfabId     = loginRes.data.PlayFabId;
-    const newlyCreated  = loginRes.data.NewlyCreated;
+    const playfabId    = loginRes.data.PlayFabId;
+    const newlyCreated = loginRes.data.NewlyCreated;
 
     // Update display name if provided (Server API uses PlayFabId + secret key)
     if (displayName) {
@@ -621,7 +620,6 @@ app.post('/api/playfab/link', async (req, res) => {
     res.json({
       success: true,
       playfabId,
-      sessionTicket,
       newlyCreated,
       displayName: displayName || playerName
     });
