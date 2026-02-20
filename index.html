@@ -3,122 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>UNTITLED SNAKE GAME — MADE BY Z3N0</title>
+<title>Z3N0'S SERPENT REALM — EXPANDED</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <style>
-:root {
-  --void: #000008;
-  --deep: #05050f;
-  --panel: rgba(0,255,140,0.04);
-  --border: rgba(0,255,140,0.2);
-  --glow: #00ff8c;
-  --glow2: #ff2244;
-  --glow3: #aa44ff;
-  --gold: #ffd700;
-  --text: #c8ffd4;
-  --dim: rgba(200,255,212,0.5);
-  --owner: #ffd700;
+:root{
+  --void:#000008;--deep:#05050f;--panel:rgba(0,255,140,0.04);--border:rgba(0,255,140,0.2);
+  --glow:#00ff8c;--glow2:#ff2244;--glow3:#aa44ff;--gold:#ffd700;--text:#c8ffd4;
+  --dim:rgba(200,255,212,0.5);--owner:#ffd700;
+  --rarity-common:#aaaaaa;--rarity-uncommon:#00bb66;--rarity-rare:#4488ff;
+  --rarity-epic:#aa44ff;--rarity-legendary:#ff8800;--rarity-god:#ffd700;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--void);}
 body{font-family:'Rajdhani',sans-serif;color:var(--text);}
-body::before{
-  content:'';position:fixed;inset:0;
-  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,140,0.015) 2px,rgba(0,255,140,0.015) 4px);
-  pointer-events:none;z-index:9999;
-}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,140,0.015) 2px,rgba(0,255,140,0.015) 4px);pointer-events:none;z-index:9999;}
 #gameCanvas{position:fixed;inset:0;display:none;cursor:none;}
-#cursor{
-  position:fixed;width:20px;height:20px;
-  border:2px solid var(--glow);border-radius:50%;
-  pointer-events:none;z-index:10000;
-  transform:translate(-50%,-50%);
-  transition:width 0.1s,height 0.1s;
-  box-shadow:0 0 10px var(--glow),inset 0 0 6px rgba(0,255,140,0.3);
-}
+#cursor{position:fixed;width:20px;height:20px;border:2px solid var(--glow);border-radius:50%;pointer-events:none;z-index:10000;transform:translate(-50%,-50%);transition:width 0.1s,height 0.1s;box-shadow:0 0 10px var(--glow),inset 0 0 6px rgba(0,255,140,0.3);}
 #cursor::after{content:'';position:absolute;top:50%;left:50%;width:4px;height:4px;background:var(--glow);border-radius:50%;transform:translate(-50%,-50%);}
 .screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;}
 .screen.hidden{display:none!important;}
-#menuScreen{
-  background:radial-gradient(ellipse at 50% 30%,rgba(0,255,140,0.08) 0%,transparent 60%),
-             radial-gradient(ellipse at 80% 70%,rgba(170,68,255,0.06) 0%,transparent 50%),
-             var(--void);
-  flex-direction:column;gap:0;
-}
+#menuScreen{background:radial-gradient(ellipse at 50% 30%,rgba(0,255,140,0.08) 0%,transparent 60%),radial-gradient(ellipse at 80% 70%,rgba(170,68,255,0.06) 0%,transparent 50%),var(--void);flex-direction:column;gap:0;}
 .menu-bg-particles{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
 .menu-particle{position:absolute;width:2px;height:2px;background:var(--glow);border-radius:50%;animation:float-up linear infinite;opacity:0;}
 @keyframes float-up{0%{opacity:0;transform:translateY(100vh) scale(1);}10%{opacity:1;}90%{opacity:0.5;}100%{opacity:0;transform:translateY(-20px) scale(0);}}
 .logo-wrap{position:relative;text-align:center;margin-bottom:24px;}
-.logo-z3n0{
-  font-family:'Orbitron',monospace;font-size:clamp(60px,10vw,120px);font-weight:900;
-  background:linear-gradient(135deg,#00ff8c,#aa44ff,#ff2244,#ffd700,#00ff8c);
-  background-size:300% 300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;
-  animation:gradientShift 3s ease infinite;letter-spacing:-2px;line-height:1;
-  filter:drop-shadow(0 0 30px rgba(0,255,140,0.5));
-}
+.logo-z3n0{font-family:'Orbitron',monospace;font-size:clamp(60px,10vw,120px);font-weight:900;background:linear-gradient(135deg,#00ff8c,#aa44ff,#ff2244,#ffd700,#00ff8c);background-size:300% 300%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:gradientShift 3s ease infinite;letter-spacing:-2px;line-height:1;filter:drop-shadow(0 0 30px rgba(0,255,140,0.5));}
 @keyframes gradientShift{0%,100%{background-position:0% 50%;}50%{background-position:100% 50%;}}
 .logo-sub{font-family:'Orbitron',monospace;font-size:clamp(12px,2vw,18px);letter-spacing:8px;color:var(--dim);margin-top:4px;animation:pulse 2s ease infinite;}
 .logo-owner-tag{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:4px;color:var(--gold);margin-top:6px;animation:pulse 1.5s ease infinite;}
 @keyframes pulse{0%,100%{opacity:0.5;}50%{opacity:1;}}
 .owner-crown{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:30px;animation:crown-bounce 1.5s ease infinite;}
 @keyframes crown-bounce{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(-8px);}}
-
-/* Z3N0 watermark on menu bg */
-.z3n0-watermark{
-  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
-  font-family:'Orbitron',monospace;font-size:11px;letter-spacing:6px;
-  color:rgba(255,215,0,0.15);pointer-events:none;white-space:nowrap;
-}
-
-.menu-panel{
-  background:var(--panel);border:1px solid var(--border);border-radius:4px;
-  padding:24px;width:min(460px,90vw);
-  backdrop-filter:blur(20px);
-  box-shadow:0 0 60px rgba(0,255,140,0.05),inset 0 0 60px rgba(0,255,140,0.02);
-  position:relative;
-}
+.z3n0-watermark{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);font-family:'Orbitron',monospace;font-size:11px;letter-spacing:6px;color:rgba(255,215,0,0.15);pointer-events:none;white-space:nowrap;}
+.menu-panel{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:24px;width:min(480px,92vw);backdrop-filter:blur(20px);box-shadow:0 0 60px rgba(0,255,140,0.05),inset 0 0 60px rgba(0,255,140,0.02);position:relative;}
 .menu-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--glow),transparent);}
-
-/* MENU TABS */
 .menu-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;}
-.menu-tab-btn{
-  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;
-  padding:6px 12px;border-radius:2px;border:1px solid transparent;
-  cursor:pointer;background:none;color:var(--dim);transition:all 0.2s;
-}
+.menu-tab-btn{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;padding:6px 12px;border-radius:2px;border:1px solid transparent;cursor:pointer;background:none;color:var(--dim);transition:all 0.2s;}
 .menu-tab-btn:hover{color:var(--glow);border-color:rgba(0,255,140,0.2);}
 .menu-tab-btn.active{color:var(--glow);border-color:var(--glow);background:rgba(0,255,140,0.05);}
 .menu-tab-content{display:none;}
 .menu-tab-content.active{display:block;}
-
 .input-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
 .input-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--dim);text-transform:uppercase;}
-.game-input{
-  background:rgba(0,255,140,0.04);border:1px solid rgba(0,255,140,0.15);border-radius:2px;
-  padding:12px 16px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:500;
-  outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;
-}
+.game-input{background:rgba(0,255,140,0.04);border:1px solid rgba(0,255,140,0.15);border-radius:2px;padding:12px 16px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:500;outline:none;transition:border-color 0.2s,box-shadow 0.2s;width:100%;}
 .game-input:focus{border-color:var(--glow);box-shadow:0 0 20px rgba(0,255,140,0.1);}
-
 .skin-selector{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:20px;}
-.skin-opt{
-  aspect-ratio:1;border-radius:4px;border:2px solid rgba(255,255,255,0.1);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:20px;transition:all 0.2s;position:relative;overflow:hidden;
-}
+.skin-opt{aspect-ratio:1;border-radius:4px;border:2px solid rgba(255,255,255,0.1);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all 0.2s;position:relative;overflow:hidden;}
 .skin-opt:hover{transform:scale(1.1);border-color:white;}
 .skin-opt.selected{border-color:var(--glow);box-shadow:0 0 15px rgba(0,255,140,0.4);transform:scale(1.15);}
 .skin-opt.owner-only{border-color:var(--gold);box-shadow:0 0 10px rgba(255,215,0,0.3);}
 .skin-opt.owner-only::after{content:'👑';position:absolute;bottom:1px;right:1px;font-size:10px;}
 .skin-opt.locked{opacity:0.3;filter:grayscale(1);cursor:not-allowed;}
-
-.btn{
-  font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;
-  padding:14px 28px;border-radius:2px;border:none;cursor:pointer;
-  text-transform:uppercase;transition:all 0.2s;position:relative;overflow:hidden;width:100%;
-}
+.btn{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;padding:14px 28px;border-radius:2px;border:none;cursor:pointer;text-transform:uppercase;transition:all 0.2s;position:relative;overflow:hidden;width:100%;}
 .btn::before{content:'';position:absolute;inset:0;background:white;opacity:0;transition:opacity 0.2s;}
 .btn:hover::before{opacity:0.05;}
 .btn:active::before{opacity:0.1;}
@@ -128,40 +66,13 @@ body::before{
 .btn-gold{background:linear-gradient(135deg,rgba(255,215,0,0.2),rgba(255,215,0,0.1));color:var(--gold);border:1px solid var(--gold);}
 .btn-sm{padding:8px 16px;font-size:10px;width:auto;}
 .btn-row{display:flex;gap:8px;margin-top:8px;}
-
-/* ======================= SETTINGS TAB ======================= */
-.setting-row{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:12px 0;border-bottom:1px solid rgba(0,255,140,0.08);
-}
-.setting-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--dim);}
-.setting-desc{font-size:12px;color:rgba(200,255,212,0.3);margin-top:2px;}
-.control-radio-group{display:flex;gap:6px;flex-wrap:wrap;}
-.control-radio{
-  padding:6px 12px;border-radius:2px;
-  border:1px solid rgba(0,255,140,0.2);
-  cursor:pointer;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;
-  color:var(--dim);background:none;transition:all 0.2s;
-}
-.control-radio:hover{border-color:var(--glow);color:var(--glow);}
-.control-radio.active{border-color:var(--glow);color:var(--glow);background:rgba(0,255,140,0.08);}
-
-/* ======================= COSMETICS TAB ======================= */
-.coin-balance{
-  display:flex;align-items:center;gap:8px;
-  background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);
-  border-radius:2px;padding:8px 16px;margin-bottom:16px;
-}
+.coin-balance{display:flex;align-items:center;gap:8px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:2px;padding:8px 16px;margin-bottom:16px;}
 .coin-amount{font-family:'Orbitron',monospace;font-size:20px;font-weight:900;color:var(--gold);}
 .coin-label{font-size:11px;letter-spacing:2px;color:rgba(255,215,0,0.5);}
-
-.cosmetic-section-label{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);margin:12px 0 8px;}
+.cosmetic-section-label{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--dim);margin:16px 0 8px;display:flex;align-items:center;gap:8px;}
+.cosmetic-section-label::after{content:'';flex:1;height:1px;background:rgba(0,255,140,0.1);}
 .cosmetic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;}
-.cosmetic-card{
-  border-radius:4px;border:1px solid rgba(0,255,140,0.1);
-  padding:10px 8px;text-align:center;cursor:pointer;
-  transition:all 0.2s;position:relative;background:rgba(0,255,140,0.02);
-}
+.cosmetic-card{border-radius:4px;border:1px solid rgba(0,255,140,0.1);padding:10px 8px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:rgba(0,255,140,0.02);}
 .cosmetic-card:hover{border-color:var(--glow);background:rgba(0,255,140,0.06);transform:translateY(-1px);}
 .cosmetic-card.owned{border-color:rgba(0,255,140,0.3);}
 .cosmetic-card.equipped{border-color:var(--glow);background:rgba(0,255,140,0.1);box-shadow:0 0 12px rgba(0,255,140,0.2);}
@@ -172,34 +83,32 @@ body::before{
 .cosmetic-name{font-size:10px;font-weight:600;color:var(--text);line-height:1.2;}
 .cosmetic-price{font-family:'Orbitron',monospace;font-size:9px;color:var(--gold);margin-top:3px;}
 .cosmetic-badge{position:absolute;top:3px;right:3px;font-size:8px;}
-.equipped-label{
-  position:absolute;bottom:3px;left:50%;transform:translateX(-50%);
-  font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;
-  color:var(--glow);white-space:nowrap;
-}
+.rarity-pip{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:8px;height:3px;border-radius:2px;}
+.rarity-common   .rarity-pip{background:var(--rarity-common);}
+.rarity-uncommon .rarity-pip{background:var(--rarity-uncommon);}
+.rarity-rare     .rarity-pip{background:var(--rarity-rare);}
+.rarity-epic     .rarity-pip{background:var(--rarity-epic);}
+.rarity-legendary .rarity-pip{background:var(--rarity-legendary);}
+.rarity-god      .rarity-pip{background:var(--rarity-god);box-shadow:0 0 6px var(--gold);}
+.equipped-label{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;color:var(--glow);white-space:nowrap;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(0,255,140,0.08);}
+.setting-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;color:var(--dim);}
+.setting-desc{font-size:12px;color:rgba(200,255,212,0.3);margin-top:2px;}
+.control-radio-group{display:flex;gap:6px;flex-wrap:wrap;}
+.control-radio{padding:6px 12px;border-radius:2px;border:1px solid rgba(0,255,140,0.2);cursor:pointer;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;color:var(--dim);background:none;transition:all 0.2s;}
+.control-radio:hover{border-color:var(--glow);color:var(--glow);}
+.control-radio.active{border-color:var(--glow);color:var(--glow);background:rgba(0,255,140,0.08);}
 
-/* ======================= HUD ======================= */
+/* HUD */
 #hud{position:fixed;inset:0;pointer-events:none;z-index:200;display:none;}
-#hud-score{
-  position:absolute;top:20px;left:50%;transform:translateX(-50%);
-  background:rgba(0,0,8,0.8);border:1px solid var(--border);
-  border-radius:2px;padding:8px 24px;text-align:center;backdrop-filter:blur(10px);
-}
+#hud-score{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,8,0.8);border:1px solid var(--border);border-radius:2px;padding:8px 24px;text-align:center;backdrop-filter:blur(10px);}
 #hud-score .val{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--glow);text-shadow:0 0 20px var(--glow);}
 #hud-score .label{font-size:10px;letter-spacing:3px;color:var(--dim);}
-
-/* Coin HUD */
-#hud-coins{
-  position:absolute;top:90px;left:50%;transform:translateX(-50%);
-  background:rgba(0,0,8,0.8);border:1px solid rgba(255,215,0,0.2);
-  border-radius:2px;padding:4px 16px;text-align:center;
-  font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);
-  white-space:nowrap;
-}
-
-#minimap{position:absolute;bottom:20px;right:20px;width:160px;height:160px;background:rgba(0,0,8,0.85);border:1px solid var(--border);border-radius:2px;overflow:hidden;}
+#hud-coins{position:absolute;top:90px;left:50%;transform:translateX(-50%);background:rgba(0,0,8,0.8);border:1px solid rgba(255,215,0,0.2);border-radius:2px;padding:4px 16px;text-align:center;font-family:'Orbitron',monospace;font-size:13px;color:var(--gold);white-space:nowrap;}
+#zone-indicator{position:absolute;top:140px;left:50%;transform:translateX(-50%);background:rgba(0,0,8,0.8);border-radius:2px;padding:4px 14px;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;white-space:nowrap;transition:all 0.4s;display:none;}
+#minimap{position:absolute;bottom:20px;right:20px;width:180px;height:180px;background:rgba(0,0,8,0.85);border:1px solid var(--border);border-radius:2px;overflow:hidden;}
 #minimapCanvas{width:100%;height:100%;}
-
+#minimap-label{position:absolute;top:4px;left:50%;transform:translateX(-50%);font-family:'Orbitron',monospace;font-size:7px;letter-spacing:2px;color:var(--dim);}
 #leaderboard{position:absolute;top:20px;right:20px;width:220px;background:rgba(0,0,8,0.85);border:1px solid var(--border);border-radius:2px;padding:12px;backdrop-filter:blur(10px);}
 #leaderboard h3{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--glow);margin-bottom:10px;border-bottom:1px solid var(--border);padding-bottom:6px;}
 .lb-entry{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;font-weight:500;border-bottom:1px solid rgba(0,255,140,0.05);}
@@ -210,54 +119,24 @@ body::before{
 .lb-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lb-len{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);}
 .lb-name.is-owner{color:var(--gold);}
-
-#killfeed{position:absolute;top:20px;left:20px;width:280px;display:flex;flex-direction:column;gap:4px;pointer-events:none;}
+#killfeed{position:absolute;top:20px;left:20px;width:300px;display:flex;flex-direction:column;gap:4px;pointer-events:none;}
 .kf-entry{background:rgba(0,0,8,0.8);border-left:2px solid var(--glow2);padding:6px 10px;font-size:12px;animation:kf-in 0.3s ease,kf-out 0.3s ease 4.7s forwards;border-radius:0 2px 2px 0;}
 @keyframes kf-in{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}
 @keyframes kf-out{to{opacity:0;transform:translateX(-20px);}}
-
 #boostbar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:200px;background:rgba(0,0,8,0.8);border:1px solid var(--border);border-radius:2px;padding:8px 12px;text-align:center;}
 .boost-label{font-size:10px;letter-spacing:2px;color:var(--dim);margin-bottom:4px;}
 .boost-track{background:rgba(255,255,255,0.05);border-radius:2px;height:4px;overflow:hidden;}
 .boost-fill{height:100%;background:linear-gradient(90deg,var(--glow),#00ffff);border-radius:2px;transition:width 0.1s;width:100%;}
-
-#owner-tag-hud{
-  position:absolute;bottom:60px;left:50%;transform:translateX(-50%);
-  display:none;
-  background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05));
-  border:1px solid var(--gold);border-radius:2px;padding:4px 16px;
-  font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--gold);
-  animation:owner-pulse 2s ease infinite;
-}
+#owner-tag-hud{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);display:none;background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05));border:1px solid var(--gold);border-radius:2px;padding:4px 16px;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--gold);animation:owner-pulse 2s ease infinite;cursor:pointer;}
 @keyframes owner-pulse{0%,100%{box-shadow:0 0 10px rgba(255,215,0,0.2);}50%{box-shadow:0 0 25px rgba(255,215,0,0.5);}}
-
-#eventBanner{
-  position:absolute;top:80px;left:50%;transform:translateX(-50%);
-  background:linear-gradient(135deg,rgba(170,68,255,0.3),rgba(255,34,68,0.3));
-  border:1px solid var(--glow3);border-radius:2px;padding:10px 24px;text-align:center;display:none;
-  animation:event-pulse 1s ease infinite;
-}
+#eventBanner{position:absolute;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(170,68,255,0.3),rgba(255,34,68,0.3));border:1px solid var(--glow3);border-radius:2px;padding:10px 24px;text-align:center;display:none;animation:event-pulse 1s ease infinite;}
 @keyframes event-pulse{0%,100%{box-shadow:0 0 20px rgba(170,68,255,0.3);}50%{box-shadow:0 0 40px rgba(170,68,255,0.6);}}
 .event-title{font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;background:linear-gradient(90deg,var(--glow3),var(--glow2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-
-#sysmsg{
-  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-  background:rgba(0,0,8,0.9);border:1px solid var(--glow3);border-radius:2px;
-  padding:12px 24px;font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;
-  color:var(--glow3);display:none;text-align:center;z-index:300;
-}
-
-/* Z3N0 is watching banner (always visible in game) */
-#z3n0-watermark-game{
-  position:absolute;top:50%;right:-60px;transform:translateY(-50%) rotate(90deg);
-  font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;
-  color:rgba(255,215,0,0.06);pointer-events:none;white-space:nowrap;
-}
-
-/* ======================= DEATH SCREEN ======================= */
+#sysmsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,8,0.9);border:1px solid var(--glow3);border-radius:2px;padding:12px 24px;font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;color:var(--glow3);display:none;text-align:center;z-index:300;}
+#z3n0-watermark-game{position:absolute;top:50%;right:-60px;transform:translateY(-50%) rotate(90deg);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;color:rgba(255,215,0,0.06);pointer-events:none;white-space:nowrap;}
 #deathScreen{background:rgba(0,0,8,0.95);flex-direction:column;gap:24px;z-index:500;}
 .death-title{font-family:'Orbitron',monospace;font-size:clamp(40px,8vw,80px);font-weight:900;color:var(--glow2);text-shadow:0 0 40px rgba(255,34,68,0.6);animation:glitch 0.5s ease infinite alternate;}
-@keyframes glitch{0%{text-shadow:2px 0 var(--glow),−2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}100%{text-shadow:-2px 0 var(--glow),2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}}
+@keyframes glitch{0%{text-shadow:2px 0 var(--glow),-2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}100%{text-shadow:-2px 0 var(--glow),2px 0 var(--glow2),0 0 40px rgba(255,34,68,0.6);}}
 .death-info{font-size:18px;color:var(--dim);letter-spacing:2px;text-align:center;}
 .death-coins-earned{font-family:'Orbitron',monospace;font-size:14px;color:var(--gold);letter-spacing:2px;text-align:center;}
 .death-stats{display:flex;gap:32px;background:var(--panel);border:1px solid var(--border);border-radius:2px;padding:16px 32px;}
@@ -265,8 +144,7 @@ body::before{
 .death-stat .val{font-family:'Orbitron',monospace;font-size:28px;color:var(--glow);}
 .death-stat .lbl{font-size:11px;letter-spacing:2px;color:var(--dim);}
 .death-buttons{display:flex;gap:12px;}
-
-/* ======================= OWNER PANEL ======================= */
+/* OWNER PANEL */
 #ownerPanel{position:fixed;inset:0;z-index:600;display:flex;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);}
 #ownerPanel.hidden{display:none!important;}
 .owner-sidebar{width:220px;background:rgba(0,0,0,0.9);border-right:1px solid rgba(255,215,0,0.2);display:flex;flex-direction:column;padding:0;flex-shrink:0;}
@@ -275,12 +153,7 @@ body::before{
 .owner-sidebar-header h2{font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;color:var(--gold);}
 .owner-sidebar-header p{font-size:11px;color:rgba(255,215,0,0.5);}
 .owner-nav{display:flex;flex-direction:column;padding:12px 0;flex:1;}
-.owner-nav-btn{
-  padding:12px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;
-  transition:all 0.15s;border-left:3px solid transparent;font-size:13px;font-weight:600;
-  color:rgba(255,215,0,0.5);background:none;border-top:none;border-right:none;border-bottom:none;
-  text-align:left;font-family:'Rajdhani',sans-serif;
-}
+.owner-nav-btn{padding:12px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all 0.15s;border-left:3px solid transparent;font-size:13px;font-weight:600;color:rgba(255,215,0,0.5);background:none;border-top:none;border-right:none;border-bottom:none;text-align:left;font-family:'Rajdhani',sans-serif;}
 .owner-nav-btn:hover{background:rgba(255,215,0,0.05);color:var(--gold);border-left-color:rgba(255,215,0,0.3);}
 .owner-nav-btn.active{background:rgba(255,215,0,0.08);color:var(--gold);border-left-color:var(--gold);}
 .owner-nav-icon{font-size:16px;width:20px;}
@@ -302,7 +175,7 @@ body::before{
 .o-input{background:rgba(255,215,0,0.04);border:1px solid rgba(255,215,0,0.15);border-radius:2px;padding:10px 14px;color:var(--gold);font-family:'Rajdhani',sans-serif;font-size:15px;outline:none;width:100%;margin-bottom:8px;}
 .o-input:focus{border-color:var(--gold);box-shadow:0 0 15px rgba(255,215,0,0.1);}
 .o-select{background:rgba(0,0,0,0.5);border:1px solid rgba(255,215,0,0.15);border-radius:2px;padding:10px 14px;color:var(--gold);font-family:'Rajdhani',sans-serif;font-size:15px;outline:none;width:100%;margin-bottom:8px;cursor:pointer;}
-.event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+.event-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;}
 .event-card{background:rgba(170,68,255,0.05);border:1px solid rgba(170,68,255,0.2);border-radius:4px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;}
 .event-card:hover{background:rgba(170,68,255,0.1);border-color:var(--glow3);transform:translateY(-2px);}
 .event-card .event-icon{font-size:32px;display:block;margin-bottom:8px;}
@@ -314,22 +187,13 @@ body::before{
 .o-alert{padding:10px 14px;border-radius:2px;margin-bottom:12px;font-size:13px;display:none;}
 .o-alert.success{background:rgba(0,255,140,0.1);border:1px solid var(--glow);color:var(--glow);}
 .o-alert.error{background:rgba(255,34,68,0.1);border:1px solid var(--glow2);color:var(--glow2);}
-
 #toast-container{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:1000;display:flex;flex-direction:column;gap:8px;align-items:center;}
 .toast{background:rgba(0,0,8,0.95);border:1px solid var(--glow);border-radius:2px;padding:10px 20px;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--glow);animation:toast-in 0.3s ease;white-space:nowrap;}
 .toast.error{border-color:var(--glow2);color:var(--glow2);}
 .toast.gold{border-color:var(--gold);color:var(--gold);}
 @keyframes toast-in{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-
-#broadcastBanner{
-  position:fixed;bottom:0;left:0;right:0;
-  background:linear-gradient(90deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05),rgba(255,215,0,0.15));
-  border-top:1px solid rgba(255,215,0,0.3);padding:10px 24px;
-  font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--gold);
-  text-align:center;z-index:800;display:none;animation:broadcast-glow 2s ease infinite;
-}
+#broadcastBanner{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(90deg,rgba(255,215,0,0.15),rgba(255,215,0,0.05),rgba(255,215,0,0.15));border-top:1px solid rgba(255,215,0,0.3);padding:10px 24px;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:2px;color:var(--gold);text-align:center;z-index:800;display:none;animation:broadcast-glow 2s ease infinite;}
 @keyframes broadcast-glow{0%,100%{box-shadow:0 -4px 20px rgba(255,215,0,0.1);}50%{box-shadow:0 -4px 40px rgba(255,215,0,0.2);}}
-
 #musicControls{position:fixed;bottom:20px;left:20px;z-index:300;display:flex;align-items:center;gap:8px;background:rgba(0,0,8,0.8);border:1px solid var(--border);border-radius:2px;padding:8px 12px;pointer-events:auto;}
 .music-btn{background:none;border:none;cursor:pointer;font-size:16px;padding:2px;opacity:0.6;transition:opacity 0.2s;}
 .music-btn:hover{opacity:1;}
@@ -342,7 +206,10 @@ body::before{
 .music-bar:nth-child(5){height:6px;animation-duration:0.45s;}
 @keyframes music-bounce{0%,100%{transform:scaleY(1);}50%{transform:scaleY(0.3);}}
 .music-paused .music-bar{animation-play-state:paused;}
-
+/* PlayFab login */
+#playfabStatus{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;padding:4px 8px;border-radius:2px;display:inline-block;margin-top:4px;}
+#playfabStatus.linked{color:#00ff8c;background:rgba(0,255,140,0.08);border:1px solid rgba(0,255,140,0.2);}
+#playfabStatus.unlinked{color:rgba(200,255,212,0.3);}
 @media(max-width:600px){
   .menu-panel{padding:16px;}
   .skin-selector{grid-template-columns:repeat(5,1fr);}
@@ -355,25 +222,23 @@ body::before{
 <body>
 <div id="cursor"></div>
 
-<!-- ==================== MENU SCREEN ==================== -->
+<!-- MENU -->
 <div class="screen" id="menuScreen">
   <div class="menu-bg-particles" id="bgParticles"></div>
   <div class="z3n0-watermark">Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0 · Z3N0</div>
-
   <div style="display:flex;flex-direction:column;align-items:center;gap:24px;width:100%;max-width:500px;padding:20px;z-index:1;">
     <div class="logo-wrap">
       <span class="owner-crown">👑</span>
       <div class="logo-z3n0">Z3N0</div>
-      <div class="logo-sub">SNAKE REALM · EST. 2026</div>
-      <div class="logo-owner-tag">CREATED & OWNED BY Z3N0</div>
+      <div class="logo-sub">SNAKE REALM · EXPANDED MAP</div>
+      <div class="logo-owner-tag">CREATED &amp; OWNED BY Z3N0</div>
     </div>
-
     <div class="menu-panel">
-      <!-- Menu tab buttons -->
       <div class="menu-tabs">
         <button class="menu-tab-btn active" data-mtab="play">▶ PLAY</button>
-        <button class="menu-tab-btn" data-mtab="cosmetics">🎨 COSMETICS</button>
-        <button class="menu-tab-btn" data-mtab="settings">⚙️ SETTINGS</button>
+        <button class="menu-tab-btn" data-mtab="cosmetics">🎨 SHOP</button>
+        <button class="menu-tab-btn" data-mtab="playfab">💎 ACCOUNT</button>
+        <button class="menu-tab-btn" data-mtab="settings">⚙️</button>
       </div>
 
       <!-- PLAY TAB -->
@@ -390,49 +255,61 @@ body::before{
           <span class="input-label">🔐 Owner Code</span>
           <input class="game-input" id="ownerPass" type="password" placeholder="Enter owner password..." autocomplete="off">
         </div>
-        <button class="btn btn-primary" id="playBtn" style="margin-bottom:8px;">▶ PLAY</button>
+        <button class="btn btn-primary" id="playBtn" style="margin-bottom:8px;">▶ ENTER THE REALM</button>
         <div class="btn-row">
           <button class="btn btn-gold btn-sm" id="ownerToggleBtn">👑 OWNER</button>
           <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);" id="howToBtn">? HOW TO PLAY</button>
         </div>
       </div>
 
-      <!-- COSMETICS TAB -->
+      <!-- COSMETICS PREVIEW TAB -->
       <div class="menu-tab-content" id="mtab-cosmetics">
-        <div class="coin-balance">
-          <span style="font-size:20px;">💰</span>
-          <div>
-            <div class="coin-amount" id="menuCoinBalance">0</div>
-            <div class="coin-label">COINS · ENTER GAME TO EARN</div>
+        <div style="text-align:center;padding:24px 0;color:var(--dim);font-size:13px;">
+          <div style="font-size:32px;margin-bottom:12px;">🎨</div>
+          <div style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--glow);margin-bottom:8px;">COSMETICS SHOP</div>
+          <div>Join the game to browse and equip<br>trails, titles, badges, and effects.</div>
+          <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
+            <span style="padding:3px 8px;background:rgba(170,68,255,0.1);border:1px solid rgba(170,68,255,0.3);border-radius:2px;font-size:10px;color:#aa44ff;">20 TRAILS</span>
+            <span style="padding:3px 8px;background:rgba(0,255,140,0.1);border:1px solid rgba(0,255,140,0.3);border-radius:2px;font-size:10px;color:var(--glow);">20 TITLES</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:10px;color:var(--gold);">20 BADGES</span>
+            <span style="padding:3px 8px;background:rgba(255,34,68,0.1);border:1px solid rgba(255,34,68,0.3);border-radius:2px;font-size:10px;color:var(--glow2);">8 EFFECTS</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.15);border:1px solid var(--gold);border-radius:2px;font-size:10px;color:var(--gold);">30+ OWNER EXCLUSIVES 👑</span>
           </div>
         </div>
-        <p style="font-size:12px;color:var(--dim);margin-bottom:12px;">Join the game to buy & equip cosmetics. Earn coins by eating orbs and killing players.</p>
-        <div class="cosmetic-section-label">🔥 TRAILS</div>
-        <div id="menuCosmeticPreview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
-          <!-- populated after join -->
-          <div style="grid-column:1/-1;text-align:center;font-size:12px;color:var(--dim);padding:16px;">Enter the game to access your cosmetics</div>
+      </div>
+
+      <!-- PLAYFAB ACCOUNT TAB -->
+      <div class="menu-tab-content" id="mtab-playfab">
+        <div style="margin-bottom:16px;">
+          <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--dim);margin-bottom:8px;">PLAYFAB ACCOUNT LINK</div>
+          <div style="font-size:12px;color:var(--dim);margin-bottom:12px;line-height:1.6;">Link your account to save progress across devices and earn GD currency rewards.</div>
+          <div id="playfabStatus" class="unlinked">⚫ NOT LINKED</div>
+        </div>
+        <div class="input-group">
+          <span class="input-label">PlayFab Display Name</span>
+          <input class="game-input" id="pfNameInput" type="text" placeholder="Your display name..." maxlength="20" autocomplete="off">
+        </div>
+        <button class="btn btn-primary" id="pfLinkBtn" style="margin-bottom:8px;" onclick="linkPlayFab()">💎 LINK TO PLAYFAB</button>
+        <div style="font-size:11px;color:rgba(200,255,212,0.3);text-align:center;margin-top:8px;">Title ID: 12F9AF · GD Currency synced to cloud</div>
+        <div id="pfLinkedInfo" style="display:none;margin-top:12px;background:rgba(0,255,140,0.04);border:1px solid rgba(0,255,140,0.15);border-radius:2px;padding:12px;">
+          <div style="font-size:12px;color:var(--dim);">PlayFab ID: <span id="pfIdDisplay" style="color:var(--glow);font-family:Space Mono,monospace;font-size:11px;"></span></div>
+          <div style="font-size:12px;color:var(--dim);margin-top:4px;">💎 GD Balance: <span id="pfGdDisplay" style="color:var(--gold);font-family:Orbitron,monospace;">0</span></div>
         </div>
       </div>
 
       <!-- SETTINGS TAB -->
       <div class="menu-tab-content" id="mtab-settings">
         <div class="setting-row">
-          <div>
-            <div class="setting-label">CONTROL SCHEME</div>
-            <div class="setting-desc">How you steer your snake</div>
-          </div>
+          <div><div class="setting-label">CONTROLS</div><div class="setting-desc">How to steer</div></div>
           <div class="control-radio-group" id="controlSchemeGroup">
             <button class="control-radio active" data-scheme="mouse">🖱️ MOUSE</button>
             <button class="control-radio" data-scheme="wasd">WASD</button>
-            <button class="control-radio" data-scheme="arrows">ARROWS</button>
-            <button class="control-radio" data-scheme="both">WASD+↑</button>
+            <button class="control-radio" data-scheme="arrows">↑ ARROWS</button>
+            <button class="control-radio" data-scheme="both">BOTH</button>
           </div>
         </div>
         <div class="setting-row">
-          <div>
-            <div class="setting-label">BOOST KEY</div>
-            <div class="setting-desc">Keyboard boost (also works: hold click)</div>
-          </div>
+          <div><div class="setting-label">BOOST KEY</div><div class="setting-desc">Keyboard boost</div></div>
           <div class="control-radio-group" id="boostKeyGroup">
             <button class="control-radio active" data-boost="shift">SHIFT</button>
             <button class="control-radio" data-boost="space">SPACE</button>
@@ -440,18 +317,14 @@ body::before{
           </div>
         </div>
         <div class="setting-row">
-          <div>
-            <div class="setting-label">MOUSE STEERING</div>
-            <div class="setting-desc">Even when using keyboard</div>
-          </div>
+          <div><div class="setting-label">MOUSE + KEYBOARD</div></div>
           <div class="control-radio-group" id="mouseAlwaysGroup">
             <button class="control-radio active" data-mouse="on">ON</button>
             <button class="control-radio" data-mouse="off">OFF</button>
           </div>
         </div>
-        <div style="margin-top:16px;padding:10px;background:rgba(0,255,140,0.03);border:1px solid rgba(0,255,140,0.1);border-radius:2px;font-size:12px;color:var(--dim);line-height:1.6;">
-          Settings are saved automatically.<br>
-          Owner panel: <span style="color:var(--gold);">F1</span> key (in-game, owner only)
+        <div style="margin-top:12px;padding:10px;background:rgba(0,255,140,0.03);border:1px solid rgba(0,255,140,0.1);border-radius:2px;font-size:12px;color:var(--dim);line-height:1.6;">
+          Owner panel: <span style="color:var(--gold);">F1</span> key (owner only)
         </div>
       </div>
     </div>
@@ -459,54 +332,50 @@ body::before{
     <div id="menuStats" style="display:flex;gap:24px;font-size:13px;color:var(--dim);">
       <span>🐍 <span id="statPlayers">0</span> online</span>
       <span>🌟 <span id="statOrbs">0</span> orbs</span>
-      <span id="statEvent" style="display:none;color:var(--glow3);">⚡ EVENT ACTIVE</span>
+      <span>🗺️ 12000×12000 MAP</span>
+      <span id="statEvent" style="display:none;color:var(--glow3);">⚡ EVENT</span>
     </div>
-
-    <!-- Z3N0 footer -->
-    <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;color:rgba(255,215,0,0.3);">
-      👑 Z3N0'S SNAKE GAME — ALL RIGHTS RESERVED
-    </div>
+    <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;color:rgba(255,215,0,0.3);">👑 Z3N0'S SNAKE GAME — ALL RIGHTS RESERVED</div>
   </div>
 </div>
 
-<!-- ==================== GAME CANVAS ==================== -->
+<!-- CANVAS -->
 <canvas id="gameCanvas"></canvas>
 
-<!-- ==================== HUD ==================== -->
+<!-- HUD -->
 <div id="hud">
   <div id="hud-score">
     <div class="val" id="scoreVal">0</div>
     <div class="label">SCORE · <span id="lengthVal">0</span> SEGMENTS</div>
   </div>
-  <div id="hud-coins">💰 <span id="hudCoins">0</span> coins</div>
+  <div id="hud-coins">💰 <span id="hudCoins">0</span> &nbsp;|&nbsp; 💎 <span id="hudGD">0</span> GD</div>
+  <div id="zone-indicator">📍 <span id="zoneText">Open World</span></div>
   <div id="killfeed"></div>
-  <div id="leaderboard">
-    <h3>👑 LEADERBOARD</h3>
-    <div id="lbList"></div>
+  <div id="leaderboard"><h3>👑 LEADERBOARD</h3><div id="lbList"></div></div>
+  <div id="minimap">
+    <div id="minimap-label">REALM MAP</div>
+    <canvas id="minimapCanvas" width="180" height="180"></canvas>
   </div>
-  <div id="minimap"><canvas id="minimapCanvas" width="160" height="160"></canvas></div>
   <div id="boostbar" style="pointer-events:auto;">
     <div class="boost-label" id="boostLabel">BOOST [HOLD CLICK]</div>
     <div class="boost-track"><div class="boost-fill" id="boostFill"></div></div>
   </div>
-  <div id="owner-tag-hud">👑 Z3N0 · SUPREME OWNER · CREATOR OF THIS GAME</div>
+  <div id="owner-tag-hud">👑 Z3N0 · SUPREME OWNER · CREATOR OF THIS REALM</div>
   <div id="eventBanner"><div class="event-title" id="eventTitle">EVENT ACTIVE</div></div>
   <div id="sysmsg"></div>
   <div id="z3n0-watermark-game">Z3N0</div>
-
-  <!-- In-game cosmetics button -->
   <div id="inGameCosmeticsBtn" style="position:absolute;top:20px;left:320px;pointer-events:auto;display:none;">
-    <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);padding:6px 12px;font-size:9px;" onclick="openIngameCosmetics()">🎨 COSMETICS</button>
+    <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);padding:6px 12px;font-size:9px;" onclick="openIngameCosmetics()">🎨 SHOP</button>
   </div>
 </div>
 
-<!-- ==================== IN-GAME COSMETICS PANEL ==================== -->
+<!-- IN-GAME COSMETICS PANEL -->
 <div id="ingameCosmeticsPanel" style="position:fixed;inset:0;z-index:550;display:none;background:rgba(0,0,8,0.92);backdrop-filter:blur(10px);overflow-y:auto;">
-  <div style="max-width:600px;margin:0 auto;padding:32px 20px;">
+  <div style="max-width:680px;margin:0 auto;padding:32px 20px;">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div>
         <h2 style="font-family:'Orbitron',monospace;font-size:18px;color:var(--glow);">🎨 COSMETICS SHOP</h2>
-        <div style="font-size:12px;color:var(--dim);">Earn coins by eating orbs & killing players</div>
+        <div style="font-size:12px;color:var(--dim);">Earn coins by eating orbs &amp; eliminating enemies</div>
       </div>
       <div style="display:flex;align-items:center;gap:16px;">
         <div class="coin-balance" style="margin:0;">
@@ -516,29 +385,27 @@ body::before{
         <button class="btn btn-sm btn-danger" onclick="closeIngameCosmetics()">✕ CLOSE</button>
       </div>
     </div>
-
-    <!-- Equipped display -->
     <div style="background:rgba(0,255,140,0.03);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:20px;">
       <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:var(--dim);margin-bottom:10px;">CURRENTLY EQUIPPED</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;">
         <div><span style="font-size:11px;color:var(--dim);">TRAIL:</span> <span id="equippedTrailDisplay" style="color:var(--glow);font-size:13px;">None</span></div>
         <div><span style="font-size:11px;color:var(--dim);">TITLE:</span> <span id="equippedTitleDisplay" style="color:var(--gold);font-size:13px;">None</span></div>
         <div><span style="font-size:11px;color:var(--dim);">BADGE:</span> <span id="equippedBadgeDisplay" style="font-size:16px;">—</span></div>
+        <div><span style="font-size:11px;color:var(--dim);">EFFECT:</span> <span id="equippedEffectDisplay" style="color:var(--glow3);font-size:13px;">None</span></div>
       </div>
     </div>
-
     <div id="cosmeticsShopContent"></div>
   </div>
 </div>
 
-<!-- ==================== DEATH SCREEN ==================== -->
+<!-- DEATH SCREEN -->
 <div class="screen hidden" id="deathScreen">
   <div class="death-title">ELIMINATED</div>
   <div class="death-info" id="deathKiller">Killed by the void</div>
   <div class="death-coins-earned" id="deathCoinsEarned"></div>
   <div class="death-stats">
     <div class="death-stat"><div class="val" id="deathScore">0</div><div class="lbl">SCORE</div></div>
-    <div class="death-stat"><div class="val" id="deathLength">0</div><div class="lbl">MAX LENGTH</div></div>
+    <div class="death-stat"><div class="val" id="deathLength">0</div><div class="lbl">LENGTH</div></div>
     <div class="death-stat"><div class="val" id="deathRank">—</div><div class="lbl">RANK</div></div>
   </div>
   <div class="death-buttons">
@@ -548,7 +415,7 @@ body::before{
   <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:rgba(255,215,0,0.2);margin-top:8px;">Z3N0'S SERPENT REALM</div>
 </div>
 
-<!-- ==================== OWNER PANEL ==================== -->
+<!-- OWNER PANEL -->
 <div id="ownerPanel" class="hidden">
   <div class="owner-sidebar">
     <div class="owner-sidebar-header">
@@ -568,7 +435,7 @@ body::before{
   </div>
   <div class="owner-main">
     <div class="owner-topbar">
-      <h1>👑 Z3N0 OWNER CONTROL CENTER</h1>
+      <h1>👑 Z3N0 CONTROL CENTER</h1>
       <button class="btn btn-sm btn-danger" id="closeOwnerPanel">✕ CLOSE</button>
     </div>
     <div class="owner-content">
@@ -579,7 +446,7 @@ body::before{
         <div style="background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,215,0,0.03));border:1px solid rgba(255,215,0,0.2);border-radius:4px;padding:16px;margin-bottom:16px;text-align:center;">
           <div style="font-size:32px;margin-bottom:8px;">👑</div>
           <div style="font-family:'Orbitron',monospace;font-size:14px;letter-spacing:4px;color:var(--gold);">WELCOME BACK, Z3N0</div>
-          <div style="font-size:12px;color:rgba(255,215,0,0.4);margin-top:4px;">Supreme Owner & Creator of the Serpent Realm</div>
+          <div style="font-size:12px;color:rgba(255,215,0,0.4);margin-top:4px;">Supreme Owner &amp; Creator of the Serpent Realm</div>
         </div>
         <div class="stats-grid">
           <div class="stat-card"><div class="sv" id="os-players">0</div><div class="sl">PLAYERS</div></div>
@@ -591,8 +458,11 @@ body::before{
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','speedBoost')">⚡ Hyperspeed</button>
             <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','orbFrenzy')">🌟 Orb Frenzy</button>
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','goldRush')">💰 Gold Rush</button>
             <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','growAll')">🐍 Titan Rise</button>
-            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','shrinkAll')">💀 Death Shrink</button>
+            <button class="btn btn-gold btn-sm" onclick="ownerAction('startEvent','orbStorm')">🌪️ Orb Storm</button>
+            <button class="btn btn-danger btn-sm" onclick="ownerAction('startEvent','shrinkAll')">💀 Death Shrink</button>
+            <button class="btn btn-danger btn-sm" onclick="ownerAction('massKill')">☠️ MASS KILL</button>
             <button class="btn btn-danger btn-sm" onclick="ownerAction('endEvent')">✕ End Event</button>
           </div>
         </div>
@@ -605,8 +475,8 @@ body::before{
           <button class="btn btn-gold btn-sm" onclick="refreshPlayers()" style="margin-bottom:12px;">↺ REFRESH</button>
           <div style="overflow-x:auto;">
             <table class="player-table">
-              <thead><tr><th>NAME</th><th>LEN</th><th>SCORE</th><th>COINS</th><th>COSMETICS</th><th>ACTIONS</th></tr></thead>
-              <tbody id="playerTableBody"><tr><td colspan="6" style="text-align:center;color:var(--dim);padding:20px;">Click refresh to load players</td></tr></tbody>
+              <thead><tr><th>NAME</th><th>LEN</th><th>SCORE</th><th>COINS</th><th>ZONE</th><th>ACTIONS</th></tr></thead>
+              <tbody id="playerTableBody"><tr><td colspan="6" style="text-align:center;color:var(--dim);padding:20px;">Click refresh to load</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -614,49 +484,32 @@ body::before{
 
       <!-- ACTIONS -->
       <div class="owner-tab" id="tab-actions">
-        <div class="o-card">
-          <h3>GIVE SIZE</h3>
-          <select class="o-select" id="sizeTarget"></select>
-          <input class="o-input" id="sizeAmount" type="number" placeholder="Size amount" value="50">
-          <button class="btn btn-gold" onclick="doGiveSize()">📏 GRANT SIZE</button>
-        </div>
-        <div class="o-card">
-          <h3>GIVE COINS</h3>
-          <select class="o-select" id="coinsTarget"></select>
-          <input class="o-input" id="coinsAmount" type="number" placeholder="Coins amount" value="500">
-          <button class="btn btn-gold" onclick="doGiveCoins()">💰 GRANT COINS</button>
-        </div>
-        <div class="o-card">
-          <h3>SWAP SIZE</h3>
-          <select class="o-select" id="swapP1"></select>
-          <select class="o-select" id="swapP2"></select>
-          <button class="btn btn-gold" onclick="doSwapSize()">🔄 SWAP</button>
-        </div>
-        <div class="o-card">
-          <h3>KICK PLAYER</h3>
-          <select class="o-select" id="kickTarget"></select>
-          <input class="o-input" id="kickReason" placeholder="Kick reason (optional)">
-          <button class="btn btn-danger" onclick="doKick()">🚫 KICK</button>
-        </div>
-        <div class="o-card">
-          <h3>INSTA-KILL</h3>
-          <select class="o-select" id="killTarget"></select>
-          <button class="btn btn-danger" onclick="doInstaKill()">☠️ EXECUTE</button>
-        </div>
+        <div class="o-card"><h3>GIVE SIZE</h3><select class="o-select" id="sizeTarget"></select><input class="o-input" id="sizeAmount" type="number" placeholder="Size amount" value="50"><button class="btn btn-gold" onclick="doGiveSize()">📏 GRANT SIZE</button></div>
+        <div class="o-card"><h3>GIVE COINS</h3><select class="o-select" id="coinsTarget"></select><input class="o-input" id="coinsAmount" type="number" placeholder="Coins" value="500"><button class="btn btn-gold" onclick="doGiveCoins()">💰 GRANT COINS</button></div>
+        <div class="o-card"><h3>GIVE GD CURRENCY</h3><select class="o-select" id="gdTarget"></select><input class="o-input" id="gdAmount" type="number" placeholder="GD amount" value="100"><button class="btn btn-gold" onclick="doGiveGD()">💎 GRANT GD</button></div>
+        <div class="o-card"><h3>SWAP SIZE</h3><select class="o-select" id="swapP1"></select><select class="o-select" id="swapP2"></select><button class="btn btn-gold" onclick="doSwapSize()">🔄 SWAP</button></div>
+        <div class="o-card"><h3>TELEPORT</h3><select class="o-select" id="teleportTarget"></select><input class="o-input" id="teleportCoords" placeholder="x,y (e.g. 6000,6000)"><button class="btn btn-gold" onclick="doTeleport()">🌀 TELEPORT</button></div>
+        <div class="o-card"><h3>FREEZE</h3><select class="o-select" id="freezeTarget"></select><input class="o-input" id="freezeDuration" type="number" placeholder="Seconds" value="5"><button class="btn btn-danger" onclick="doFreeze()">❄️ FREEZE</button></div>
+        <div class="o-card"><h3>KICK PLAYER</h3><select class="o-select" id="kickTarget"></select><input class="o-input" id="kickReason" placeholder="Reason (optional)"><button class="btn btn-danger" onclick="doKick()">🚫 KICK</button></div>
+        <div class="o-card"><h3>INSTA-KILL</h3><select class="o-select" id="killTarget"></select><button class="btn btn-danger" onclick="doInstaKill()">☠️ EXECUTE</button></div>
       </div>
 
       <!-- EVENTS -->
       <div class="owner-tab" id="tab-events">
         <div class="o-card">
           <h3>LIVE EVENTS</h3>
-          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:16px;">Events last 60 seconds and affect all players.</p>
+          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:16px;">Events last 60 seconds.</p>
           <div class="event-grid">
             <div class="event-card" onclick="ownerAction('startEvent','speedBoost')"><span class="event-icon">⚡</span><div class="event-name">HYPERSPEED FRENZY</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','orbFrenzy')"><span class="event-icon">🌟</span><div class="event-name">ORB OVERLOAD</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','goldRush')"><span class="event-icon">💰</span><div class="event-name">GOLD RUSH</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','shrinkAll')"><span class="event-icon">💀</span><div class="event-name">DEATH SHRINK</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','growAll')"><span class="event-icon">🐍</span><div class="event-name">TITAN RISE</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','orbStorm')"><span class="event-icon">🌪️</span><div class="event-name">ORB STORM</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','rainbow')"><span class="event-icon">🌈</span><div class="event-name">RAINBOW CHAOS</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','darkness')"><span class="event-icon">🌑</span><div class="event-name">BLACKOUT</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','deathmatch')"><span class="event-icon">☠️</span><div class="event-name">DEATHMATCH</div></div>
+            <div class="event-card" onclick="ownerAction('massKill')"><span class="event-icon">🔥</span><div class="event-name">MASS PURGE</div></div>
           </div>
           <button class="btn btn-danger" style="margin-top:16px;" onclick="ownerAction('endEvent')">✕ END CURRENT EVENT</button>
         </div>
@@ -682,10 +535,17 @@ body::before{
             <option value="galaxy_emperor">🌌 Galaxy Emperor (Owner Only)</option>
             <option value="neon_death">⚡ Neon Death (Owner Only)</option>
             <option value="chrome_divine">✨ Chrome Divine (Owner Only)</option>
+            <option value="phantom_king">👻 Phantom King (Owner Only)</option>
+            <option value="celestial_titan">🪐 Celestial Titan (Owner Only)</option>
+            <option value="dark_matter">🕳️ Dark Matter (Owner Only)</option>
+            <option value="solar_flare">☀️ Solar Flare (Owner Only)</option>
             <option value="fire">🔥 Fire</option>
             <option value="ice">❄️ Ice</option>
-            <option value="gold">💛 Gold</option>
+            <option value="gold">⭐ Gold</option>
             <option value="toxic">☣️ Toxic</option>
+            <option value="midnight">🌙 Midnight</option>
+            <option value="ocean">🌊 Ocean</option>
+            <option value="lava">🌋 Lava</option>
           </select>
           <button class="btn btn-gold" onclick="doGiveSkin()">🎨 GRANT SKIN</button>
         </div>
@@ -694,36 +554,72 @@ body::before{
       <!-- OWNER COSMETICS -->
       <div class="owner-tab" id="tab-ownercosmetics">
         <div class="o-card">
-          <h3>GRANT COSMETIC TO PLAYER</h3>
+          <h3>GRANT COSMETIC</h3>
           <select class="o-select" id="ownerCosmeticTarget"></select>
-          <select class="o-select" id="ownerCosmeticToGive">
-            <option value="owner_aura">✨ Z3N0 Aura (Owner Exclusive)</option>
-            <option value="owner_trail">👑 Z3N0 Trail (Owner Exclusive)</option>
-            <option value="owner_title">👑 [Z3N0] Title (Owner Exclusive)</option>
-            <option value="owner_explode">💥 Death Explosion (Owner Exclusive)</option>
-            <option value="trail_rainbow">🌈 Rainbow Trail</option>
-            <option value="trail_gold">⭐ Gold Trail</option>
-            <option value="title_god">⚡ [GOD] Title</option>
-            <option value="title_legend">🏆 [LEGEND] Title</option>
-            <option value="badge_crown">👑 Crown Badge</option>
-            <option value="badge_dragon">🐉 Dragon Badge</option>
+          <select class="o-select" id="ownerCosmeticToGive" style="font-size:13px;">
+            <optgroup label="── OWNER EXCLUSIVE ──">
+              <option value="owner_aura">✨ Z3N0 Divine Aura</option>
+              <option value="owner_trail">👑 Z3N0 Royal Trail</option>
+              <option value="owner_title">[Z3N0] Title</option>
+              <option value="owner_explode">💥 God Death Explosion</option>
+              <option value="owner_rainbow_aura">🌈 Rainbow God Aura</option>
+              <option value="owner_galaxy_trail">🌌 Galaxy Destroyer Trail</option>
+              <option value="owner_phantom_step">👻 Phantom Step Trail</option>
+              <option value="owner_void_rift">🌑 Void Rift Aura</option>
+              <option value="owner_crown_burst">💫 Crown Burst Effect</option>
+              <option value="owner_celestial">🪽 Celestial Wings</option>
+              <option value="owner_blood_moon">🔴 Blood Moon Trail</option>
+              <option value="owner_solar_god">☀️ Solar God Effect</option>
+              <option value="owner_storm_lord">⛈️ Storm Lord Aura</option>
+              <option value="owner_neon_god">🔆 Neon God Trail</option>
+              <option value="owner_title_supreme">[SUPREME] Title</option>
+              <option value="owner_title_creator">[CREATOR] Title</option>
+              <option value="owner_title_immortal">[IMMORTAL] Title</option>
+              <option value="owner_title_diety">[DEITY] Title</option>
+              <option value="owner_title_godking">[GOD-KING] Title</option>
+              <option value="owner_death_god_trail">💀 Death God Trail</option>
+              <option value="owner_cosmos_trail">🌠 Cosmos Trail</option>
+              <option value="owner_prism">🔮 Prism Overload Trail</option>
+              <option value="owner_serpent_god">🐲 Serpent God Trail</option>
+              <option value="owner_inferno_deity">🔥 Inferno Deity Trail</option>
+              <option value="owner_lightning_god">🌩️ Lightning God Aura</option>
+              <option value="owner_star_forge">⭐ Star Forge Trail</option>
+              <option value="owner_dark_matter">🕳️ Dark Matter Aura</option>
+              <option value="owner_z3n0_badge">🛡️ Z3N0 Exclusive Badge</option>
+              <option value="owner_alpha_badge">🐍 Alpha Serpent Badge</option>
+            </optgroup>
+            <optgroup label="── REGULAR (grant for free) ──">
+              <option value="trail_rainbow">🌈 Rainbow Trail</option>
+              <option value="trail_gold">⭐ Gold Trail</option>
+              <option value="trail_cosmic">🌌 Cosmic Trail</option>
+              <option value="title_god">⚡ [GOD] Title</option>
+              <option value="title_colossus">🗿 [COLOSSUS] Title</option>
+              <option value="title_nexus">🔮 [NEXUS] Title</option>
+              <option value="badge_crown">👑 Crown Badge</option>
+              <option value="badge_diamond">💎 Diamond Badge</option>
+              <option value="badge_galaxy">🌌 Galaxy Badge</option>
+              <option value="effect_fire_ring">🔥 Fire Ring Effect</option>
+              <option value="effect_electric">⚡ Electric Pulse</option>
+            </optgroup>
           </select>
           <button class="btn btn-gold" onclick="doGiveCosmetic()">🎨 GRANT COSMETIC</button>
         </div>
         <div class="o-card">
           <h3>YOUR OWNER COSMETICS</h3>
-          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:12px;">As Z3N0, you have all cosmetics unlocked.</p>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;">
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">✨ Z3N0 Aura</span>
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">👑 Z3N0 Trail</span>
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">[Z3N0] Title</span>
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">💥 Death Explosion</span>
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">🌈 Rainbow Trail</span>
-            <span style="padding:4px 10px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">+ ALL PUBLIC COSMETICS</span>
+          <p style="font-size:13px;color:rgba(255,215,0,0.4);margin-bottom:12px;">As Z3N0, all cosmetics are permanently unlocked.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">✨ Divine Aura</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">👑 Royal Trail</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">[Z3N0] Title</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">💥 God Death Explosion</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">🌈 Rainbow God Aura</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">🌌 Galaxy Trail</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">🔮 Prism Trail</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:2px;font-size:11px;color:var(--gold);">+ 20 MORE EXCLUSIVES</span>
+            <span style="padding:3px 8px;background:rgba(255,215,0,0.15);border:1px solid var(--gold);border-radius:2px;font-size:11px;color:var(--gold);">+ ALL 70+ PUBLIC COSMETICS</span>
           </div>
         </div>
       </div>
-
     </div>
   </div>
 </div>
@@ -741,32 +637,104 @@ body::before{
 
 <script>
 // ================================================================
-//  SKIN DEFINITIONS
+//  PLAYFAB CONFIG
+// ================================================================
+const PLAYFAB_TITLE_ID = '12F9AF';
+let playfabData = { id: null, session: null, gdBalance: 0 };
+
+function loadPlayFabData() {
+  try {
+    const saved = localStorage.getItem('pf_data');
+    if (saved) playfabData = JSON.parse(saved);
+    updatePFUI();
+  } catch(e) {}
+}
+
+function savePlayFabData() {
+  try { localStorage.setItem('pf_data', JSON.stringify(playfabData)); } catch(e) {}
+}
+
+async function linkPlayFab() {
+  const name = document.getElementById('pfNameInput').value.trim() || document.getElementById('nameInput').value.trim() || 'Player';
+  const customId = 'z3n0_' + name.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + (localStorage.getItem('pf_uid') || (() => { const uid = Date.now().toString(36); localStorage.setItem('pf_uid', uid); return uid; })());
+  document.getElementById('pfLinkBtn').textContent = '⏳ LINKING...';
+  document.getElementById('pfLinkBtn').disabled = true;
+  try {
+    const res = await fetch('/api/playfab/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, customId })
+    });
+    const data = await res.json();
+    if (data?.data?.PlayFabId) {
+      playfabData.id      = data.data.PlayFabId;
+      playfabData.session = data.data.SessionTicket;
+      playfabData.gdBalance = data.data.InfoResultPayload?.UserVirtualCurrency?.GD || 0;
+      savePlayFabData();
+      updatePFUI();
+      showToast('💎 PlayFab account linked!', 'gold');
+    } else {
+      showToast('PlayFab unavailable (server may need PLAYFAB_SECRET env var)', 'error');
+    }
+  } catch(e) {
+    showToast('PlayFab connection failed', 'error');
+  }
+  document.getElementById('pfLinkBtn').textContent = '💎 LINK TO PLAYFAB';
+  document.getElementById('pfLinkBtn').disabled = false;
+}
+
+function updatePFUI() {
+  if (playfabData.id) {
+    document.getElementById('playfabStatus').textContent = '✅ LINKED';
+    document.getElementById('playfabStatus').className = 'linked';
+    document.getElementById('pfIdDisplay').textContent = playfabData.id;
+    document.getElementById('pfGdDisplay').textContent = playfabData.gdBalance;
+    document.getElementById('pfLinkedInfo').style.display = 'block';
+  } else {
+    document.getElementById('playfabStatus').textContent = '⚫ NOT LINKED';
+    document.getElementById('playfabStatus').className = 'unlinked';
+    document.getElementById('pfLinkedInfo').style.display = 'none';
+  }
+}
+
+loadPlayFabData();
+
+// ================================================================
+//  SKINS
 // ================================================================
 const SKINS = {
-  classic:         { name:'Classic',      emoji:'🐍', colors:['#00ff8c','#00cc70'],   glow:'#00ff8c' },
-  fire:            { name:'Fire',         emoji:'🔥', colors:['#ff4400','#ff8800'],   glow:'#ff6600' },
-  ice:             { name:'Ice',          emoji:'❄️', colors:['#00ccff','#0066ff'],   glow:'#00ccff' },
-  toxic:           { name:'Toxic',        emoji:'☣️', colors:['#88ff00','#44aa00'],   glow:'#88ff00' },
-  gold:            { name:'Gold',         emoji:'⭐', colors:['#ffd700','#ffaa00'],   glow:'#ffd700' },
-  midnight:        { name:'Midnight',     emoji:'🌙', colors:['#4400ff','#8800ff'],   glow:'#6600ff' },
-  sunset:          { name:'Sunset',       emoji:'🌅', colors:['#ff0066','#ff8800'],   glow:'#ff4488' },
-  ocean:           { name:'Ocean',        emoji:'🌊', colors:['#0044ff','#00ffcc'],   glow:'#00aaff' },
-  lava:            { name:'Lava',         emoji:'🌋', colors:['#ff2200','#ffdd00'],   glow:'#ff4400' },
-  forest:          { name:'Forest',       emoji:'🌲', colors:['#006600','#88cc00'],   glow:'#44aa00' },
-  rainbow_god:     { name:'Rainbow God',  emoji:'🌈', colors:['rainbow'],             glow:'#ffffff', ownerOnly:true },
-  void_lord:       { name:'Void Lord',    emoji:'🌑', colors:['#110011','#440044'],   glow:'#aa00ff', ownerOnly:true },
-  galaxy_emperor:  { name:'Galaxy',       emoji:'🌌', colors:['#000033','#0000aa'],   glow:'#4488ff', ownerOnly:true },
-  neon_death:      { name:'Neon Death',   emoji:'⚡', colors:['#ff0000','#00ffff'],   glow:'#ffffff', ownerOnly:true },
-  chrome_divine:   { name:'Chrome',       emoji:'✨', colors:['#888888','#ffffff'],   glow:'#ffffff', ownerOnly:true },
+  classic:        { name:'Classic',       emoji:'🐍', colors:['#00ff8c','#00cc70'],   glow:'#00ff8c' },
+  fire:           { name:'Fire',          emoji:'🔥', colors:['#ff4400','#ff8800'],   glow:'#ff6600' },
+  ice:            { name:'Ice',           emoji:'❄️', colors:['#00ccff','#0066ff'],   glow:'#00ccff' },
+  toxic:          { name:'Toxic',         emoji:'☣️', colors:['#88ff00','#44aa00'],   glow:'#88ff00' },
+  gold:           { name:'Gold',          emoji:'⭐', colors:['#ffd700','#ffaa00'],   glow:'#ffd700' },
+  midnight:       { name:'Midnight',      emoji:'🌙', colors:['#4400ff','#8800ff'],   glow:'#6600ff' },
+  sunset:         { name:'Sunset',        emoji:'🌅', colors:['#ff0066','#ff8800'],   glow:'#ff4488' },
+  ocean:          { name:'Ocean',         emoji:'🌊', colors:['#0044ff','#00ffcc'],   glow:'#00aaff' },
+  lava:           { name:'Lava',          emoji:'🌋', colors:['#ff2200','#ffdd00'],   glow:'#ff4400' },
+  forest:         { name:'Forest',        emoji:'🌲', colors:['#006600','#88cc00'],   glow:'#44aa00' },
+  neon:           { name:'Neon',          emoji:'💫', colors:['#ff00ff','#00ffff'],   glow:'#ff00ff' },
+  cosmic:         { name:'Cosmic',        emoji:'🌌', colors:['#110033','#4400ff'],   glow:'#8844ff' },
+  blood:          { name:'Blood',         emoji:'🩸', colors:['#aa0000','#ff3300'],   glow:'#ff0000' },
+  plasma:         { name:'Plasma',        emoji:'⚡', colors:['#00ffff','#ff00ff'],   glow:'#00ffff' },
+  // Owner Only
+  rainbow_god:    { name:'Rainbow God',   emoji:'🌈', colors:['rainbow'],             glow:'#ffffff', ownerOnly:true },
+  void_lord:      { name:'Void Lord',     emoji:'🌑', colors:['#110011','#440044'],   glow:'#aa00ff', ownerOnly:true },
+  galaxy_emperor: { name:'Galaxy',        emoji:'🌌', colors:['#000033','#0000aa'],   glow:'#4488ff', ownerOnly:true },
+  neon_death:     { name:'Neon Death',    emoji:'⚡', colors:['#ff0000','#00ffff'],   glow:'#ffffff', ownerOnly:true },
+  chrome_divine:  { name:'Chrome',        emoji:'✨', colors:['#888888','#ffffff'],   glow:'#ffffff', ownerOnly:true },
+  phantom_king:   { name:'Phantom King',  emoji:'👻', colors:['#220044','#8800ff'],   glow:'#aa44ff', ownerOnly:true },
+  celestial_titan:{ name:'Celestial',     emoji:'🪐', colors:['#003366','#0099ff'],   glow:'#00ccff', ownerOnly:true },
+  dark_matter:    { name:'Dark Matter',   emoji:'🕳️', colors:['#000000','#110011'],   glow:'#aa00ff', ownerOnly:true },
+  solar_flare:    { name:'Solar Flare',   emoji:'☀️', colors:['#ff8800','#ffff00'],   glow:'#ffcc00', ownerOnly:true },
 };
 
 // ================================================================
-//  SETTINGS STATE
+//  SETTINGS
 // ================================================================
 let controlScheme = localStorage.getItem('controlScheme') || 'mouse';
-let boostKey = localStorage.getItem('boostKey') || 'shift';
-let mouseAlways = localStorage.getItem('mouseAlways') !== 'off';
+let boostKey      = localStorage.getItem('boostKey')      || 'shift';
+let mouseAlways   = localStorage.getItem('mouseAlways')   !== 'off';
 
 function saveSettings() {
   localStorage.setItem('controlScheme', controlScheme);
@@ -774,82 +742,52 @@ function saveSettings() {
   localStorage.setItem('mouseAlways', mouseAlways ? 'on' : 'off');
   updateBoostLabel();
 }
-
 function updateBoostLabel() {
   const labels = { shift:'BOOST [SHIFT/CLICK]', space:'BOOST [SPACE/CLICK]', both_boost:'BOOST [SHIFT/SPACE/CLICK]' };
   const el = document.getElementById('boostLabel');
   if (el) el.textContent = labels[boostKey] || 'BOOST [HOLD CLICK]';
 }
 
-// Init setting UI
 document.querySelectorAll('#controlSchemeGroup .control-radio').forEach(btn => {
   if (btn.dataset.scheme === controlScheme) btn.classList.add('active');
-  else btn.classList.remove('active');
-  btn.onclick = () => {
-    controlScheme = btn.dataset.scheme;
-    document.querySelectorAll('#controlSchemeGroup .control-radio').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    saveSettings();
-  };
+  btn.onclick = () => { controlScheme=btn.dataset.scheme; document.querySelectorAll('#controlSchemeGroup .control-radio').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); saveSettings(); };
 });
 document.querySelectorAll('#boostKeyGroup .control-radio').forEach(btn => {
   if (btn.dataset.boost === boostKey) btn.classList.add('active');
-  else btn.classList.remove('active');
-  btn.onclick = () => {
-    boostKey = btn.dataset.boost;
-    document.querySelectorAll('#boostKeyGroup .control-radio').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    saveSettings();
-  };
+  btn.onclick = () => { boostKey=btn.dataset.boost; document.querySelectorAll('#boostKeyGroup .control-radio').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); saveSettings(); };
 });
 document.querySelectorAll('#mouseAlwaysGroup .control-radio').forEach(btn => {
-  if ((btn.dataset.mouse === 'on') === mouseAlways) btn.classList.add('active');
-  else btn.classList.remove('active');
-  btn.onclick = () => {
-    mouseAlways = btn.dataset.mouse === 'on';
-    document.querySelectorAll('#mouseAlwaysGroup .control-radio').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    saveSettings();
-  };
+  if ((btn.dataset.mouse==='on')===mouseAlways) btn.classList.add('active');
+  btn.onclick = () => { mouseAlways=btn.dataset.mouse==='on'; document.querySelectorAll('#mouseAlwaysGroup .control-radio').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); saveSettings(); };
 });
 
-// Menu tab switching
+// Menu tabs
 document.querySelectorAll('.menu-tab-btn').forEach(btn => {
   btn.onclick = () => {
-    document.querySelectorAll('.menu-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.menu-tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.menu-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.menu-tab-content').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('mtab-' + btn.dataset.mtab).classList.add('active');
+    document.getElementById('mtab-'+btn.dataset.mtab).classList.add('active');
   };
 });
 
 // ================================================================
 //  GAME STATE
 // ================================================================
-let socket = null;
-let myPlayerId = null;
-let isOwner = false;
+let socket = null, myPlayerId = null, isOwner = false;
 let gameState = { players:{}, leaderboard:[], activeEvent:null };
-let myAngle = 0;
-let boosting = false;
-let boostEnergy = 100;
-let selectedSkin = 'classic';
-let ownerPass = '';
-let currentPlayerList = [];
-let gameActive = false;
-let myDeathScore = 0;
-let myDeathLength = 0;
+let myAngle = 0, boosting = false, boostEnergy = 100;
+let selectedSkin = 'classic', ownerPass = '';
+let currentPlayerList = [], gameActive = false;
+let myDeathScore = 0, myDeathLength = 0;
 let cameraX = 0, cameraY = 0;
-let MAP_SIZE = 6000;
-let orbsLocal = {};
-let rainbowT = 0;
-let musicPlaying = false;
-let audioCtx = null;
-let musicInterval = null;
-let myName = '';
-let myProfile = { coins: 0, unlockedCosmetics: [], equippedTrail: null, equippedTitle: null, equippedBadge: null };
-let cosmeticsCatalog = {};
-let sessionCoinsDisplay = 0;
+let MAP_SIZE = 12000;
+let orbsLocal = {}, zonesData = [];
+let rainbowT = 0, frameCount = 0, lastFrameTime = 0;
+let musicPlaying = false, audioCtx = null, musicInterval = null;
+let myName = '', myProfile = { coins:0, gdCurrency:0, unlockedCosmetics:[], equippedTrail:null, equippedTitle:null, equippedBadge:null, equippedEffect:null };
+let cosmeticsCatalog = {}, sessionCoinsDisplay = 0;
+let particles = []; // client-side particles
 
 // ================================================================
 //  CURSOR
@@ -859,23 +797,23 @@ let mouseX = 0, mouseY = 0;
 document.addEventListener('mousemove', e => {
   mouseX = e.clientX; mouseY = e.clientY;
   cursor.style.left = mouseX + 'px';
-  cursor.style.top = mouseY + 'px';
+  cursor.style.top  = mouseY + 'px';
 });
 
 // ================================================================
-//  PARTICLES
+//  MENU PARTICLES
 // ================================================================
 function spawnMenuParticles() {
   const container = document.getElementById('bgParticles');
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 60; i++) {
     const p = document.createElement('div');
     p.className = 'menu-particle';
-    p.style.left = Math.random() * 100 + '%';
-    p.style.animationDuration = (Math.random() * 6 + 4) + 's';
-    p.style.animationDelay = (Math.random() * 6) + 's';
-    p.style.width = p.style.height = (Math.random() * 3 + 1) + 'px';
-    const colors = ['#00ff8c','#aa44ff','#ff2244','#ffd700','#00ccff'];
-    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.left = Math.random()*100+'%';
+    p.style.animationDuration = (Math.random()*6+4)+'s';
+    p.style.animationDelay   = (Math.random()*6)+'s';
+    p.style.width = p.style.height = (Math.random()*3+1)+'px';
+    const cols = ['#00ff8c','#aa44ff','#ff2244','#ffd700','#00ccff'];
+    p.style.background = cols[Math.floor(Math.random()*cols.length)];
     container.appendChild(p);
   }
 }
@@ -890,9 +828,9 @@ function buildSkinSelector() {
   Object.keys(SKINS).forEach(key => {
     const skin = SKINS[key];
     const div = document.createElement('div');
-    div.className = 'skin-opt' + (skin.ownerOnly?' owner-only':'') + (key===selectedSkin?' selected':'');
+    div.className = 'skin-opt'+(skin.ownerOnly?' owner-only':'')+(key===selectedSkin?' selected':'');
     if (skin.ownerOnly && !isOwner) div.classList.add('locked');
-    div.title = skin.name + (skin.ownerOnly?' (Owner Only)':'');
+    div.title = skin.name+(skin.ownerOnly?' (Owner Only)':'');
     div.style.background = skin.ownerOnly
       ? 'linear-gradient(135deg,rgba(255,215,0,0.2),rgba(170,68,255,0.2))'
       : `linear-gradient(135deg,${skin.colors[0]||'#333'},${skin.colors[1]||skin.colors[0]||'#333'})`;
@@ -921,7 +859,7 @@ document.getElementById('ownerToggleBtn').onclick = () => {
 // ================================================================
 function initMusic() {
   if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
   playMusic();
 }
 function playMusic() {
@@ -938,30 +876,27 @@ function pauseMusic() {
   if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
 }
 let noteIndex = 0;
-const melody = [261,293,329,349,392,440,493,523,493,440,392,349,329,293,261,293,329,392,440,493,523,587,523,493,440,392,349,329];
+const melody  = [261,293,329,349,392,440,493,523,493,440,392,349,329,293,261,293,329,392,440,493,523,587,523,493,440,392,349,329];
 const bassline = [65,73,82,87,98,110,65,73];
-function playNote(freq, type, duration, gain, time) {
-  if (!audioCtx || !musicPlaying) return;
-  const osc = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass'; filter.frequency.value = 2000;
-  osc.connect(filter); filter.connect(gainNode); gainNode.connect(audioCtx.destination);
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, time);
-  gainNode.gain.setValueAtTime(0, time);
-  gainNode.gain.linearRampToValueAtTime(gain, time+0.02);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, time+duration);
-  osc.start(time); osc.stop(time+duration+0.05);
+function playNote(freq,type,duration,gain,time) {
+  if (!audioCtx||!musicPlaying) return;
+  const osc=audioCtx.createOscillator(),gn=audioCtx.createGain(),f=audioCtx.createBiquadFilter();
+  f.type='lowpass';f.frequency.value=2000;
+  osc.connect(f);f.connect(gn);gn.connect(audioCtx.destination);
+  osc.type=type;osc.frequency.setValueAtTime(freq,time);
+  gn.gain.setValueAtTime(0,time);
+  gn.gain.linearRampToValueAtTime(gain,time+0.02);
+  gn.gain.exponentialRampToValueAtTime(0.001,time+duration);
+  osc.start(time);osc.stop(time+duration+0.05);
 }
 function scheduleMusicNotes() {
   if (musicInterval) clearInterval(musicInterval);
-  const tempo = 0.18; let beat = 0;
-  musicInterval = setInterval(() => {
-    if (!musicPlaying || !audioCtx) return;
-    const now = audioCtx.currentTime;
-    const mNote = melody[noteIndex % melody.length];
-    const bNote = bassline[beat % bassline.length];
+  const tempo=0.18; let beat=0;
+  musicInterval = setInterval(()=>{
+    if (!musicPlaying||!audioCtx) return;
+    const now=audioCtx.currentTime;
+    const mNote=melody[noteIndex%melody.length];
+    const bNote=bassline[beat%bassline.length];
     playNote(mNote,'triangle',tempo*1.5,0.08,now);
     playNote(mNote*2,'sine',tempo,0.03,now+0.05);
     if (beat%2===0) playNote(bNote,'sawtooth',tempo*2,0.06,now);
@@ -973,44 +908,49 @@ function scheduleMusicNotes() {
       k.start(now);k.stop(now+0.35);
     }
     noteIndex++;beat++;
-  }, tempo*1000);
+  },tempo*1000);
 }
 document.getElementById('musicToggle').onclick = () => {
   if (!audioCtx) { initMusic(); return; }
-  if (musicPlaying) pauseMusic(); else playMusic();
+  musicPlaying ? pauseMusic() : playMusic();
 };
 
 // ================================================================
-//  PLAY BUTTON
+//  PLAY
 // ================================================================
 document.getElementById('playBtn').onclick = () => {
-  const name = document.getElementById('nameInput').value.trim() || 'Snake';
-  const pass = document.getElementById('ownerPass').value;
+  const name = document.getElementById('nameInput').value.trim()||'Snake';
+  const pass  = document.getElementById('ownerPass').value;
   myName = name; ownerPass = pass;
   connectAndJoin(name, selectedSkin, pass);
 };
-document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('playBtn').click(); });
+document.getElementById('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('playBtn').click(); });
 
 // ================================================================
-//  SOCKET CONNECTION
+//  SOCKET
 // ================================================================
 function connectAndJoin(name, skin, password) {
   if (socket) socket.disconnect();
   socket = io();
 
-  socket.on('connect', () => socket.emit('joinGame', { name, skin, password }));
+  socket.on('connect', () => socket.emit('joinGame', {
+    name, skin, password,
+    playfabId:     playfabData.id      || null,
+    playfabSession:playfabData.session  || null
+  }));
 
   socket.on('joined', (data) => {
     myPlayerId = data.playerId;
-    isOwner = data.isOwner;
-    MAP_SIZE = data.mapSize;
-    orbsLocal = {};
-    data.orbs.forEach(o => orbsLocal[o.id] = o);
-    myProfile = data.profile || myProfile;
+    isOwner    = data.isOwner;
+    MAP_SIZE   = data.mapSize || 12000;
+    orbsLocal  = {};
+    data.orbs.forEach(o=>orbsLocal[o.id]=o);
+    zonesData  = data.zones || [];
+    myProfile  = data.profile || myProfile;
     cosmeticsCatalog = data.cosmeticsCatalog || {};
     startGame();
     if (isOwner) {
-      document.getElementById('owner-tag-hud').style.display = 'block';
+      document.getElementById('owner-tag-hud').style.display='block';
       buildSkinSelector();
       showToast('👑 Welcome back, Z3N0 — the Realm is yours','gold');
     }
@@ -1018,262 +958,247 @@ function connectAndJoin(name, skin, password) {
     updateCoinDisplays();
   });
 
-  socket.on('gameState', (data) => { gameState = data; });
-
-  socket.on('orbEaten', ({ oid, newOrb }) => { delete orbsLocal[oid]; orbsLocal[newOrb.id] = newOrb; });
-  socket.on('orbSpawned', (orb) => { orbsLocal[orb.id] = orb; });
-  socket.on('orbFrenzy', (orbs) => { orbs.forEach(o => orbsLocal[o.id] = o); });
-
-  socket.on('playerDied', ({ id, killerName, droppedOrbs }) => {
-    if (droppedOrbs) droppedOrbs.forEach(o => orbsLocal[o.id] = o);
-    if (id !== myPlayerId) addKillFeed(id, killerName);
+  socket.on('gameState', (data) => {
+    gameState = data;
+    if (data.zones) zonesData = data.zones;
   });
 
-  socket.on('youDied', ({ killerName, coinsEarned }) => {
-    myProfile.coins += (coinsEarned || 0);
-    handleDeath(killerName, coinsEarned || 0);
+  socket.on('orbEaten', ({oid,newOrb}) => { delete orbsLocal[oid]; orbsLocal[newOrb.id]=newOrb; });
+  socket.on('orbSpawned', (orb) => { orbsLocal[orb.id]=orb; });
+  socket.on('orbFrenzy', (orbs) => { orbs.forEach(o=>orbsLocal[o.id]=o); });
+
+  socket.on('playerDied', ({id,killerName,droppedOrbs}) => {
+    if (droppedOrbs) droppedOrbs.forEach(o=>orbsLocal[o.id]=o);
+    if (id!==myPlayerId) addKillFeed(id, killerName);
+    // Spawn death particles at player's last known position
+    const dead = gameState.players[id];
+    if (dead && dead.segments && dead.segments.length) spawnDeathParticles(dead.segments[0].x-cameraX, dead.segments[0].y-cameraY);
   });
 
-  socket.on('kicked', ({ reason }) => {
+  socket.on('youDied', ({killerName,coinsEarned}) => {
+    myProfile.coins += (coinsEarned||0);
+    handleDeath(killerName, coinsEarned||0);
+  });
+
+  socket.on('kicked', ({reason}) => {
     socket.disconnect();
     showScreen('menuScreen');
-    showToast('🚫 ' + (reason||'Kicked by owner.'), 'error');
-    gameActive = false;
-    document.getElementById('hud').style.display = 'none';
-    document.getElementById('gameCanvas').style.display = 'none';
-    document.getElementById('musicControls').style.display = 'none';
+    showToast('🚫 '+(reason||'Kicked by owner.'),'error');
+    gameActive=false;
+    document.getElementById('hud').style.display='none';
+    document.getElementById('gameCanvas').style.display='none';
+    document.getElementById('musicControls').style.display='none';
   });
 
-  socket.on('systemMessage', (data) => {
-    const msg = typeof data === 'string' ? data : (data.message || '');
-    showSystemMsg(msg);
-  });
-
-  socket.on('skinGranted', ({ skin: newSkin }) => {
-    selectedSkin = newSkin;
-    showToast(`🎨 Skin granted: ${SKINS[newSkin]?.name||newSkin}`, 'gold');
-  });
-
-  socket.on('killConfirmed', ({ victimName }) => showToast(`💀 You eliminated ${victimName}`));
+  socket.on('systemMessage', (data) => showSystemMsg(typeof data==='string'?data:(data.message||'')));
+  socket.on('skinGranted', ({skin:ns}) => { selectedSkin=ns; showToast(`🎨 Skin granted: ${SKINS[ns]?.name||ns}`,'gold'); });
+  socket.on('killConfirmed', ({victimName}) => showToast(`💀 You eliminated ${victimName}`));
 
   socket.on('liveEvent', (event) => {
-    document.getElementById('eventBanner').style.display = 'block';
-    document.getElementById('eventTitle').textContent = event.name;
-    document.getElementById('statEvent').style.display = 'inline';
-    showToast('⚡ ' + event.name + ' STARTED!', 'gold');
+    document.getElementById('eventBanner').style.display='block';
+    document.getElementById('eventTitle').textContent=event.name;
+    document.getElementById('statEvent').style.display='inline';
+    showToast('⚡ '+event.name+' STARTED!','gold');
   });
-
   socket.on('eventEnded', () => {
-    document.getElementById('eventBanner').style.display = 'none';
-    document.getElementById('statEvent').style.display = 'none';
+    document.getElementById('eventBanner').style.display='none';
+    document.getElementById('statEvent').style.display='none';
     showToast('Event ended.');
   });
 
-  socket.on('ownerBroadcast', ({ message }) => {
-    document.getElementById('broadcastText').textContent = message;
-    document.getElementById('broadcastBanner').style.display = 'block';
-    setTimeout(() => document.getElementById('broadcastBanner').style.display = 'none', 8000);
+  socket.on('ownerBroadcast', ({message}) => {
+    document.getElementById('broadcastText').textContent=message;
+    document.getElementById('broadcastBanner').style.display='block';
+    setTimeout(()=>document.getElementById('broadcastBanner').style.display='none',8000);
   });
 
   socket.on('ownerSuccess', (msg) => { showOwnerAlert(msg,'success'); refreshPlayers(); });
-  socket.on('ownerError', (msg) => showOwnerAlert(msg,'error'));
-  socket.on('playerList', (list) => { currentPlayerList = list; renderPlayerTable(list); populateSelects(list); });
+  socket.on('ownerError',   (msg) => showOwnerAlert(msg,'error'));
+  socket.on('playerList',   (list) => { currentPlayerList=list; renderPlayerTable(list); populateSelects(list); });
 
-  socket.on('coinsGranted', ({ amount, newBalance }) => {
-    myProfile.coins = newBalance;
+  socket.on('coinsGranted', ({amount,newBalance}) => {
+    myProfile.coins=newBalance; updateCoinDisplays();
+    showToast(`💰 +${amount} coins!`,'gold');
+  });
+  socket.on('gdGranted', ({amount,newBalance}) => {
+    myProfile.gdCurrency=newBalance;
+    playfabData.gdBalance=newBalance; savePlayFabData();
     updateCoinDisplays();
-    showToast(`💰 +${amount} coins!`, 'gold');
+    showToast(`💎 +${amount} GD!`,'gold');
   });
 
-  socket.on('cosmeticBought', ({ cosmeticId, newCoinBalance, unlockedCosmetics }) => {
-    myProfile.coins = newCoinBalance;
-    myProfile.unlockedCosmetics = unlockedCosmetics;
-    updateCoinDisplays();
-    renderCosmeticsShop();
-    showToast(`🎨 Bought: ${cosmeticsCatalog[cosmeticId]?.name||cosmeticId}`, 'gold');
+  socket.on('cosmeticBought', ({cosmeticId,newCoinBalance,unlockedCosmetics}) => {
+    myProfile.coins=newCoinBalance; myProfile.unlockedCosmetics=unlockedCosmetics;
+    updateCoinDisplays(); renderCosmeticsShop();
+    showToast(`🎨 Bought: ${cosmeticsCatalog[cosmeticId]?.name||cosmeticId}`,'gold');
   });
-
-  socket.on('cosmeticGranted', ({ cosmeticId, unlockedCosmetics }) => {
-    myProfile.unlockedCosmetics = unlockedCosmetics;
-    renderCosmeticsShop();
-    showToast(`🎨 Cosmetic granted!`, 'gold');
+  socket.on('cosmeticGranted', ({cosmeticId,unlockedCosmetics}) => {
+    myProfile.unlockedCosmetics=unlockedCosmetics; renderCosmeticsShop();
+    showToast('🎨 Cosmetic granted!','gold');
   });
-
-  socket.on('cosmeticEquipped', ({ equippedTrail, equippedTitle, equippedBadge }) => {
-    myProfile.equippedTrail = equippedTrail;
-    myProfile.equippedTitle = equippedTitle;
-    myProfile.equippedBadge = equippedBadge;
-    updateEquippedDisplay();
-    renderCosmeticsShop();
+  socket.on('cosmeticEquipped', ({equippedTrail,equippedTitle,equippedBadge,equippedEffect}) => {
+    myProfile.equippedTrail=equippedTrail; myProfile.equippedTitle=equippedTitle;
+    myProfile.equippedBadge=equippedBadge; myProfile.equippedEffect=equippedEffect;
+    updateEquippedDisplay(); renderCosmeticsShop();
   });
-
-  socket.on('cosmeticError', (msg) => showToast(msg, 'error'));
-
-  socket.on('disconnect', () => { if (gameActive) showToast('Disconnected from server','error'); });
+  socket.on('cosmeticError', (msg) => showToast(msg,'error'));
+  socket.on('disconnect', () => { if(gameActive) showToast('Disconnected','error'); });
 }
 
 // ================================================================
-//  GAME START/STOP
+//  GAME START / STOP
 // ================================================================
 function startGame() {
   gameActive = true;
   showScreen('game');
-  document.getElementById('gameCanvas').style.display = 'block';
-  document.getElementById('hud').style.display = 'block';
-  document.getElementById('musicControls').style.display = 'flex';
+  document.getElementById('gameCanvas').style.display='block';
+  document.getElementById('hud').style.display='block';
+  document.getElementById('musicControls').style.display='flex';
   document.getElementById('deathScreen').classList.add('hidden');
-  document.getElementById('inGameCosmeticsBtn').style.display = 'block';
+  document.getElementById('inGameCosmeticsBtn').style.display='block';
   setupCanvas();
   requestAnimationFrame(gameLoop);
 }
-
 function handleDeath(killerName, coinsEarned) {
   gameActive = false;
   const myP = gameState.players[myPlayerId];
-  myDeathScore = myP ? myP.score||0 : 0;
+  myDeathScore  = myP ? myP.score||0 : 0;
   myDeathLength = myP ? (myP.segments||[]).length : 0;
-  document.getElementById('deathKiller').textContent = `Eliminated by ${killerName||'the void'}`;
-  document.getElementById('deathScore').textContent = myDeathScore;
-  document.getElementById('deathLength').textContent = myDeathLength;
-  document.getElementById('deathCoinsEarned').textContent = coinsEarned > 0 ? `💰 +${coinsEarned} coins earned` : '';
-  const rank = gameState.leaderboard.findIndex(e => e.id === myPlayerId);
-  document.getElementById('deathRank').textContent = rank >= 0 ? '#'+(rank+1) : '—';
+  document.getElementById('deathKiller').textContent   = `Eliminated by ${killerName||'the void'}`;
+  document.getElementById('deathScore').textContent    = myDeathScore;
+  document.getElementById('deathLength').textContent   = myDeathLength;
+  document.getElementById('deathCoinsEarned').textContent = coinsEarned>0?`💰 +${coinsEarned} coins earned`:'';
+  const rank = (gameState.leaderboard||[]).findIndex(e=>e.id===myPlayerId);
+  document.getElementById('deathRank').textContent = rank>=0?'#'+(rank+1):'—';
   document.getElementById('deathScreen').classList.remove('hidden');
-  document.getElementById('inGameCosmeticsBtn').style.display = 'none';
+  document.getElementById('inGameCosmeticsBtn').style.display='none';
 }
-
-document.getElementById('respawnBtn').onclick = () => {
-  document.getElementById('deathScreen').classList.add('hidden');
-  connectAndJoin(myName, selectedSkin, ownerPass);
-};
+document.getElementById('respawnBtn').onclick = () => { document.getElementById('deathScreen').classList.add('hidden'); connectAndJoin(myName,selectedSkin,ownerPass); };
 document.getElementById('menuBtn').onclick = () => {
   document.getElementById('deathScreen').classList.add('hidden');
-  document.getElementById('hud').style.display = 'none';
-  document.getElementById('gameCanvas').style.display = 'none';
-  document.getElementById('musicControls').style.display = 'none';
-  document.getElementById('inGameCosmeticsBtn').style.display = 'none';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('gameCanvas').style.display='none';
+  document.getElementById('musicControls').style.display='none';
+  document.getElementById('inGameCosmeticsBtn').style.display='none';
   showScreen('menuScreen');
   if (socket) socket.disconnect();
-  gameActive = false;
+  gameActive=false;
 };
 
 // ================================================================
 //  CANVAS
 // ================================================================
 const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-function setupCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+const ctx    = canvas.getContext('2d');
+function setupCanvas() { canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
 window.addEventListener('resize', setupCanvas);
 
 // ================================================================
-//  INPUT — mouse
+//  INPUT
 // ================================================================
-canvas.addEventListener('mousemove', (e) => {
-  if (!gameActive || !myPlayerId) return;
-  // Only steer with mouse if scheme is mouse, or mouseAlways is on
-  const scheme = controlScheme;
-  if (scheme !== 'mouse' && !mouseAlways) return;
+canvas.addEventListener('mousemove', e => {
+  if (!gameActive||!myPlayerId) return;
+  if (controlScheme!=='mouse'&&!mouseAlways) return;
   const me = gameState.players[myPlayerId];
-  if (!me || !me.segments || !me.segments.length) return;
+  if (!me||!me.segments||!me.segments.length) return;
   const head = me.segments[0];
-  myAngle = Math.atan2(e.clientY - (head.y - cameraY), e.clientX - (head.x - cameraX));
-  socket.emit('input', { angle: myAngle, boosting });
+  myAngle = Math.atan2(e.clientY-(head.y-cameraY), e.clientX-(head.x-cameraX));
+  socket.emit('input',{angle:myAngle,boosting});
 });
+canvas.addEventListener('mousedown', e=>{ if(e.button===0||e.button===2){boosting=true;if(socket) socket.emit('input',{angle:myAngle,boosting:true});} });
+canvas.addEventListener('mouseup', ()=>{ boosting=false;if(socket) socket.emit('input',{angle:myAngle,boosting:false}); });
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+canvas.addEventListener('touchmove', e=>{ e.preventDefault();const t=e.touches[0];const me=gameState.players[myPlayerId];if(!me||!me.segments||!me.segments.length) return;const h=me.segments[0];myAngle=Math.atan2(t.clientY-(h.y-cameraY),t.clientX-(h.x-cameraX));if(socket) socket.emit('input',{angle:myAngle,boosting});},{passive:false});
+canvas.addEventListener('touchstart', ()=>{ boosting=true;if(socket) socket.emit('input',{angle:myAngle,boosting:true}); });
+canvas.addEventListener('touchend', ()=>{ boosting=false;if(socket) socket.emit('input',{angle:myAngle,boosting:false}); });
 
-canvas.addEventListener('mousedown', (e) => {
-  if (e.button===0||e.button===2) { boosting=true; if(socket) socket.emit('input',{angle:myAngle,boosting:true}); }
-});
-canvas.addEventListener('mouseup', () => {
-  boosting=false; if(socket) socket.emit('input',{angle:myAngle,boosting:false});
-});
-canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-canvas.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  const touch = e.touches[0];
-  const me = gameState.players[myPlayerId];
-  if (!me || !me.segments || !me.segments.length) return;
-  const head = me.segments[0];
-  myAngle = Math.atan2(touch.clientY-(head.y-cameraY), touch.clientX-(head.x-cameraX));
-  if(socket) socket.emit('input',{angle:myAngle,boosting});
-}, { passive:false });
-canvas.addEventListener('touchstart', () => { boosting=true; if(socket) socket.emit('input',{angle:myAngle,boosting:true}); });
-canvas.addEventListener('touchend', () => { boosting=false; if(socket) socket.emit('input',{angle:myAngle,boosting:false}); });
-
-// ================================================================
-//  INPUT — keyboard
-// ================================================================
 const keys = {};
-
-document.addEventListener('keydown', (e) => {
-  keys[e.key] = true;
-
-  // Owner panel
-  if ((e.key==='F1'||(e.ctrlKey&&e.key==='o'))) { e.preventDefault(); if(isOwner) openOwnerPanel(); return; }
-  if (e.key==='Escape') { document.getElementById('ownerPanel').classList.add('hidden'); document.getElementById('ingameCosmeticsPanel').style.display='none'; return; }
-
-  // Boost
-  if (!gameActive || !socket) return;
+document.addEventListener('keydown', e=>{
+  keys[e.key]=true;
+  if (e.key==='F1'||(e.ctrlKey&&e.key==='o')){ e.preventDefault();if(isOwner) openOwnerPanel();return; }
+  if (e.key==='Escape'){ document.getElementById('ownerPanel').classList.add('hidden');document.getElementById('ingameCosmeticsPanel').style.display='none';return; }
+  if (!gameActive||!socket) return;
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-
-  const shiftBoost  = e.key==='Shift' && (boostKey==='shift'||boostKey==='both_boost');
-  const spaceBoost  = e.key===' '     && (boostKey==='space'||boostKey==='both_boost');
-  if (shiftBoost||spaceBoost) { e.preventDefault(); boosting=true; socket.emit('input',{angle:myAngle,boosting:true}); }
+  const shiftB=e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost');
+  const spaceB=e.key===' '&&(boostKey==='space'||boostKey==='both_boost');
+  if (shiftB||spaceB){ e.preventDefault();boosting=true;socket.emit('input',{angle:myAngle,boosting:true}); }
 });
-
-document.addEventListener('keyup', (e) => {
-  keys[e.key] = false;
-  if (!gameActive || !socket) return;
-  const shiftBoost = e.key==='Shift' && (boostKey==='shift'||boostKey==='both_boost');
-  const spaceBoost = e.key===' '     && (boostKey==='space'||boostKey==='both_boost');
-  if (shiftBoost||spaceBoost) { boosting=false; socket.emit('input',{angle:myAngle,boosting:false}); }
+document.addEventListener('keyup', e=>{
+  keys[e.key]=false;
+  if (!gameActive||!socket) return;
+  const shiftB=e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost');
+  const spaceB=e.key===' '&&(boostKey==='space'||boostKey==='both_boost');
+  if (shiftB||spaceB){ boosting=false;socket.emit('input',{angle:myAngle,boosting:false}); }
 });
-
 function handleKeyboardSteering() {
-  if (!gameActive || !socket) return;
-  const scheme = controlScheme;
-  if (scheme === 'mouse') return; // pure mouse mode — no keyboard steering
-
-  const useWASD    = scheme==='wasd'   || scheme==='both';
-  const useArrows  = scheme==='arrows' || scheme==='both';
-
-  const left  = (useWASD&&(keys['a']||keys['A'])) || (useArrows&&keys['ArrowLeft']);
-  const right = (useWASD&&(keys['d']||keys['D'])) || (useArrows&&keys['ArrowRight']);
-  const up    = (useWASD&&(keys['w']||keys['W'])) || (useArrows&&keys['ArrowUp']);
-  const down  = (useWASD&&(keys['s']||keys['S'])) || (useArrows&&keys['ArrowDown']);
-
+  if (!gameActive||!socket) return;
+  if (controlScheme==='mouse') return;
+  const useWASD=controlScheme==='wasd'||controlScheme==='both';
+  const useArrows=controlScheme==='arrows'||controlScheme==='both';
+  const left =(useWASD&&(keys['a']||keys['A']))||(useArrows&&keys['ArrowLeft']);
+  const right=(useWASD&&(keys['d']||keys['D']))||(useArrows&&keys['ArrowRight']);
+  const up   =(useWASD&&(keys['w']||keys['W']))||(useArrows&&keys['ArrowUp']);
+  const down =(useWASD&&(keys['s']||keys['S']))||(useArrows&&keys['ArrowDown']);
   if (!left&&!right&&!up&&!down) return;
-
-  let dx=0, dy=0;
-  if (left)  dx-=1;
-  if (right) dx+=1;
-  if (up)    dy-=1;
-  if (down)  dy+=1;
-
-  if (dx!==0||dy!==0) {
-    const targetAngle = Math.atan2(dy, dx);
-    let diff = targetAngle - myAngle;
-    while (diff > Math.PI)  diff -= Math.PI*2;
-    while (diff < -Math.PI) diff += Math.PI*2;
-    myAngle += Math.sign(diff) * Math.min(Math.abs(diff), 0.21);
-    socket.emit('input', { angle: myAngle, boosting });
+  let dx=0,dy=0;
+  if (left)  dx-=1; if (right) dx+=1;
+  if (up)    dy-=1; if (down)  dy+=1;
+  if (dx!==0||dy!==0){
+    const ta=Math.atan2(dy,dx);
+    let diff=ta-myAngle;
+    while(diff>Math.PI) diff-=Math.PI*2;
+    while(diff<-Math.PI) diff+=Math.PI*2;
+    myAngle+=Math.sign(diff)*Math.min(Math.abs(diff),0.21);
+    socket.emit('input',{angle:myAngle,boosting});
   }
 }
 
 // ================================================================
-//  RENDER — performance: use offscreen path batching
+//  CLIENT PARTICLES
 // ================================================================
-let frameCount = 0;
-let lastFrameTime = 0;
+function spawnDeathParticles(sx, sy) {
+  for (let i = 0; i < 30; i++) {
+    const a = Math.random()*Math.PI*2;
+    const s = Math.random()*5+2;
+    particles.push({ x:sx, y:sy, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:1.0, color:'#ff2244', r:Math.random()*5+2 });
+  }
+}
+function spawnOrbEatParticles(sx, sy, color) {
+  for (let i = 0; i < 5; i++) {
+    const a = Math.random()*Math.PI*2;
+    const s = Math.random()*3+1;
+    particles.push({ x:sx, y:sy, vx:Math.cos(a)*s, vy:Math.sin(a)*s, life:0.7, color:color||'#ffd700', r:2 });
+  }
+}
+function updateParticles() {
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.vx *= 0.96; p.vy *= 0.96;
+    p.life -= 0.02;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
 
+// ================================================================
+//  RENDER
+// ================================================================
 function gameLoop(timestamp) {
   if (!gameActive) return;
   requestAnimationFrame(gameLoop);
-
-  // Frame rate cap at 60fps
-  if (timestamp - lastFrameTime < 14) return;
+  if (timestamp-lastFrameTime < 14) return;
   lastFrameTime = timestamp;
-
   frameCount++;
   rainbowT += 0.02;
   handleKeyboardSteering();
@@ -1281,192 +1206,334 @@ function gameLoop(timestamp) {
   const me = gameState.players[myPlayerId];
   if (me && me.segments && me.segments.length) {
     const head = me.segments[0];
-    // Smooth camera interpolation
     const targetX = head.x - canvas.width/2;
     const targetY = head.y - canvas.height/2;
-    cameraX += (targetX - cameraX) * 0.15;
-    cameraY += (targetY - cameraY) * 0.15;
+    cameraX += (targetX-cameraX)*0.15;
+    cameraY += (targetY-cameraY)*0.15;
+    updateZoneIndicator(me);
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   drawBackground();
+  drawZones();
   drawGrid();
   drawOrbs();
+  updateParticles();
+  drawParticles();
   for (const pid in gameState.players) drawSnake(gameState.players[pid], pid===myPlayerId);
   drawBorder();
   updateHUD();
 }
 
 function drawBackground() {
-  ctx.fillStyle = '#05050f';
+  ctx.fillStyle = '#03030c';
   ctx.fillRect(0,0,canvas.width,canvas.height);
 }
 
+function drawZones() {
+  if (!zonesData.length) return;
+  ctx.save();
+  for (const zone of zonesData) {
+    const sx = zone.x - cameraX;
+    const sy = zone.y - cameraY;
+    if (sx < -zone.radius-100 || sx > canvas.width+zone.radius+100 || sy < -zone.radius-100 || sy > canvas.height+zone.radius+100) continue;
+    const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, zone.radius);
+    gradient.addColorStop(0, (zone.color||'#00ff8c')+'22');
+    gradient.addColorStop(0.6, (zone.color||'#00ff8c')+'08');
+    gradient.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(sx, sy, zone.radius, 0, Math.PI*2);
+    ctx.fill();
+    // Zone border
+    ctx.strokeStyle = (zone.color||'#00ff8c')+'44';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([12,6]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Zone label
+    if (Math.abs(sx) < canvas.width+zone.radius && Math.abs(sy) < canvas.height+zone.radius) {
+      ctx.font = 'bold 11px Orbitron,monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = (zone.color||'#00ff8c')+'99';
+      ctx.fillText(zone.name.toUpperCase(), sx, sy);
+    }
+  }
+  ctx.restore();
+}
+
 function drawGrid() {
-  const gridSize = 80;
-  const offX = ((-cameraX) % gridSize + gridSize) % gridSize;
-  const offY = ((-cameraY) % gridSize + gridSize) % gridSize;
-  ctx.strokeStyle = 'rgba(0,255,140,0.04)';
-  ctx.lineWidth = 1;
+  const gs=100;
+  const offX=((-cameraX)%gs+gs)%gs;
+  const offY=((-cameraY)%gs+gs)%gs;
+  ctx.strokeStyle='rgba(0,255,140,0.025)';
+  ctx.lineWidth=1;
   ctx.beginPath();
-  for (let x=offX; x<canvas.width; x+=gridSize) { ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); }
-  for (let y=offY; y<canvas.height; y+=gridSize) { ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); }
+  for (let x=offX;x<canvas.width;x+=gs){ ctx.moveTo(x,0);ctx.lineTo(x,canvas.height); }
+  for (let y=offY;y<canvas.height;y+=gs){ ctx.moveTo(0,y);ctx.lineTo(canvas.width,y); }
   ctx.stroke();
 }
 
 function drawOrbs() {
-  // Batch similar orbs for performance
   ctx.save();
   for (const oid in orbsLocal) {
     const orb = orbsLocal[oid];
-    const sx = orb.x - cameraX, sy = orb.y - cameraY;
-    if (sx<-30||sx>canvas.width+30||sy<-30||sy>canvas.height+30) continue;
-    const pulse = Math.sin(frameCount*0.08 + orb.x*0.01)*0.3 + 0.7;
+    const sx = orb.x-cameraX, sy = orb.y-cameraY;
+    if (sx<-40||sx>canvas.width+40||sy<-40||sy>canvas.height+40) continue;
+    const pulse = Math.sin(frameCount*0.07+orb.x*0.01+orb.y*0.007)*0.25+0.75;
     const r = orb.size * pulse;
+    // Tier-based rendering
+    const tier = orb.tier || 0;
+    if (tier >= 2) {
+      ctx.shadowColor = orb.color;
+      ctx.shadowBlur  = 15+tier*5;
+    }
     ctx.beginPath();
-    ctx.arc(sx, sy, r, 0, Math.PI*2);
+    ctx.arc(sx,sy,r,0,Math.PI*2);
     ctx.fillStyle = orb.color;
     ctx.fill();
-    // Simple outer glow
+    ctx.shadowBlur = 0;
+    // Glow ring
     ctx.beginPath();
-    ctx.arc(sx, sy, r*1.8, 0, Math.PI*2);
-    ctx.fillStyle = orb.color + '33';
+    ctx.arc(sx,sy,r*(1.5+tier*0.2),0,Math.PI*2);
+    ctx.fillStyle = orb.color+'22';
     ctx.fill();
+    if (tier >= 3) {
+      // Golden super-orb sparkle
+      ctx.font = `${r*0.8}px sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('✦', sx, sy);
+    }
   }
   ctx.restore();
 }
 
 function getSkinColors(player) {
-  const activeSkin = player.grantedSkin || player.skin;
-  const skin = SKINS[activeSkin] || SKINS.classic;
+  const activeSkin = player.grantedSkin||player.skin;
+  const skin = SKINS[activeSkin]||SKINS.classic;
   if (skin.colors[0]==='rainbow') {
-    const h = (rainbowT*60)%360;
+    const h=(rainbowT*60)%360;
     return [`hsl(${h},100%,50%)`,`hsl(${(h+60)%360},100%,60%)`];
   }
   return skin.colors;
 }
-
 function getSkinGlow(player) {
-  const s = SKINS[player.grantedSkin||player.skin] || SKINS.classic;
-  if (s.colors[0]==='rainbow') { return `hsl(${(rainbowT*60)%360},100%,60%)`; }
+  const s = SKINS[player.grantedSkin||player.skin]||SKINS.classic;
+  if (s.colors[0]==='rainbow') return `hsl(${(rainbowT*60)%360},100%,60%)`;
   return s.glow;
 }
 
+const TRAIL_COLORS = {
+  trail_fire:'#ff4400', trail_ice:'#00ccff', trail_gold:'#ffd700',
+  trail_void:'#aa00ff', trail_electric:'#00ffff', trail_smoke:'#888888',
+  trail_toxic:'#88ff00', trail_blood:'#cc0000', trail_cosmic:'#4444ff',
+  trail_neon:'#ff00ff', trail_lava:'#ff6600', trail_ghost:'#eeeeff',
+  trail_sakura:'#ffaacc', trail_pixel:'#00ff00', trail_aurora:'#00ffcc',
+  trail_shadow:'#550055', trail_crystal:'#aaddff', trail_solar:'#ffcc00',
+  trail_ocean:'#0066ff', trail_rainbow:'rainbow',
+  owner_trail:'#ffd700', owner_galaxy_trail:'galaxy', owner_blood_moon:'#cc0022',
+  owner_neon_god:'#ff00ff', owner_death_god_trail:'#ff0000',
+  owner_cosmos_trail:'#0000ff', owner_prism:'prism',
+  owner_serpent_god:'#00ff00', owner_inferno_deity:'#ff6600',
+  owner_star_forge:'#ffff00',
+};
+
+function getTrailColor(trailId, i) {
+  const tc = TRAIL_COLORS[trailId];
+  if (!tc) return '#ffffff';
+  if (tc==='rainbow') return `hsl(${(rainbowT*60+i*15)%360},100%,60%)`;
+  if (tc==='galaxy')  return `hsl(${(rainbowT*20+i*10+200)%360},80%,60%)`;
+  if (tc==='prism')   return `hsl(${(frameCount*3+i*20)%360},100%,60%)`;
+  return tc;
+}
+
 function drawSnake(player, isMe) {
-  if (!player.segments || player.segments.length < 2) return;
-  const segs = player.segments;
+  if (!player.segments||player.segments.length<2) return;
+  const segs   = player.segments;
   const colors = getSkinColors(player);
   const glowColor = getSkinGlow(player);
-  const w = player.width || 8;
+  const w = player.width||8;
 
   ctx.save();
 
-  for (let i = segs.length-1; i >= 0; i--) {
-    const seg = segs[i];
-    const sx = seg.x - cameraX, sy = seg.y - cameraY;
-    if (sx<-w-20||sx>canvas.width+w+20||sy<-w-20||sy>canvas.height+w+20) continue;
+  for (let i=segs.length-1;i>=0;i--) {
+    const seg=segs[i];
+    const sx=seg.x-cameraX, sy=seg.y-cameraY;
+    if (sx<-w-40||sx>canvas.width+w+40||sy<-w-40||sy>canvas.height+w+40) continue;
 
-    const t = i / segs.length;
-    const segW = w * (1 - t*0.3);
-    const alpha = 0.4 + 0.6*(1-t*0.5);
+    const t = i/segs.length;
+    const segW = w*(1-t*0.28);
+    const alpha = 0.45+0.55*(1-t*0.45);
 
     if (i===0) {
-      if (isMe || player.isOwner) { ctx.shadowColor=glowColor; ctx.shadowBlur=20; }
+      // HEAD
+      if (isMe||player.isOwner) { ctx.shadowColor=glowColor; ctx.shadowBlur=24; }
       ctx.beginPath();
-      ctx.arc(sx, sy, segW+2, 0, Math.PI*2);
-      ctx.fillStyle = colors[1]||colors[0];
+      ctx.arc(sx,sy,segW+2,0,Math.PI*2);
+      ctx.fillStyle=colors[1]||colors[0];
       ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.shadowBlur=0;
 
       // Eyes
-      const ea = player.angle||0, ed=segW*0.5;
+      const ea=player.angle||0, ed=segW*0.5;
       const ex1=sx+Math.cos(ea-0.5)*ed, ey1=sy+Math.sin(ea-0.5)*ed;
       const ex2=sx+Math.cos(ea+0.5)*ed, ey2=sy+Math.sin(ea+0.5)*ed;
-      ctx.fillStyle='white'; ctx.beginPath(); ctx.arc(ex1,ey1,2,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(ex2,ey2,2,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(ex1+Math.cos(ea),ey1+Math.sin(ea),1,0,Math.PI*2); ctx.fill();
-      ctx.beginPath(); ctx.arc(ex2+Math.cos(ea),ey2+Math.sin(ea),1,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='white';
+      ctx.beginPath();ctx.arc(ex1,ey1,2.2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex2,ey2,2.2,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#111';
+      ctx.beginPath();ctx.arc(ex1+Math.cos(ea),ey1+Math.sin(ea),1.1,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(ex2+Math.cos(ea),ey2+Math.sin(ea),1.1,0,Math.PI*2);ctx.fill();
 
+      // Owner crown
       if (player.isOwner) {
-        ctx.font = `${segW*1.5}px serif`; ctx.textAlign='center'; ctx.textBaseline='bottom';
-        ctx.fillText('👑', sx, sy-segW-2);
+        ctx.font=`${segW*1.5}px serif`;ctx.textAlign='center';ctx.textBaseline='bottom';
+        ctx.shadowColor='#ffd700';ctx.shadowBlur=10;
+        ctx.fillText('👑',sx,sy-segW-2);
+        ctx.shadowBlur=0;
+      }
+
+      // Effect ring
+      if (player.equippedEffect) {
+        drawEffectRing(player.equippedEffect, sx, sy, segW+6);
       }
     } else {
+      // BODY
       const baseColor = colors[i%2===0?0:1]||colors[0];
       ctx.beginPath();
-      ctx.arc(sx, sy, segW, 0, Math.PI*2);
+      ctx.arc(sx,sy,segW,0,Math.PI*2);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = baseColor;
       ctx.fill();
       ctx.globalAlpha = 1;
 
-      // Trail cosmetic
-      if (player.equippedTrail && i < 8 && i%2===0) {
-        const trailColors = {
-          trail_fire:'#ff4400',trail_ice:'#00ccff',trail_gold:'#ffd700',
-          trail_rainbow:`hsl(${(rainbowT*60+i*20)%360},100%,60%)`,
-          trail_void:'#aa00ff',trail_electric:'#00ffff',
-          owner_trail:'#ffd700'
-        };
-        const tc = trailColors[player.equippedTrail] || '#ffffff';
+      // Trail
+      if (player.equippedTrail && i<10 && i%2===0) {
+        const tc = getTrailColor(player.equippedTrail, i);
         ctx.beginPath();
-        ctx.arc(sx+(Math.random()-0.5)*8, sy+(Math.random()-0.5)*8, 3, 0, Math.PI*2);
-        ctx.fillStyle = tc + '99';
+        ctx.arc(sx+(Math.random()-0.5)*10, sy+(Math.random()-0.5)*10, 3+Math.random()*2, 0, Math.PI*2);
+        ctx.fillStyle = tc+'aa';
         ctx.fill();
+        if (player.isOwner) {
+          // Owner trails get a second, larger particle
+          ctx.beginPath();
+          ctx.arc(sx+(Math.random()-0.5)*16, sy+(Math.random()-0.5)*16, 5, 0, Math.PI*2);
+          ctx.fillStyle = tc+'44';
+          ctx.fill();
+        }
       }
 
+      // Boost particles
       if (player.boosting && i<5 && Math.random()<0.3) {
         ctx.beginPath();
-        ctx.arc(sx+(Math.random()-0.5)*10, sy+(Math.random()-0.5)*10, 3, 0, Math.PI*2);
-        ctx.fillStyle = glowColor+'88'; ctx.fill();
+        ctx.arc(sx+(Math.random()-0.5)*12,sy+(Math.random()-0.5)*12,3,0,Math.PI*2);
+        ctx.fillStyle=glowColor+'88';ctx.fill();
       }
     }
   }
-
   ctx.restore();
 
-  // Name tag + title + badge
-  const head = segs[0];
-  const hsx = head.x-cameraX, hsy = head.y-cameraY;
-  if (hsx>-100&&hsx<canvas.width+100&&hsy>-100&&hsy<canvas.height+100) {
-    const badge = player.equippedBadge || '';
-    const title = player.equippedTitle ? player.equippedTitle+' ' : '';
-    const nameText = badge + (player.isOwner?'👑 ':'') + (player.name||'Snake');
-    const titleText = title;
-
-    ctx.font = `bold ${Math.max(10,w+4)}px Rajdhani,sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    const nameY = hsy-w-8;
-
-    if (titleText) {
-      ctx.font = `bold 10px Orbitron,monospace`;
-      const tw2 = ctx.measureText(titleText).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(hsx-tw2/2-4, nameY-30, tw2+8, 14);
-      ctx.fillStyle = player.isOwner ? '#ffd700' : '#aa44ff';
-      ctx.fillText(titleText, hsx, nameY-18);
+  // Name/title/badge
+  const head=segs[0];
+  const hsx=head.x-cameraX, hsy=head.y-cameraY;
+  if (hsx>-120&&hsx<canvas.width+120&&hsy>-120&&hsy<canvas.height+120) {
+    const badge=player.equippedBadge||'';
+    const title=player.equippedTitle?player.equippedTitle+' ':'';
+    const nameText=badge+(player.isOwner?'👑 ':'')+( player.name||'Snake');
+    ctx.font=`bold ${Math.max(10,w+4)}px Rajdhani,sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    const nameY=hsy-w-8;
+    if (title) {
+      ctx.font='bold 10px Orbitron,monospace';
+      const tw2=ctx.measureText(title).width;
+      ctx.fillStyle='rgba(0,0,0,0.65)';
+      ctx.fillRect(hsx-tw2/2-5,nameY-32,tw2+10,14);
+      ctx.fillStyle=player.isOwner?'#ffd700':'#aa44ff';
+      ctx.fillText(title,hsx,nameY-20);
     }
-
-    ctx.font = `bold ${Math.max(10,w+4)}px Rajdhani,sans-serif`;
-    const tw = ctx.measureText(nameText).width;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(hsx-tw/2-4, nameY-14, tw+8, 16);
-    ctx.fillStyle = player.isOwner ? '#ffd700' : (isMe?'#ffffff':'#ccffdd');
-    ctx.fillText(nameText, hsx, nameY);
-    ctx.textBaseline = 'alphabetic';
+    ctx.font=`bold ${Math.max(10,w+4)}px Rajdhani,sans-serif`;
+    const tw=ctx.measureText(nameText).width;
+    ctx.fillStyle='rgba(0,0,0,0.65)';
+    ctx.fillRect(hsx-tw/2-4,nameY-15,tw+8,16);
+    ctx.fillStyle=player.isOwner?'#ffd700':(isMe?'#ffffff':'#ccffdd');
+    ctx.fillText(nameText,hsx,nameY);
+    ctx.textBaseline='alphabetic';
   }
 }
 
+function drawEffectRing(effectId, x, y, r) {
+  ctx.save();
+  const t = frameCount * 0.05;
+  switch(effectId) {
+    case 'effect_sparkle':
+      for (let i=0;i<6;i++) {
+        const a = t+i*Math.PI/3;
+        const px=x+Math.cos(a)*(r+4), py=y+Math.sin(a)*(r+4);
+        ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);
+        ctx.fillStyle='#ffdd00';ctx.fill();
+      }
+      break;
+    case 'effect_aura':
+      ctx.beginPath();ctx.arc(x,y,r+6+Math.sin(t*2)*3,0,Math.PI*2);
+      ctx.strokeStyle='rgba(0,255,140,0.4)';ctx.lineWidth=2;ctx.stroke();
+      break;
+    case 'effect_electric':
+      for (let i=0;i<8;i++) {
+        const a=t*2+i*Math.PI/4;
+        ctx.beginPath();ctx.arc(x+Math.cos(a)*(r+3),y+Math.sin(a)*(r+3),1.5,0,Math.PI*2);
+        ctx.fillStyle='#00ffff';ctx.fill();
+      }
+      break;
+    case 'effect_fire_ring':
+      ctx.beginPath();ctx.arc(x,y,r+5+Math.sin(t*3)*2,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,${100+Math.sin(t)*80|0},0,0.6)`;ctx.lineWidth=3;ctx.stroke();
+      break;
+    case 'owner_crown_burst': case 'owner_divine_glow': case 'owner_aura':
+      ctx.beginPath();ctx.arc(x,y,r+8+Math.sin(t)*4,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,215,0,${0.4+Math.sin(t*2)*0.2})`;ctx.lineWidth=2;ctx.stroke();
+      ctx.beginPath();ctx.arc(x,y,r+14+Math.sin(t+1)*4,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,215,0,${0.15+Math.sin(t*2)*0.1})`;ctx.lineWidth=1;ctx.stroke();
+      break;
+  }
+  ctx.restore();
+}
+
 function drawBorder() {
-  const bx=-cameraX, by=-cameraY;
-  ctx.strokeStyle='rgba(255,34,68,0.6)';
-  ctx.lineWidth=4; ctx.setLineDash([20,10]);
+  const bx=-cameraX,by=-cameraY;
+  // Danger zone border
+  const margin=150;
+  ctx.fillStyle='rgba(255,34,68,0.05)';
+  ctx.fillRect(bx,by,MAP_SIZE,margin);
+  ctx.fillRect(bx,by+MAP_SIZE-margin,MAP_SIZE,margin);
+  ctx.fillRect(bx,by,margin,MAP_SIZE);
+  ctx.fillRect(bx+MAP_SIZE-margin,by,margin,MAP_SIZE);
+  ctx.strokeStyle='rgba(255,34,68,0.7)';
+  ctx.lineWidth=4;ctx.setLineDash([24,12]);
   ctx.strokeRect(bx,by,MAP_SIZE,MAP_SIZE);
   ctx.setLineDash([]);
-  ctx.shadowColor='#ff2244'; ctx.shadowBlur=15;
-  ctx.strokeStyle='rgba(255,34,68,0.3)'; ctx.lineWidth=8;
+  ctx.shadowColor='#ff2244';ctx.shadowBlur=18;
+  ctx.strokeStyle='rgba(255,34,68,0.3)';ctx.lineWidth=10;
   ctx.strokeRect(bx,by,MAP_SIZE,MAP_SIZE);
   ctx.shadowBlur=0;
+}
+
+function updateZoneIndicator(player) {
+  const zone = (gameState.leaderboard||[]).find(e=>e.id===myPlayerId);
+  const zoneId = player.currentZone || zone?.currentZone;
+  const zoneDef = zonesData.find(z=>z.id===zoneId);
+  const el = document.getElementById('zone-indicator');
+  const txt = document.getElementById('zoneText');
+  if (zoneDef) {
+    el.style.display='block';
+    el.style.color=zoneDef.color||'#00ff8c';
+    el.style.border=`1px solid ${(zoneDef.color||'#00ff8c')}44`;
+    txt.textContent=zoneDef.name.toUpperCase();
+    if (zoneDef.orbBonus > 1) txt.textContent += ` · ${zoneDef.orbBonus}x ORBS`;
+    if (zoneDef.speedMult > 1) txt.textContent += ` · ${zoneDef.speedMult}x SPEED`;
+  } else {
+    el.style.display='none';
+  }
 }
 
 // ================================================================
@@ -1477,21 +1544,23 @@ function updateHUD() {
   if (me) {
     document.getElementById('scoreVal').textContent = me.score||0;
     document.getElementById('lengthVal').textContent = (me.segments||[]).length;
-    sessionCoinsDisplay = me.sessionCoins || 0;
-    document.getElementById('hudCoins').textContent = (myProfile.coins + sessionCoinsDisplay);
-    boosting ? (boostEnergy=Math.max(0,boostEnergy-0.5)) : (boostEnergy=Math.min(100,boostEnergy+0.3));
-    document.getElementById('boostFill').style.width = boostEnergy+'%';
+    sessionCoinsDisplay = me.sessionCoins||0;
+    document.getElementById('hudCoins').textContent = myProfile.coins+sessionCoinsDisplay;
+    document.getElementById('hudGD').textContent = myProfile.gdCurrency||0;
+    boosting?(boostEnergy=Math.max(0,boostEnergy-0.5)):(boostEnergy=Math.min(100,boostEnergy+0.3));
+    document.getElementById('boostFill').style.width=boostEnergy+'%';
   }
 
-  const lb = gameState.leaderboard||[];
-  document.getElementById('lbList').innerHTML = lb.map((e,i) => {
+  const lb=gameState.leaderboard||[];
+  document.getElementById('lbList').innerHTML=lb.map((e,i)=>{
     const rs=i===0?'top1':i===1?'top2':i===2?'top3':'';
     const sym=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
     const badge=e.equippedBadge||'';
     const title=e.equippedTitle?`<span style="font-size:9px;color:#aa44ff;">${e.equippedTitle} </span>`:'';
+    const zoneIcon=e.currentZone?'📍':'';
     return `<div class="lb-entry">
       <div class="lb-rank ${rs}">${sym}</div>
-      <div class="lb-name ${e.isOwner?'is-owner':''}">${title}${e.isOwner?'👑 ':''}${badge}${e.name}</div>
+      <div class="lb-name ${e.isOwner?'is-owner':''}">${title}${e.isOwner?'👑 ':''}${badge}${e.name}${zoneIcon}</div>
       <div class="lb-len">${e.length}</div>
     </div>`;
   }).join('');
@@ -1500,36 +1569,42 @@ function updateHUD() {
 }
 
 function drawMinimap() {
-  const mmc = document.getElementById('minimapCanvas');
-  const mCtx = mmc.getContext('2d');
-  const W=mmc.width, H=mmc.height, scale=W/MAP_SIZE;
-  mCtx.fillStyle='rgba(0,0,8,0.9)';
-  mCtx.fillRect(0,0,W,H);
+  const mmc=document.getElementById('minimapCanvas');
+  const mCtx=mmc.getContext('2d');
+  const W=mmc.width,H=mmc.height,scale=W/MAP_SIZE;
+  mCtx.fillStyle='rgba(0,0,8,0.9)';mCtx.fillRect(0,0,W,H);
+  // Draw zones on minimap
+  for (const zone of zonesData) {
+    mCtx.beginPath();
+    mCtx.arc(zone.x*scale, zone.y*scale, zone.radius*scale, 0, Math.PI*2);
+    mCtx.fillStyle=(zone.color||'#00ff8c')+'18';mCtx.fill();
+  }
+  // Orbs
   for (const oid in orbsLocal) {
     const o=orbsLocal[oid];
-    mCtx.fillStyle=o.color+'66';
-    mCtx.fillRect(o.x*scale-0.5,o.y*scale-0.5,1,1);
+    mCtx.fillStyle=o.color+'55';
+    mCtx.fillRect(o.x*scale-0.5,o.y*scale-0.5,1.2,1.2);
   }
+  // Players
   for (const pid in gameState.players) {
     const p=gameState.players[pid];
     if (!p.segments||!p.segments.length) continue;
-    const head=p.segments[0];
+    const h=p.segments[0];
     mCtx.beginPath();
-    mCtx.arc(head.x*scale,head.y*scale,pid===myPlayerId?4:2.5,0,Math.PI*2);
-    mCtx.fillStyle=pid===myPlayerId?'#00ff8c':p.isOwner?'#ffd700':'#ffffff88';
+    mCtx.arc(h.x*scale,h.y*scale,pid===myPlayerId?4.5:3,0,Math.PI*2);
+    mCtx.fillStyle=pid===myPlayerId?'#00ff8c':p.isOwner?'#ffd700':'rgba(255,255,255,0.7)';
     mCtx.fill();
   }
-  mCtx.strokeStyle='rgba(255,34,68,0.5)';mCtx.lineWidth=1;
-  mCtx.strokeRect(0,0,W,H);
+  mCtx.strokeStyle='rgba(255,34,68,0.6)';mCtx.lineWidth=1.5;mCtx.strokeRect(0,0,W,H);
 }
 
 // ================================================================
 //  KILL FEED
 // ================================================================
 function addKillFeed(killedId, killerName) {
-  const killedName = gameState.players[killedId]?.name||'Someone';
-  const kf = document.getElementById('killfeed');
-  const entry = document.createElement('div');
+  const killedName=gameState.players[killedId]?.name||'Someone';
+  const kf=document.getElementById('killfeed');
+  const entry=document.createElement('div');
   entry.className='kf-entry';
   entry.innerHTML=`<span style="color:#aaa;">${killedName}</span> <span style="color:#ff2244;">✕</span> <span style="color:#00ff8c;">${killerName}</span>`;
   kf.appendChild(entry);
@@ -1537,20 +1612,19 @@ function addKillFeed(killedId, killerName) {
 }
 
 // ================================================================
-//  SYSTEM MESSAGE / TOAST
+//  MESSAGES
 // ================================================================
 function showSystemMsg(msg) {
   const el=document.getElementById('sysmsg');
-  el.textContent=msg; el.style.display='block';
+  el.textContent=msg;el.style.display='block';
   setTimeout(()=>el.style.display='none',4000);
 }
 function showToast(msg,type) {
-  const container=document.getElementById('toast-container');
-  const toast=document.createElement('div');
-  toast.className='toast'+(type?' '+type:'');
-  toast.textContent=msg;
-  container.appendChild(toast);
-  setTimeout(()=>{toast.style.opacity='0';toast.style.transition='opacity 0.3s';setTimeout(()=>toast.remove(),300);},2500);
+  const c=document.getElementById('toast-container');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');t.textContent=msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(()=>t.remove(),300);},2500);
 }
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
@@ -1558,132 +1632,122 @@ function showScreen(name) {
 }
 
 // ================================================================
-//  COSMETICS SYSTEM
+//  COSMETICS
 // ================================================================
 function updateCoinDisplays() {
-  const total = myProfile.coins + sessionCoinsDisplay;
-  document.getElementById('menuCoinBalance').textContent = myProfile.coins;
-  document.getElementById('ingameCoinBalance').textContent = total;
+  const total=myProfile.coins+sessionCoinsDisplay;
+  document.getElementById('menuCoinBalance') && (document.getElementById('menuCoinBalance').textContent=myProfile.coins);
+  document.getElementById('ingameCoinBalance').textContent=total;
   updateEquippedDisplay();
 }
-
 function updateEquippedDisplay() {
-  const cat = cosmeticsCatalog;
-  document.getElementById('equippedTrailDisplay').textContent = myProfile.equippedTrail ? (cat[myProfile.equippedTrail]?.name||myProfile.equippedTrail) : 'None';
-  document.getElementById('equippedTitleDisplay').textContent = myProfile.equippedTitle || 'None';
-  document.getElementById('equippedBadgeDisplay').textContent = myProfile.equippedBadge || '—';
+  const cat=cosmeticsCatalog;
+  document.getElementById('equippedTrailDisplay').textContent  = myProfile.equippedTrail?(cat[myProfile.equippedTrail]?.name||myProfile.equippedTrail):'None';
+  document.getElementById('equippedTitleDisplay').textContent  = myProfile.equippedTitle||'None';
+  document.getElementById('equippedBadgeDisplay').textContent  = myProfile.equippedBadge||'—';
+  document.getElementById('equippedEffectDisplay').textContent = myProfile.equippedEffect?(cat[myProfile.equippedEffect]?.name||myProfile.equippedEffect):'None';
 }
+function openIngameCosmetics()  { document.getElementById('ingameCosmeticsPanel').style.display='block'; updateCoinDisplays(); renderCosmeticsShop(); }
+function closeIngameCosmetics() { document.getElementById('ingameCosmeticsPanel').style.display='none'; }
 
-function openIngameCosmetics() {
-  document.getElementById('ingameCosmeticsPanel').style.display = 'block';
-  updateCoinDisplays();
-  renderCosmeticsShop();
-}
-function closeIngameCosmetics() {
-  document.getElementById('ingameCosmeticsPanel').style.display = 'none';
-}
-
+const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','god'];
 function renderCosmeticsShop() {
-  const container = document.getElementById('cosmeticsShopContent');
-  const catalog = cosmeticsCatalog;
-  if (!Object.keys(catalog).length) {
-    container.innerHTML = '<p style="color:var(--dim);text-align:center;">Connect to load cosmetics.</p>';
-    return;
-  }
+  const container=document.getElementById('cosmeticsShopContent');
+  const catalog=cosmeticsCatalog;
+  if (!Object.keys(catalog).length) { container.innerHTML='<p style="color:var(--dim);text-align:center;">Connect to load cosmetics.</p>'; return; }
 
-  const sections = { trail: '🔥 TRAILS', title: '📛 TITLES', badge: '🏅 BADGES', owner: '👑 OWNER EXCLUSIVE' };
-  let html = '';
+  const sections=[
+    {type:'trail', label:'🔥 TRAILS'},
+    {type:'title', label:'📛 TITLES'},
+    {type:'badge', label:'🏅 BADGES'},
+    {type:'effect',label:'✨ EFFECTS'},
+    {type:'owner', label:'👑 OWNER EXCLUSIVE'}
+  ];
+  let html='';
 
-  for (const [type, label] of Object.entries(sections)) {
-    const items = Object.values(catalog).filter(c => c.type === type);
+  for (const {type,label} of sections) {
+    const items=Object.values(catalog).filter(c=>c.type===type);
     if (!items.length) continue;
-
-    html += `<div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:${type==='owner'?'var(--gold)':'var(--dim)'};margin:16px 0 8px;">${label}</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">`;
+    // Sort by rarity, then price
+    items.sort((a,b)=>(RARITY_ORDER.indexOf(a.rarity||'common')-RARITY_ORDER.indexOf(b.rarity||'common'))||(a.price-b.price));
+    html+=`<div class="cosmetic-section-label" style="color:${type==='owner'?'var(--gold)':'var(--dim)'};">${label}</div>`;
+    html+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;">`;
 
     for (const cosmetic of items) {
-      const owned = isOwner || myProfile.unlockedCosmetics.includes(cosmetic.id);
-      const equipped = (cosmetic.type==='trail'&&myProfile.equippedTrail===cosmetic.id)
-                    || (cosmetic.type==='title'&&myProfile.equippedTitle===cosmetic.text)
-                    || (cosmetic.type==='badge'&&myProfile.equippedBadge===cosmetic.emoji)
-                    || (cosmetic.type==='owner'&&(myProfile.equippedTrail===cosmetic.id||myProfile.equippedTitle===cosmetic.text));
-      const ownerOnly = cosmetic.ownerOnly;
-      const canBuy = !owned && !ownerOnly && cosmetic.price >= 0;
-      const totalCoins = myProfile.coins + sessionCoinsDisplay;
+      const owned=isOwner||myProfile.unlockedCosmetics.includes(cosmetic.id);
+      const equipped=(cosmetic.type==='trail'&&myProfile.equippedTrail===cosmetic.id)
+                   ||(cosmetic.type==='title'&&myProfile.equippedTitle===cosmetic.text)
+                   ||(cosmetic.type==='badge'&&myProfile.equippedBadge===cosmetic.emoji)
+                   ||(cosmetic.type==='effect'&&myProfile.equippedEffect===cosmetic.id)
+                   ||(cosmetic.type==='owner'&&(myProfile.equippedTrail===cosmetic.id||myProfile.equippedTitle===cosmetic.text));
+      const ownerOnly=cosmetic.ownerOnly;
+      const totalCoins=myProfile.coins+sessionCoinsDisplay;
+      const rarity=cosmetic.rarity||'common';
 
-      let cardClass = 'cosmetic-card';
-      if (equipped) cardClass += ' equipped';
-      else if (owned) cardClass += ' owned';
-      else if (ownerOnly) cardClass += ' owner-only locked-shop';
-      else cardClass += ' locked-shop';
+      let cardClass=`cosmetic-card rarity-${rarity}`;
+      if (equipped) cardClass+=' equipped';
+      else if (owned) cardClass+=' owned';
+      else if (ownerOnly) cardClass+=' owner-only locked-shop';
+      else cardClass+=' locked-shop';
 
-      let actionBtn = '';
+      let actionBtn='';
       if (equipped) {
-        actionBtn = `<button onclick="doUnequip('${cosmetic.type}')" style="margin-top:6px;width:100%;padding:4px;background:rgba(255,34,68,0.15);border:1px solid rgba(255,34,68,0.3);border-radius:2px;color:#ff4466;font-size:9px;cursor:pointer;font-family:Orbitron,monospace;">UNEQUIP</button>`;
+        actionBtn=`<button onclick="doUnequip('${cosmetic.type}')" style="margin-top:6px;width:100%;padding:4px;background:rgba(255,34,68,0.15);border:1px solid rgba(255,34,68,0.3);border-radius:2px;color:#ff4466;font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">UNEQUIP</button>`;
       } else if (owned) {
-        actionBtn = `<button onclick="doEquip('${cosmetic.id}')" style="margin-top:6px;width:100%;padding:4px;background:rgba(0,255,140,0.08);border:1px solid rgba(0,255,140,0.3);border-radius:2px;color:var(--glow);font-size:9px;cursor:pointer;font-family:Orbitron,monospace;">EQUIP</button>`;
+        actionBtn=`<button onclick="doEquip('${cosmetic.id}')" style="margin-top:6px;width:100%;padding:4px;background:rgba(0,255,140,0.08);border:1px solid rgba(0,255,140,0.3);border-radius:2px;color:var(--glow);font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">EQUIP</button>`;
       } else if (ownerOnly) {
-        actionBtn = `<div style="margin-top:6px;font-size:9px;color:rgba(255,215,0,0.4);text-align:center;">OWNER ONLY</div>`;
+        actionBtn=`<div style="margin-top:6px;font-size:8px;color:rgba(255,215,0,0.4);text-align:center;font-family:Orbitron,monospace;">OWNER ONLY</div>`;
       } else {
-        const affordable = totalCoins >= cosmetic.price;
-        actionBtn = `<button onclick="doBuy('${cosmetic.id}')" style="margin-top:6px;width:100%;padding:4px;background:${affordable?'rgba(255,215,0,0.1)':'rgba(255,255,255,0.03)'};border:1px solid ${affordable?'rgba(255,215,0,0.3)':'rgba(255,255,255,0.1)'};border-radius:2px;color:${affordable?'var(--gold)':'rgba(255,255,255,0.2)'};font-size:9px;cursor:${affordable?'pointer':'not-allowed'};font-family:Orbitron,monospace;">${cosmetic.price} 💰</button>`;
+        const aff=totalCoins>=cosmetic.price;
+        actionBtn=`<button onclick="doBuy('${cosmetic.id}')" style="margin-top:6px;width:100%;padding:4px;background:${aff?'rgba(255,215,0,0.1)':'rgba(255,255,255,0.03)'};border:1px solid ${aff?'rgba(255,215,0,0.3)':'rgba(255,255,255,0.1)'};border-radius:2px;color:${aff?'var(--gold)':'rgba(255,255,255,0.2)'};font-size:8px;cursor:${aff?'pointer':'not-allowed'};font-family:Orbitron,monospace;">${cosmetic.price} 💰</button>`;
       }
 
-      html += `<div class="${cardClass}">
-        ${equipped?'<div class="equipped-label">✓ EQUIPPED</div>':''}
+      const rarityColors={common:'#aaa',uncommon:'#00bb66',rare:'#4488ff',epic:'#aa44ff',legendary:'#ff8800',god:'#ffd700'};
+      const rc=rarityColors[rarity]||'#aaa';
+
+      html+=`<div class="${cardClass}">
+        ${equipped?'<div class="equipped-label">✓ ON</div>':''}
         ${ownerOnly?'<div class="cosmetic-badge">👑</div>':''}
+        <div class="rarity-pip" style="background:${rc};${rarity==='god'?`box-shadow:0 0 6px ${rc}`:''};"></div>
         <span class="cosmetic-icon">${cosmetic.emoji}</span>
         <div class="cosmetic-name">${cosmetic.name}</div>
         ${actionBtn}
       </div>`;
     }
-    html += '</div>';
+    html+='</div>';
   }
-  container.innerHTML = html;
+  container.innerHTML=html;
 }
 
-function doBuy(cosmeticId) {
-  if (!socket) return;
-  socket.emit('buyCosmetic', { cosmeticId });
-}
-function doEquip(cosmeticId) {
-  if (!socket) return;
-  socket.emit('equipCosmetic', { cosmeticId });
-}
-function doUnequip(slot) {
-  if (!socket) return;
-  socket.emit('unequipCosmetic', { slot });
-}
+function doBuy(id)      { if(socket) socket.emit('buyCosmetic',{cosmeticId:id}); }
+function doEquip(id)    { if(socket) socket.emit('equipCosmetic',{cosmeticId:id}); }
+function doUnequip(slot){ if(socket) socket.emit('unequipCosmetic',{slot}); }
 
 // ================================================================
 //  OWNER PANEL
 // ================================================================
-document.getElementById('closeOwnerPanel').onclick = () => document.getElementById('ownerPanel').classList.add('hidden');
-
-document.querySelectorAll('.owner-nav-btn').forEach(btn => {
-  btn.onclick = () => {
+document.getElementById('closeOwnerPanel').onclick=()=>document.getElementById('ownerPanel').classList.add('hidden');
+document.querySelectorAll('.owner-nav-btn').forEach(btn=>{
+  btn.onclick=()=>{
     document.querySelectorAll('.owner-nav-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.owner-tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
     const tab=document.getElementById('tab-'+btn.dataset.tab);
-    if (tab) tab.classList.add('active');
-    if (['players','actions','skins','ownercosmetics'].includes(btn.dataset.tab)) refreshPlayers();
+    if(tab) tab.classList.add('active');
+    if(['players','actions','skins','ownercosmetics'].includes(btn.dataset.tab)) refreshPlayers();
     updateOwnerStats();
   };
 });
 
 function openOwnerPanel() {
   document.getElementById('ownerPanel').classList.remove('hidden');
-  updateOwnerStats(); refreshPlayers();
+  updateOwnerStats();refreshPlayers();
 }
-
-document.getElementById('owner-tag-hud').style.pointerEvents = 'auto';
-document.getElementById('owner-tag-hud').style.cursor = 'pointer';
-document.getElementById('owner-tag-hud').onclick = openOwnerPanel;
-
-document.getElementById('ownerToggleBtn').addEventListener('dblclick', () => {
-  const pass = document.getElementById('ownerPass').value;
-  if (pass==='Z3N0ISKING') { isOwner=true; buildSkinSelector(); openOwnerPanel(); }
+document.getElementById('owner-tag-hud').style.pointerEvents='auto';
+document.getElementById('owner-tag-hud').onclick=openOwnerPanel;
+document.getElementById('ownerToggleBtn').addEventListener('dblclick',()=>{
+  const pass=document.getElementById('ownerPass').value;
+  if(pass==='Z3N0ISKING'){isOwner=true;buildSkinSelector();openOwnerPanel();}
 });
 
 function updateOwnerStats() {
@@ -1693,69 +1757,67 @@ function updateOwnerStats() {
     document.getElementById('os-event').textContent=d.activeEvent||'NONE';
   }).catch(()=>{});
 }
-
 function refreshPlayers() {
-  if (!socket) return;
-  socket.emit('ownerAction', { action:'getPlayers', password:ownerPass||'Z3N0ISKING' });
+  if(!socket) return;
+  socket.emit('ownerAction',{action:'getPlayers',password:ownerPass||'Z3N0ISKING'});
 }
-
 function renderPlayerTable(list) {
-  const tbody = document.getElementById('playerTableBody');
-  if (!list.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:rgba(255,215,0,0.3);padding:20px;">No players online</td></tr>'; return; }
-  tbody.innerHTML = list.map(p => `
-    <tr>
-      <td><span style="color:${p.isOwner?'#ffd700':'rgba(255,215,0,0.8)'}">${p.isOwner?'👑 ':''}${p.name}</span></td>
-      <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.length}</td>
-      <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.score}</td>
-      <td style="font-family:Space Mono,monospace;font-size:12px;color:var(--gold);">💰${p.coins||0}</td>
-      <td style="font-size:11px;color:rgba(255,215,0,0.5);">${(p.equippedBadge||'')} ${(p.equippedTitle||'')} ${p.equippedTrail?'🎨':''}</td>
-      <td><div style="display:flex;gap:4px;flex-wrap:wrap;">
-        <button class="btn btn-danger btn-sm" onclick="quickKill('${p.id}','${escHtml(p.name)}')">☠️</button>
-        <button class="btn btn-sm" style="border:1px solid rgba(255,34,68,0.3);color:rgba(255,34,68,0.6);padding:6px 8px;font-size:9px;" onclick="quickKick('${p.id}','${escHtml(p.name)}')">🚫</button>
-        <button class="btn btn-gold btn-sm" onclick="quickSize('${p.id}','${escHtml(p.name)}')">📏</button>
-        <button class="btn btn-gold btn-sm" onclick="quickCoins('${p.id}','${escHtml(p.name)}')">💰</button>
-      </div></td>
-    </tr>`).join('');
+  const tbody=document.getElementById('playerTableBody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:rgba(255,215,0,0.3);padding:20px;">No players online</td></tr>';return;}
+  tbody.innerHTML=list.map(p=>`<tr>
+    <td><span style="color:${p.isOwner?'#ffd700':'rgba(255,215,0,0.8)'}">${p.isOwner?'👑 ':''}${p.name}</span></td>
+    <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.length}</td>
+    <td style="font-family:Space Mono,monospace;font-size:12px;color:rgba(255,215,0,0.6);">${p.score}</td>
+    <td style="font-family:Space Mono,monospace;font-size:12px;color:var(--gold);">💰${p.coins||0} 💎${p.gdCurrency||0}</td>
+    <td style="font-size:11px;color:rgba(255,215,0,0.5);">${p.zone||'—'}</td>
+    <td><div style="display:flex;gap:4px;flex-wrap:wrap;">
+      <button class="btn btn-danger btn-sm" onclick="quickKill('${p.id}','${escHtml(p.name)}')">☠️</button>
+      <button class="btn btn-sm" style="border:1px solid rgba(255,34,68,0.3);color:rgba(255,34,68,0.6);padding:6px 8px;font-size:9px;" onclick="quickKick('${p.id}','${escHtml(p.name)}')">🚫</button>
+      <button class="btn btn-gold btn-sm" onclick="quickSize('${p.id}','${escHtml(p.name)}')">📏</button>
+      <button class="btn btn-gold btn-sm" onclick="quickCoins('${p.id}','${escHtml(p.name)}')">💰</button>
+    </div></td>
+  </tr>`).join('');
 }
-
-function escHtml(str) { return str.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function escHtml(s){return s.replace(/'/g,"\\'").replace(/"/g,'&quot;');}
 
 function populateSelects(list) {
-  const selects=['sizeTarget','coinsTarget','swapP1','swapP2','kickTarget','killTarget','skinTarget','ownerCosmeticTarget'];
+  const selects=['sizeTarget','coinsTarget','gdTarget','swapP1','swapP2','kickTarget','killTarget','skinTarget','ownerCosmeticTarget','teleportTarget','freezeTarget'];
   selects.forEach(id=>{
     const sel=document.getElementById(id);
-    if (!sel) return;
+    if(!sel) return;
     sel.innerHTML=list.map(p=>`<option value="${p.id}">${p.isOwner?'👑 ':''}${p.name} (len:${p.length})</option>`).join('');
   });
 }
 
 function showOwnerAlert(msg,type) {
   const el=document.getElementById('ownerAlert');
-  el.textContent=msg; el.className='o-alert '+type; el.style.display='block';
+  el.textContent=msg;el.className='o-alert '+type;el.style.display='block';
   setTimeout(()=>el.style.display='none',4000);
 }
-
 function ownerAction(action,value,targetId) {
-  if (!socket) { showToast('Not connected','error'); return; }
+  if(!socket){showToast('Not connected','error');return;}
   socket.emit('ownerAction',{action,value,targetId,password:ownerPass||'Z3N0ISKING'});
 }
 
-function doGiveSize()    { ownerAction('giveSize',   document.getElementById('sizeAmount').value,  document.getElementById('sizeTarget').value); }
-function doGiveCoins()   { ownerAction('giveCoins',  document.getElementById('coinsAmount').value, document.getElementById('coinsTarget').value); }
-function doSwapSize()    { ownerAction('swapSize',   document.getElementById('swapP2').value,      document.getElementById('swapP1').value); }
+function doGiveSize()    { ownerAction('giveSize',   document.getElementById('sizeAmount').value,   document.getElementById('sizeTarget').value); }
+function doGiveCoins()   { ownerAction('giveCoins',  document.getElementById('coinsAmount').value,  document.getElementById('coinsTarget').value); }
+function doGiveGD()      { ownerAction('giveGD',     document.getElementById('gdAmount').value,     document.getElementById('gdTarget').value); }
+function doSwapSize()    { ownerAction('swapSize',   document.getElementById('swapP2').value,       document.getElementById('swapP1').value); }
 function doKick()        { ownerAction('kick',       document.getElementById('kickReason').value||'Kicked by owner.', document.getElementById('kickTarget').value); }
-function doInstaKill()   { ownerAction('instaKill',  null,                                          document.getElementById('killTarget').value); }
-function doGiveSkin()    { ownerAction('giveSkin',   document.getElementById('skinToGive').value,  document.getElementById('skinTarget').value); }
-function doGiveCosmetic(){ ownerAction('giveCosmetic', document.getElementById('ownerCosmeticToGive').value, document.getElementById('ownerCosmeticTarget').value); }
-function doBroadcast()   { const msg=document.getElementById('broadcastMsg').value.trim(); if(!msg) return; ownerAction('broadcast',msg); document.getElementById('broadcastMsg').value=''; }
+function doInstaKill()   { ownerAction('instaKill',  null,   document.getElementById('killTarget').value); }
+function doGiveSkin()    { ownerAction('giveSkin',   document.getElementById('skinToGive').value,   document.getElementById('skinTarget').value); }
+function doGiveCosmetic(){ ownerAction('giveCosmetic',document.getElementById('ownerCosmeticToGive').value, document.getElementById('ownerCosmeticTarget').value); }
+function doBroadcast()   { const msg=document.getElementById('broadcastMsg').value.trim();if(!msg) return;ownerAction('broadcast',msg);document.getElementById('broadcastMsg').value=''; }
+function doTeleport()    { ownerAction('teleport', document.getElementById('teleportCoords').value, document.getElementById('teleportTarget').value); }
+function doFreeze()      { ownerAction('freeze', document.getElementById('freezeDuration').value, document.getElementById('freezeTarget').value); }
 
 function quickKill(id,name)  { if(!confirm(`Insta-kill ${name}?`)) return; ownerAction('instaKill',null,id); }
-function quickKick(id,name)  { const r=prompt(`Kick reason for ${name}:`,'Kicked by Z3N0'); if(r===null) return; ownerAction('kick',r,id); }
-function quickSize(id,name)  { const a=prompt(`Give size to ${name}:`,'50'); if(!a) return; ownerAction('giveSize',a,id); }
-function quickCoins(id,name) { const a=prompt(`Give coins to ${name}:`,'500'); if(!a) return; ownerAction('giveCoins',a,id); }
+function quickKick(id,name)  { const r=prompt(`Kick reason for ${name}:`,'Kicked by Z3N0');if(r===null) return;ownerAction('kick',r,id); }
+function quickSize(id,name)  { const a=prompt(`Give size to ${name}:`,'50');if(!a) return;ownerAction('giveSize',a,id); }
+function quickCoins(id,name) { const a=prompt(`Give coins to ${name}:`,'500');if(!a) return;ownerAction('giveCoins',a,id); }
 
 // ================================================================
-//  MENU STATS + HOW TO PLAY
+//  MENU STATS
 // ================================================================
 setInterval(()=>{
   fetch('/api/stats').then(r=>r.json()).then(d=>{
@@ -1765,10 +1827,10 @@ setInterval(()=>{
   }).catch(()=>{});
 },3000);
 
-document.getElementById('howToBtn').onclick = () => {
-  const scheme = controlScheme;
-  const boostInfo = boostKey==='shift'?'Shift':boostKey==='space'?'Space':'Shift or Space';
-  alert(`🐍 HOW TO PLAY — Z3N0'S SERPENT REALM\n\nCurrent control scheme: ${scheme.toUpperCase()}\n\n${scheme==='mouse'?'Move mouse to steer':'Use '+scheme.toUpperCase()+' keys to steer'}\nHold click or ${boostInfo} to BOOST\nEat glowing orbs to grow & earn coins\nKill others by making them hit your body\nAvoid the red border — instant death\n\n💰 COINS: Earned from orbs & kills. Spend in Cosmetics!\n🎨 COSMETICS: Trails, titles, badges for your snake\n\n👑 Z3N0 is the supreme owner of this realm.\nOwner panel: F1 key (owner only)`);
+document.getElementById('howToBtn').onclick=()=>{
+  const scheme=controlScheme;
+  const boostInfo=boostKey==='shift'?'Shift':boostKey==='space'?'Space':'Shift or Space';
+  alert(`🐍 Z3N0'S SERPENT REALM — HOW TO PLAY\n\nMAP: 12000×12000 — 4x bigger!\nZONES: 7 special zones with bonuses\n  • The Nexus (center) — 1.5x orbs\n  • Gold Rush (corner) — 4x orbs\n  • The Void (corner) — 3x orbs + 1.3x speed\n  • Frost Wastes — 1.2x speed\n  • Storm Plains — 1.1x speed\n  • Lava Fields — 2x orbs\n  • Shadow Forest — neutral\n\nCONTROLS: ${scheme.toUpperCase()}\n${scheme==='mouse'?'Move mouse to steer':'Use '+scheme.toUpperCase()+' keys to steer'}\nHold click or ${boostInfo} to BOOST\n\nBig orbs = more coins (4 tiers!)\nKill others to steal their score coins\nAvoid the red border\n\n💰 COINS: Earn from orbs & kills\n💎 GD: PlayFab currency (link account)\n🎨 COSMETICS: 70+ items to unlock\n\n👑 F1 = Owner panel (Z3N0 only)`);
 };
 
 // ================================================================
