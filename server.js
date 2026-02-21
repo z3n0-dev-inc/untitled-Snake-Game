@@ -171,34 +171,41 @@ function getProfile(accountId, name) {
 }
 
 // ============================================================
-//  COSMETICS
+//  COSMETICS — built from PlayFab catalog
 // ============================================================
-const COSMETICS = {
-  trail_fire:     { id:'trail_fire',     type:'trail', name:'Fire Trail',     price:100,  emoji:'🔥' },
-  trail_ice:      { id:'trail_ice',      type:'trail', name:'Ice Trail',      price:100,  emoji:'❄️' },
-  trail_gold:     { id:'trail_gold',     type:'trail', name:'Gold Trail',     price:200,  emoji:'⭐' },
-  trail_rainbow:  { id:'trail_rainbow',  type:'trail', name:'Rainbow Trail',  price:500,  emoji:'🌈' },
-  trail_void:     { id:'trail_void',     type:'trail', name:'Void Trail',     price:300,  emoji:'🌑' },
-  trail_electric: { id:'trail_electric', type:'trail', name:'Electric Trail', price:250,  emoji:'⚡' },
-  trail_toxic:    { id:'trail_toxic',    type:'trail', name:'Toxic Trail',    price:180,  emoji:'☣️' },
-  trail_blood:    { id:'trail_blood',    type:'trail', name:'Blood Trail',    price:350,  emoji:'🩸' },
-  trail_cosmic:   { id:'trail_cosmic',   type:'trail', name:'Cosmic Trail',   price:450,  emoji:'🌌' },
-  title_rookie:   { id:'title_rookie',   type:'title', name:'Rookie',         price:0,    emoji:'🐍', text:'[ROOKIE]' },
-  title_hunter:   { id:'title_hunter',   type:'title', name:'Hunter',         price:150,  emoji:'🏹', text:'[HUNTER]' },
-  title_legend:   { id:'title_legend',   type:'title', name:'Legend',         price:400,  emoji:'🏆', text:'[LEGEND]' },
-  title_shadow:   { id:'title_shadow',   type:'title', name:'Shadow',         price:300,  emoji:'🌑', text:'[SHADOW]' },
-  title_god:      { id:'title_god',      type:'title', name:'God',            price:999,  emoji:'⚡', text:'[GOD]' },
-  title_reaper:   { id:'title_reaper',   type:'title', name:'Reaper',         price:600,  emoji:'💀', text:'[REAPER]' },
-  badge_skull:    { id:'badge_skull',    type:'badge', name:'Skull Badge',    price:200,  emoji:'💀' },
-  badge_star:     { id:'badge_star',     type:'badge', name:'Star Badge',     price:150,  emoji:'⭐' },
-  badge_dragon:   { id:'badge_dragon',   type:'badge', name:'Dragon Badge',   price:350,  emoji:'🐉' },
-  badge_crown:    { id:'badge_crown',    type:'badge', name:'Crown Badge',    price:500,  emoji:'👑' },
-  badge_fire:     { id:'badge_fire',     type:'badge', name:'Fire Badge',     price:120,  emoji:'🔥' },
-  owner_aura:     { id:'owner_aura',     type:'owner', name:'Z3N0 Aura',      price:-1,   emoji:'✨', ownerOnly:true },
-  owner_trail:    { id:'owner_trail',    type:'owner', name:'Z3N0 Trail',     price:-1,   emoji:'👑', ownerOnly:true },
-  owner_title:    { id:'owner_title',    type:'owner', name:'[Z3N0]',         price:-1,   emoji:'👑', ownerOnly:true, text:'[Z3N0]' },
-  owner_explode:  { id:'owner_explode',  type:'owner', name:'Death Explosion',price:-1,   emoji:'💥', ownerOnly:true },
-};
+let PLAYFAB_CATALOG = { Catalog: [] };
+try { PLAYFAB_CATALOG = require('./Z3N0_PlayFab_Catalog.json'); } catch(e) { console.log('[INFO] No PlayFab catalog JSON found, using empty catalog. Clients will use fallback.'); }
+
+const COSMETICS = {};
+for (const item of PLAYFAB_CATALOG.Catalog) {
+  let custom = {};
+  try { custom = JSON.parse(item.CustomData || '{}'); } catch(e) {}
+  const price = item.VirtualCurrencyPrices?.GC ?? 0;
+  const rarity = custom.rarity || 'common';
+  COSMETICS[item.ItemId] = {
+    id:        item.ItemId,
+    type:      custom.type || 'badge',
+    name:      item.DisplayName,
+    price,
+    emoji:     custom.emoji || '❓',
+    glow:      custom.glow || null,
+    text:      custom.text || null,
+    rarity,
+    ownerOnly: custom.ownerOnly === true,
+    tags:      item.Tags || [],
+  };
+}
+
+// Always include free starter title
+if (!COSMETICS['title_rookie']) {
+  COSMETICS['title_rookie'] = { id:'title_rookie', type:'title', name:'🐍 [ROOKIE]', price:0, emoji:'🐍', text:'[ROOKIE]', rarity:'common', ownerOnly:false };
+}
+
+// Build a quick lookup for trail glow colors (used by renderer)
+const TRAIL_GLOW_MAP = {};
+for (const [id, c] of Object.entries(COSMETICS)) {
+  if (c.type === 'trail' && c.glow) TRAIL_GLOW_MAP[id] = c.glow;
+}
 
 // ============================================================
 //  GAME STATE
@@ -571,29 +578,29 @@ function applyPowerUp(p, pu) {
       for (const other of Object.values(players)) {
         if (other.id === p.id) continue;
         if (!other.activePowerUps) other.activePowerUps = {};
-        other.activePowerUps.frozen = { until: now + cfg.duration };
+      other.activePowerUps.frozen = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       }
       io.emit('freezeActivated', { playerId: p.id, duration: cfg.duration });
       break;
     case 'star':
-      p.activePowerUps.star = { until: now + cfg.duration };
+      p.activePowerUps.star = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       p.speed = SNAKE_SPEED * 1.3;
       break;
     case 'speed':
-      p.activePowerUps.speed = { until: now + cfg.duration };
+      p.activePowerUps.speed = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       p.speed = SNAKE_SPEED * 1.8;
       break;
     case 'shield':
       p.shieldActive = true;
-      p.activePowerUps.shield = { until: now + cfg.duration };
+      p.activePowerUps.shield = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       setTimeout(() => { p.shieldActive = false; if (p.activePowerUps) delete p.activePowerUps.shield; }, cfg.duration);
       break;
     case 'ghost':
-      p.activePowerUps.ghost = { until: now + cfg.duration };
+      p.activePowerUps.ghost = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       p.ghostUntil = now + cfg.duration;
       break;
     case 'magnet':
-      p.activePowerUps.magnet = { until: now + cfg.duration };
+      p.activePowerUps.magnet = { start: now, end: now + cfg.duration, until: now + cfg.duration };
       break;
   }
 
@@ -602,7 +609,7 @@ function applyPowerUp(p, pu) {
   }
   if ((pu.type === 'star' || pu.type === 'speed') && cfg.duration > 0) {
     setTimeout(() => {
-      p.speed = SNAKE_SPEED;
+      if (!p.dead) p.speed = SNAKE_SPEED;
       if (p.activePowerUps) delete p.activePowerUps[pu.type];
     }, cfg.duration);
   }
@@ -671,7 +678,7 @@ function checkCollisions() {
     const h = p.segments[0];
     const isGhost = p.ghostUntil && Date.now() < p.ghostUntil;
 
-    if (h.x < 0 || h.x > MAP_SIZE || h.y < 0 || h.y > MAP_SIZE) {
+    if (h.x < -10 || h.x > MAP_SIZE + 10 || h.y < -10 || h.y > MAP_SIZE + 10) {
       killPlayer(p, null); continue;
     }
 
@@ -867,7 +874,7 @@ io.on('connection', socket => {
       equippedTrail: pr.equippedTrail,
       equippedTitle: isOwner ? '[Z3N0]' : pr.equippedTitle,
       equippedBadge: isOwner ? '👑' : pr.equippedBadge,
-      unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...pr.unlockedCosmetics],
+      unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...(pr.unlockedCosmetics || ['title_rookie'])],
       activePowerUps: {},
       ghostUntil: 0, shieldActive: false,
       killStreak: 0,
@@ -907,14 +914,17 @@ io.on('connection', socket => {
   socket.on('buyCosmetic', ({ cosmeticId }) => {
     const p = players[socket.playerId]; if (!p) return;
     const c = COSMETICS[cosmeticId];
-    if (!c || c.ownerOnly || c.price < 0) { socket.emit('cosmeticError', 'Not available.'); return; }
+    if (!c) { socket.emit('cosmeticError', 'Item not found.'); return; }
+    if (c.ownerOnly) { socket.emit('cosmeticError', 'Owner-only item!'); return; }
     const pr = getProfile(p.accountId || p.playfabId, p.name);
     if (pr.unlockedCosmetics.includes(cosmeticId)) { socket.emit('cosmeticError', 'Already owned!'); return; }
-    const totalCoins = pr.coins + p.sessionCoins;
-    if (totalCoins < c.price) { socket.emit('cosmeticError', `Need ${c.price} coins (you have ${totalCoins})`); return; }
-    let remaining = c.price;
-    if (p.sessionCoins >= remaining) { p.sessionCoins -= remaining; remaining = 0; }
-    else { remaining -= p.sessionCoins; p.sessionCoins = 0; pr.coins -= remaining; }
+    if (c.price > 0) {
+      const totalCoins = pr.coins + p.sessionCoins;
+      if (totalCoins < c.price) { socket.emit('cosmeticError', `Need ${c.price} coins (you have ${totalCoins})`); return; }
+      let remaining = c.price;
+      if (p.sessionCoins >= remaining) { p.sessionCoins -= remaining; }
+      else { remaining -= p.sessionCoins; p.sessionCoins = 0; pr.coins -= remaining; }
+    }
     pr.unlockedCosmetics.push(cosmeticId);
     p.unlockedCosmetics.push(cosmeticId);
     socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: pr.coins + p.sessionCoins, unlockedCosmetics: pr.unlockedCosmetics });
@@ -923,12 +933,17 @@ io.on('connection', socket => {
   socket.on('equipCosmetic', ({ cosmeticId }) => {
     const p = players[socket.playerId]; if (!p) return;
     const c = COSMETICS[cosmeticId]; if (!c) return;
-    if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId)) { socket.emit('cosmeticError', "You don't own this!"); return; }
+    if (c.ownerOnly && !p.isOwner) { socket.emit('cosmeticError', 'Owner-only item!'); return; }
+    if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId) && c.price > 0) { socket.emit('cosmeticError', "You don't own this!"); return; }
     const pr = getProfile(p.accountId || p.playfabId, p.name);
-    const t = c.type;
-    if (t === 'trail') { p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId; }
-    else if (t === 'title' || t === 'owner') { if (c.text) { p.equippedTitle = c.text; pr.equippedTitle = c.text; } }
-    else if (t === 'badge') { p.equippedBadge = c.emoji; pr.equippedBadge = c.emoji; }
+    if (c.type === 'trail') {
+      p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId;
+    } else if (c.type === 'title') {
+      const txt = c.text || c.name;
+      p.equippedTitle = txt; pr.equippedTitle = txt;
+    } else if (c.type === 'badge') {
+      p.equippedBadge = c.emoji; pr.equippedBadge = c.emoji;
+    }
     socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge });
   });
 
