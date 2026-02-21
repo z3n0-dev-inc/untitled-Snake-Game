@@ -5,6 +5,11 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
 const app = express();
+
+// Debug: log env vars on startup (safe — only logs whether they're set, not the values)
+console.log('ENV CHECK — PLAYFAB_TITLE_ID:', process.env.PLAYFAB_TITLE_ID ? `SET (${process.env.PLAYFAB_TITLE_ID})` : 'MISSING');
+console.log('ENV CHECK — PLAYFAB_SECRET:', process.env.PLAYFAB_SECRET ? 'SET (hidden)' : 'MISSING');
+console.log('ENV CHECK — PORT:', process.env.PORT || '3000 (default)');
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
@@ -24,6 +29,23 @@ const BOOST_SPEED = 5.2;
 const SEGMENT_DISTANCE = 12;
 const INITIAL_LENGTH = 10;
 const GROW_PER_ORB = 3;
+
+// ============================================================
+//  UPGRADES CONFIG
+// ============================================================
+const UPGRADES = {
+  speed:    { id:'speed',    name:'Speed Boost',    maxLevel:5, baseCost:30,  costMult:1.8, description:'Increases movement speed' },
+  boost:    { id:'boost',    name:'Turbo Boost',    maxLevel:5, baseCost:40,  costMult:1.8, description:'Increases boost speed' },
+  magnet:   { id:'magnet',   name:'Orb Magnet',     maxLevel:5, baseCost:50,  costMult:2.0, description:'Attracts nearby orbs automatically' },
+  armor:    { id:'armor',    name:'Armor',          maxLevel:3, baseCost:80,  costMult:2.5, description:'Forgives wall/body hits (limited)' },
+  growth:   { id:'growth',   name:'Growth Boost',   maxLevel:5, baseCost:25,  costMult:1.6, description:'Grow more per orb eaten' },
+};
+
+function getUpgradeCost(upgradeId, currentLevel) {
+  const u = UPGRADES[upgradeId];
+  if (!u) return 9999;
+  return Math.floor(u.baseCost * Math.pow(u.costMult, currentLevel));
+}
 const OWNER_SKINS = ['rainbow_god','void_lord','galaxy_emperor','neon_death','chrome_divine','z3n0_exclusive','death_god','cosmos','blood_moon','electric_god'];
 
 // ============================================================
@@ -42,6 +64,7 @@ function getOrCreateProfile(name) {
       gamesPlayed: 0,
       highScore: 0,
       unlockedCosmetics: ['title_rookie'],
+      upgrades: { speed:0, boost:0, magnet:0, armor:0, growth:0 },
       equippedTrail: null,
       equippedTitle: null,
       equippedBadge: null,
@@ -129,13 +152,24 @@ function checkCollisions() {
     const head = getSnakeHead(p);
 
     if (head.x < 0 || head.x > MAP_SIZE || head.y < 0 || head.y > MAP_SIZE) {
-      killPlayer(p, null); continue;
+      if (p.armorHits > 0 && !p.isBot) {
+        p.armorHits--;
+        // bounce back
+        p.angle = p.angle + Math.PI;
+        p.segments[0].x = Math.max(50, Math.min(MAP_SIZE-50, p.segments[0].x));
+        p.segments[0].y = Math.max(50, Math.min(MAP_SIZE-50, p.segments[0].y));
+        io.to(p.socketId).emit('systemMessage', `🛡️ Armor absorbed wall hit! (${p.armorHits} left)`);
+      } else {
+        killPlayer(p, null);
+      }
+      continue;
     }
 
     for (const oid in orbs) {
       const orb = orbs[oid];
       if (dist(head, orb) < p.width + orb.size) {
-        p.growBuffer += GROW_PER_ORB * orb.value;
+        const growthBonus = 1 + (p.upgrades?.growth || 0) * 0.4;
+        p.growBuffer += Math.floor(GROW_PER_ORB * orb.value * growthBonus);
         p.score += orb.value;
         p.sessionCoins += orb.value;
         delete orbs[oid];
@@ -208,10 +242,35 @@ function killPlayer(player, killer) {
 //  GAME TICK
 // ============================================================
 function gameTick() {
+  // Tick AI bots first
+  for (const pid in players) {
+    const p = players[pid];
+    if (p.isBot && !p.dead) tickBot(p);
+  }
   for (const pid in players) {
     const p = players[pid];
     if (p.dead || !p.alive) continue;
-    const speed = p.boosting ? BOOST_SPEED : SNAKE_SPEED;
+    // Apply upgrades to speed
+    const speedBonus  = 1 + (p.upgrades?.speed  || 0) * 0.12;
+    const boostBonus  = 1 + (p.upgrades?.boost  || 0) * 0.15;
+    const speed = p.boosting ? BOOST_SPEED * boostBonus : SNAKE_SPEED * speedBonus;
+
+    // Magnet: auto-attract nearby orbs
+    const magnetLevel = p.upgrades?.magnet || 0;
+    if (magnetLevel > 0) {
+      const range = magnetLevel * 60;
+      const head2 = p.segments[0];
+      for (const oid in orbs) {
+        const orb = orbs[oid];
+        const dx = head2.x - orb.x, dy = head2.y - orb.y;
+        const d = Math.sqrt(dx*dx+dy*dy);
+        if (d < range && d > 1) {
+          const pull = 1.5 + magnetLevel * 0.5;
+          orb.x += (dx/d) * pull;
+          orb.y += (dy/d) * pull;
+        }
+      }
+    }
     const head = p.segments[0];
     p.segments.unshift({ x: head.x + Math.cos(p.angle)*speed, y: head.y + Math.sin(p.angle)*speed });
     if (p.growBuffer > 0) p.growBuffer--;
@@ -258,7 +317,10 @@ setInterval(() => {
       equippedTrail: p.equippedTrail||null,
       equippedTitle: p.equippedTitle||null,
       equippedBadge: p.equippedBadge||null,
-      sessionCoins: p.sessionCoins
+      sessionCoins: p.sessionCoins,
+      upgrades: p.upgrades||{},
+      tag: p.tag||null,
+      isBot: p.isBot||false
     };
   }
   io.emit('gameState', { players: state, leaderboard, activeEvent });
@@ -285,7 +347,12 @@ io.on('connection', (socket) => {
       equippedTrail: profile.equippedTrail,
       equippedTitle: isOwner ? '[Z3N0]' : profile.equippedTitle,
       equippedBadge: isOwner ? '👑' : profile.equippedBadge,
-      unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...profile.unlockedCosmetics]
+      unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...profile.unlockedCosmetics],
+      upgrades: { ...profile.upgrades },
+      armorHits: (profile.upgrades.armor || 0),
+      magnetRange: 0,
+      isBot: false,
+      tag: null
     };
 
     players[player.id] = player;
@@ -303,8 +370,10 @@ io.on('connection', (socket) => {
         unlockedCosmetics: player.unlockedCosmetics,
         equippedTrail: player.equippedTrail,
         equippedTitle: player.equippedTitle,
-        equippedBadge: player.equippedBadge
+        equippedBadge: player.equippedBadge,
+        upgrades: player.upgrades
       },
+      upgradesCatalog: UPGRADES,
       cosmeticsCatalog: COSMETICS
     });
 
@@ -431,6 +500,50 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('buyUpgrade', ({ upgradeId }) => {
+    const p = players[socket.playerId];
+    if (!p || p.isBot) return;
+    const upgrade = UPGRADES[upgradeId];
+    if (!upgrade) { socket.emit('upgradeError', 'Unknown upgrade.'); return; }
+    const profile = getOrCreateProfile(p.name);
+    const currentLevel = p.upgrades[upgradeId] || 0;
+    if (currentLevel >= upgrade.maxLevel) { socket.emit('upgradeError', 'Already max level!'); return; }
+    const cost = getUpgradeCost(upgradeId, currentLevel);
+    const totalCoins = profile.coins + p.sessionCoins;
+    if (totalCoins < cost) { socket.emit('upgradeError', `Need ${cost} coins (you have ${totalCoins})`); return; }
+    // Deduct from sessionCoins first, then profile
+    if (p.sessionCoins >= cost) {
+      p.sessionCoins -= cost;
+    } else {
+      const remainder = cost - p.sessionCoins;
+      p.sessionCoins = 0;
+      profile.coins -= remainder;
+    }
+    p.upgrades[upgradeId] = currentLevel + 1;
+    profile.upgrades[upgradeId] = currentLevel + 1;
+    // Refresh armor hits if armor upgraded
+    if (upgradeId === 'armor') p.armorHits = p.upgrades.armor;
+    socket.emit('upgradeBought', {
+      upgradeId,
+      newLevel: p.upgrades[upgradeId],
+      upgrades: p.upgrades,
+      sessionCoins: p.sessionCoins,
+      profileCoins: profile.coins
+    });
+    socket.emit('systemMessage', `⬆️ ${upgrade.name} upgraded to level ${p.upgrades[upgradeId]}!`);
+  });
+
+  socket.on('setTag', ({ tag }) => {
+    const p = players[socket.playerId];
+    if (!p) return;
+    // Validate tag: max 8 chars, alphanumeric + some symbols, no profanity trigger
+    const cleaned = (tag || '').replace(/[^a-zA-Z0-9\-_\.]/g,'').substring(0, 8).toUpperCase();
+    p.tag = cleaned || null;
+    const profile = getOrCreateProfile(p.name);
+    profile.tag = p.tag;
+    socket.emit('tagSet', { tag: p.tag });
+  });
+
   socket.on('disconnect', () => {
     const p = players[socket.playerId];
     if (p) {
@@ -453,6 +566,205 @@ function applyEvent(event) {
   if(event.type==='growAll') for(const p of Object.values(players)){const t=p.segments[p.segments.length-1];for(let i=0;i<100*SEGMENT_DISTANCE;i++) p.segments.push({x:t.x,y:t.y});}
 }
 function resetEvent() { for(const p of Object.values(players)) p.speed=SNAKE_SPEED; }
+
+
+// ============================================================
+//  AI BOTS
+// ============================================================
+const BOT_COUNT = 3;
+const BOT_NAMES = ['SERPENTINE','VIPER-X','NULL_BYTE'];
+const BOT_SKINS = ['fire','ice','toxic'];
+const BOT_PERSONALITIES = ['aggressive','defensive','hunter'];
+
+function createBot(index) {
+  const name = BOT_NAMES[index % BOT_NAMES.length];
+  const startX = Math.random()*(MAP_SIZE-1000)+500;
+  const startY = Math.random()*(MAP_SIZE-1000)+500;
+  const bot = {
+    id: 'bot_' + uuidv4(), socketId: null,
+    name, skin: BOT_SKINS[index % BOT_SKINS.length],
+    grantedSkin: null, isOwner: false, isBot: true,
+    personality: BOT_PERSONALITIES[index % BOT_PERSONALITIES.length],
+    segments: createSegments(startX, startY, INITIAL_LENGTH * 3),
+    angle: Math.random() * Math.PI * 2,
+    speed: SNAKE_SPEED, boosting: false,
+    growBuffer: 0, score: 0, sessionCoins: 0, kills: 0,
+    width: 8, dead: false, alive: true, effect: null,
+    equippedTrail: null, equippedTitle: '[BOT]', equippedBadge: '🤖',
+    unlockedCosmetics: [], upgrades: { speed:2, boost:1, magnet:1, armor:0, growth:1 },
+    armorHits: 0, tag: null,
+    // AI state
+    targetAngle: Math.random() * Math.PI * 2,
+    wanderTimer: 0,
+    huntTarget: null,
+    evadeTimer: 0,
+    boostCooldown: 0,
+  };
+  players[bot.id] = bot;
+  io.emit('playerJoined', { id: bot.id, name: bot.name, isOwner: false });
+  return bot;
+}
+
+function initBots() {
+  for (let i = 0; i < BOT_COUNT; i++) {
+    createBot(i);
+  }
+}
+
+function respawnBot(bot, index) {
+  const startX = Math.random()*(MAP_SIZE-1000)+500;
+  const startY = Math.random()*(MAP_SIZE-1000)+500;
+  bot.segments = createSegments(startX, startY, INITIAL_LENGTH * 3);
+  bot.angle = Math.random() * Math.PI * 2;
+  bot.dead = false;
+  bot.alive = true;
+  bot.score = 0;
+  bot.sessionCoins = 0;
+  bot.kills = 0;
+  bot.growBuffer = 0;
+  bot.width = 8;
+  bot.huntTarget = null;
+  io.emit('playerJoined', { id: bot.id, name: bot.name, isOwner: false });
+}
+
+function tickBot(bot) {
+  if (bot.dead) return;
+
+  const head = bot.segments[0];
+  const pArr = Object.values(players);
+
+  // Danger avoidance — check if heading toward wall or another snake
+  const lookAhead = 120;
+  const futureX = head.x + Math.cos(bot.angle) * lookAhead;
+  const futureY = head.y + Math.sin(bot.angle) * lookAhead;
+
+  let dangerAngle = null;
+
+  // Wall avoidance
+  const margin = 200;
+  if (futureX < margin || futureX > MAP_SIZE-margin || futureY < margin || futureY > MAP_SIZE-margin) {
+    // Steer toward center
+    dangerAngle = Math.atan2(MAP_SIZE/2 - head.y, MAP_SIZE/2 - head.x);
+  }
+
+  // Body avoidance
+  if (!dangerAngle) {
+    for (const other of pArr) {
+      if (other.id === bot.id || other.dead) continue;
+      for (let si = 2; si < Math.min(other.segments.length, 40); si++) {
+        const seg = other.segments[si];
+        const d = dist(head, seg);
+        if (d < 80) {
+          dangerAngle = Math.atan2(head.y - seg.y, head.x - seg.x);
+          bot.evadeTimer = 20;
+          break;
+        }
+      }
+      if (dangerAngle) break;
+    }
+  }
+
+  if (bot.evadeTimer > 0) {
+    bot.evadeTimer--;
+  }
+
+  // Decision making based on personality
+  let desiredAngle = bot.angle;
+  bot.boosting = false;
+  bot.boostCooldown = Math.max(0, bot.boostCooldown - 1);
+
+  if (dangerAngle !== null) {
+    desiredAngle = dangerAngle;
+  } else if (bot.personality === 'aggressive' || bot.personality === 'hunter') {
+    // Hunt nearest player
+    let nearest = null, nearestDist = Infinity;
+    for (const other of pArr) {
+      if (other.id === bot.id || other.dead || other.isBot) continue;
+      const d = dist(head, other.segments[0]);
+      if (d < nearestDist) { nearestDist = d; nearest = other; }
+    }
+    if (nearest && nearestDist < 600) {
+      // Chase and try to cut them off
+      const targetHead = nearest.segments[0];
+      desiredAngle = Math.atan2(targetHead.y - head.y, targetHead.x - head.x);
+      if (nearestDist < 250 && bot.boostCooldown === 0) {
+        bot.boosting = true;
+        bot.boostCooldown = 40;
+      }
+    } else {
+      // Wander toward orbs
+      desiredAngle = botSeekOrb(bot, head);
+    }
+  } else {
+    // Defensive: mostly eat orbs, avoid players
+    desiredAngle = botSeekOrb(bot, head);
+    // Flee if player is close
+    for (const other of pArr) {
+      if (other.id === bot.id || other.dead || other.isBot) continue;
+      const d = dist(head, other.segments[0]);
+      if (d < 200 && other.segments.length > bot.segments.length) {
+        desiredAngle = Math.atan2(head.y - other.segments[0].y, head.x - other.segments[0].x);
+        bot.boosting = bot.boostCooldown === 0;
+        bot.boostCooldown = 30;
+        break;
+      }
+    }
+  }
+
+  // Smooth turn toward desired angle
+  let diff = desiredAngle - bot.angle;
+  while (diff > Math.PI) diff -= Math.PI*2;
+  while (diff < -Math.PI) diff += Math.PI*2;
+  const turnRate = 0.08 + (bot.upgrades.speed || 0) * 0.005;
+  bot.angle += Math.sign(diff) * Math.min(Math.abs(diff), turnRate);
+}
+
+function botSeekOrb(bot, head) {
+  let nearest = null, nearestDist = Infinity;
+  for (const oid in orbs) {
+    const orb = orbs[oid];
+    const d = dist(head, orb);
+    if (d < nearestDist) { nearestDist = d; nearest = orb; }
+  }
+  if (nearest) {
+    return Math.atan2(nearest.y - head.y, nearest.x - head.x);
+  }
+  // Random wander
+  bot.wanderTimer--;
+  if (bot.wanderTimer <= 0) {
+    bot.targetAngle = Math.random() * Math.PI * 2;
+    bot.wanderTimer = 60 + Math.floor(Math.random()*60);
+  }
+  return bot.targetAngle;
+}
+
+// Init bots after a short delay so server is ready
+setTimeout(initBots, 2000);
+
+// Watch for dead bots and respawn them
+setInterval(() => {
+  let botIndex = 0;
+  for (const pid in players) {
+    const p = players[pid];
+    if (p.isBot) {
+      if (p.dead) {
+        setTimeout(() => respawnBot(p, botIndex), 3000);
+      }
+      botIndex++;
+    }
+  }
+  // Ensure bot count is maintained
+  const liveBots = Object.values(players).filter(p => p.isBot && !p.dead);
+  if (liveBots.length < BOT_COUNT) {
+    const missing = BOT_COUNT - liveBots.length;
+    for (let i = 0; i < missing; i++) {
+      const idx = liveBots.length + i;
+      if (!Object.values(players).find(p => p.isBot && p.name === BOT_NAMES[idx % BOT_NAMES.length] && !p.dead)) {
+        createBot(idx);
+      }
+    }
+  }
+}, 5000);
 
 // ============================================================
 //  HTTP API
