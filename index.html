@@ -721,7 +721,7 @@ let bgGradientCX = -1, bgGradientCY = -1;
 // ================================================================
 //  PLAYFAB
 // ================================================================
-const PLAYFAB_TITLE_ID = 'YOUR_TITLE_ID'; // <-- Set your PlayFab Title ID here
+const PLAYFAB_TITLE_ID = '12F9AF'; // <-- TODO: Replace with your actual PlayFab Title ID (e.g. 'AB12C')
 let pfPlayerId = null, pfSessionTicket = null, pfDisplayName = null;
 
 (function loadPFSession() {
@@ -779,6 +779,10 @@ async function pfCall(endpoint, body) {
 }
 
 async function pfLogin() {
+  if (!PLAYFAB_TITLE_ID || PLAYFAB_TITLE_ID === 'YOUR_TITLE_ID') {
+    pfMsg('pfLoginMsg', '❌ PlayFab Title ID not configured. Replace YOUR_TITLE_ID in the code with your actual PlayFab Title ID.', false);
+    return;
+  }
   const user = document.getElementById('pfLoginUser').value.trim();
   const pass = document.getElementById('pfLoginPass').value;
   if (!user || !pass) { pfMsg('pfLoginMsg','Enter username/email and password.', false); return; }
@@ -807,6 +811,10 @@ async function pfLogin() {
 }
 
 async function pfRegister() {
+  if (!PLAYFAB_TITLE_ID || PLAYFAB_TITLE_ID === 'YOUR_TITLE_ID') {
+    pfMsg('pfRegMsg', '❌ PlayFab Title ID not configured. Replace YOUR_TITLE_ID in the code with your actual PlayFab Title ID.', false);
+    return;
+  }
   const name = document.getElementById('pfRegName').value.trim();
   const user = document.getElementById('pfRegUser').value.trim();
   const email = document.getElementById('pfRegEmail').value.trim();
