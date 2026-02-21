@@ -11,7 +11,13 @@ console.log('ENV CHECK — PLAYFAB_TITLE_ID:', process.env.PLAYFAB_TITLE_ID ? `S
 console.log('ENV CHECK — PLAYFAB_SECRET:', process.env.PLAYFAB_SECRET ? 'SET (hidden)' : 'MISSING');
 console.log('ENV CHECK — PORT:', process.env.PORT || '3000 (default)');
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: { origin: '*' },
+  transports: ['websocket', 'polling'],
+  pingInterval: 5000,
+  pingTimeout: 10000,
+  perMessageDeflate: false  // disable compression for low-latency realtime
+});
 
 app.use(express.static(__dirname));
 app.use(express.json());
@@ -23,7 +29,8 @@ const OWNER_PASSWORD = 'Z3N0ISKING';
 const ADMIN_SITE_PASSWORD = 'Z3N0ADMIN';
 const MAP_SIZE = 6000;
 const ORB_COUNT = 600;
-const TICK_RATE = 30;
+const TICK_RATE = 20;        // physics tick: 50hz
+const BROADCAST_RATE = 45;  // state broadcast: ~22hz (enough for smooth visuals)
 const SNAKE_SPEED = 2.8;
 const BOOST_SPEED = 5.2;
 const SEGMENT_DISTANCE = 12;
@@ -34,11 +41,11 @@ const GROW_PER_ORB = 3;
 //  UPGRADES CONFIG
 // ============================================================
 const UPGRADES = {
-  speed:    { id:'speed',    name:'Speed Boost',    maxLevel:5, baseCost:30,  costMult:1.8, description:'Increases movement speed' },
-  boost:    { id:'boost',    name:'Turbo Boost',    maxLevel:5, baseCost:40,  costMult:1.8, description:'Increases boost speed' },
-  magnet:   { id:'magnet',   name:'Orb Magnet',     maxLevel:5, baseCost:50,  costMult:2.0, description:'Attracts nearby orbs automatically' },
-  armor:    { id:'armor',    name:'Armor',          maxLevel:3, baseCost:80,  costMult:2.5, description:'Forgives wall/body hits (limited)' },
-  growth:   { id:'growth',   name:'Growth Boost',   maxLevel:5, baseCost:25,  costMult:1.6, description:'Grow more per orb eaten' },
+  speed:    { id:'speed',    name:'Speed',       maxLevel:3, baseCost:60,  costMult:2.2, description:'+5% speed per level (max +15%)' },
+  boost:    { id:'boost',    name:'Turbo',       maxLevel:3, baseCost:80,  costMult:2.2, description:'+8% boost speed per level (max +24%)' },
+  magnet:   { id:'magnet',   name:'Magnet',      maxLevel:3, baseCost:100, costMult:2.5, description:'Pulls nearby orbs toward you' },
+  armor:    { id:'armor',    name:'Armor',       maxLevel:2, baseCost:150, costMult:3.0, description:'Absorb 1-2 wall hits before dying' },
+  growth:   { id:'growth',   name:'Growth',      maxLevel:3, baseCost:50,  costMult:2.0, description:'+15% grow per orb (max +45%)' },
 };
 
 function getUpgradeCost(upgradeId, currentLevel) {
@@ -168,7 +175,7 @@ function checkCollisions() {
     for (const oid in orbs) {
       const orb = orbs[oid];
       if (dist(head, orb) < p.width + orb.size) {
-        const growthBonus = 1 + (p.upgrades?.growth || 0) * 0.4;
+        const growthBonus = 1 + (p.upgrades?.growth || 0) * 0.15;
         p.growBuffer += Math.floor(GROW_PER_ORB * orb.value * growthBonus);
         p.score += orb.value;
         p.sessionCoins += orb.value;
@@ -251,21 +258,21 @@ function gameTick() {
     const p = players[pid];
     if (p.dead || !p.alive) continue;
     // Apply upgrades to speed
-    const speedBonus  = 1 + (p.upgrades?.speed  || 0) * 0.12;
-    const boostBonus  = 1 + (p.upgrades?.boost  || 0) * 0.15;
+    const speedBonus  = 1 + (p.upgrades?.speed  || 0) * 0.05;
+    const boostBonus  = 1 + (p.upgrades?.boost  || 0) * 0.08;
     const speed = p.boosting ? BOOST_SPEED * boostBonus : SNAKE_SPEED * speedBonus;
 
     // Magnet: auto-attract nearby orbs
     const magnetLevel = p.upgrades?.magnet || 0;
     if (magnetLevel > 0) {
-      const range = magnetLevel * 60;
+      const range = magnetLevel * 40;
       const head2 = p.segments[0];
       for (const oid in orbs) {
         const orb = orbs[oid];
         const dx = head2.x - orb.x, dy = head2.y - orb.y;
         const d = Math.sqrt(dx*dx+dy*dy);
         if (d < range && d > 1) {
-          const pull = 1.5 + magnetLevel * 0.5;
+          const pull = 0.8 + magnetLevel * 0.3;
           orb.x += (dx/d) * pull;
           orb.y += (dy/d) * pull;
         }
@@ -301,30 +308,51 @@ function updateLeaderboard() {
 
 setInterval(gameTick, TICK_RATE);
 
-// STATE BROADCAST — with segment culling for performance
+// Static player metadata — only needs to be sent occasionally / on join
+// Keyed by id so clients can cache it
+const playerMeta = {};
+function broadcastMeta(pid) {
+  const p = players[pid];
+  if (!p) return;
+  playerMeta[pid] = {
+    skin: p.skin, name: p.name, isOwner: p.isOwner,
+    grantedSkin: p.grantedSkin, effect: p.effect||null,
+    equippedTrail: p.equippedTrail||null,
+    equippedTitle: p.equippedTitle||null,
+    equippedBadge: p.equippedBadge||null,
+    tag: p.tag||null, isBot: p.isBot||false
+  };
+  io.emit('playerMeta', { pid, meta: playerMeta[pid] });
+}
+
+// STATE BROADCAST — dynamic data only (positions, angles, scores)
 setInterval(() => {
-  if (Object.keys(players).length === 0) return;
+  const playerIds = Object.keys(players);
+  if (playerIds.length === 0) return;
   const state = {};
-  for (const pid in players) {
+  for (const pid of playerIds) {
     const p = players[pid];
     if (p.dead) continue;
+    // Smart segment culling: keep head dense, thin out tail
     let segs = p.segments;
-    if (segs.length > 200) segs = segs.filter((_,i) => i < 15 || i % 2 === 0);
+    if (segs.length > 100) {
+      const keep = [];
+      for (let i = 0; i < segs.length; i++) {
+        if (i < 20 || i % 3 === 0) keep.push(segs[i]);
+      }
+      segs = keep;
+    }
     state[pid] = {
-      segments: segs, angle: p.angle, skin: p.skin, name: p.name,
-      width: p.width, boosting: p.boosting, isOwner: p.isOwner,
-      grantedSkin: p.grantedSkin, effect: p.effect||null,
-      equippedTrail: p.equippedTrail||null,
-      equippedTitle: p.equippedTitle||null,
-      equippedBadge: p.equippedBadge||null,
-      sessionCoins: p.sessionCoins,
-      upgrades: p.upgrades||{},
-      tag: p.tag||null,
-      isBot: p.isBot||false
+      s: segs,           // segments (short key saves bandwidth)
+      a: p.angle,        // angle
+      w: p.width,        // width
+      b: p.boosting,     // boosting
+      sc: p.sessionCoins,
+      up: p.upgrades||{}
     };
   }
-  io.emit('gameState', { players: state, leaderboard, activeEvent });
-}, TICK_RATE);
+  io.emit('gs', { s: state, lb: leaderboard, ev: activeEvent });
+}, BROADCAST_RATE);
 
 // ============================================================
 //  SOCKET HANDLERS
@@ -378,6 +406,8 @@ io.on('connection', (socket) => {
     });
 
     io.emit('playerJoined', { id: player.id, name: player.name, isOwner });
+    // Send full meta for this new player to everyone
+    setTimeout(() => broadcastMeta(player.id), 100);
   });
 
   socket.on('input', ({ angle, boosting }) => {
@@ -414,6 +444,7 @@ io.on('connection', (socket) => {
     }
     else if (t === 'badge') { p.equippedBadge = cosmetic.emoji; profile.equippedBadge = cosmetic.emoji; }
     socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail:p.equippedTrail, equippedTitle:p.equippedTitle, equippedBadge:p.equippedBadge });
+    broadcastMeta(socket.playerId);
   });
 
   socket.on('unequipCosmetic', ({ slot }) => {
@@ -542,6 +573,7 @@ io.on('connection', (socket) => {
     const profile = getOrCreateProfile(p.name);
     profile.tag = p.tag;
     socket.emit('tagSet', { tag: p.tag });
+    broadcastMeta(socket.playerId);
   });
 
   socket.on('disconnect', () => {
@@ -602,6 +634,7 @@ function createBot(index) {
   };
   players[bot.id] = bot;
   io.emit('playerJoined', { id: bot.id, name: bot.name, isOwner: false });
+  setTimeout(() => broadcastMeta(bot.id), 200);
   return bot;
 }
 
@@ -625,6 +658,7 @@ function respawnBot(bot, index) {
   bot.width = 8;
   bot.huntTarget = null;
   io.emit('playerJoined', { id: bot.id, name: bot.name, isOwner: false });
+  setTimeout(() => broadcastMeta(bot.id), 200);
 }
 
 function tickBot(bot) {
