@@ -2,11 +2,15 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, {
+  cors: { origin: '*' },
+  pingInterval: 10000,
+  pingTimeout: 5000,
+  transports: ['websocket'],  // skip long-polling for speed
+});
 
 app.use(express.static(__dirname));
 app.use(express.json());
@@ -14,269 +18,290 @@ app.use(express.json());
 // ============================================================
 //  CONFIG
 // ============================================================
-const OWNER_PASSWORD = 'Z3N0ISKING';
-const ADMIN_SITE_PASSWORD = 'Z3N0ADMIN';
-const MAP_SIZE = 6000;
-const ORB_COUNT = 700;
-const TICK_RATE = 30;
-const SNAKE_SPEED = 2.8;
-const BOOST_SPEED = 5.4;
-const SEGMENT_DISTANCE = 12;
-const INITIAL_LENGTH = 10;
-const GROW_PER_ORB = 3;
-const OWNER_NAMES = ['z3n0', 'Z3N0', 'z3n0isking'];
+const OWNER_PASSWORD      = 'Z3N0ISKING';
+const ADMIN_PASS          = 'Z3N0ADMIN';
+const MAP_SIZE            = 6000;
+const ORB_COUNT           = 500;
+const TICK_MS             = 33;       // ~30 server ticks/sec
+const BROADCAST_MS        = 45;       // ~22 state broadcasts/sec
+const SNAKE_SPEED         = 3.0;
+const BOOST_SPEED         = 5.5;
+const SEG_DIST            = 12;
+const INIT_LEN            = 10;
+const GROW_PER_ORB        = 3;
+const BOT_COUNT           = 8;
+const VIEW_RADIUS_SQ      = 1500 * 1500;
 
-const OWNER_SKINS = [
+const OWNER_SKINS = new Set([
   'rainbow_god','void_lord','galaxy_emperor','neon_death','chrome_divine',
-  'z3n0_exclusive','death_god','cosmos','blood_moon','electric_god',
-  'shadow_reaper','golden_titan','void_walker','cosmic_serpent','divine_light'
-];
+  'z3n0_exclusive','death_god','cosmos','blood_moon','electric_god'
+]);
 
 // ============================================================
-//  PLAYER DATABASE — persists across sessions by name (in-memory)
-//  In production, replace with a real DB or file-based store.
+//  PLAYER DB  (keyed by playfabId OR "name:lowercasename")
 // ============================================================
 const playerDB = {};
 
-function getOrCreateProfile(name) {
-  const key = name.toLowerCase().trim();
+function getProfile(playfabId, name) {
+  const key = playfabId || ('name:' + (name || '').toLowerCase().trim());
   if (!playerDB[key]) {
     playerDB[key] = {
-      name,
-      coins: 0,
-      totalScore: 0,
-      totalKills: 0,
-      gamesPlayed: 0,
-      highScore: 0,
+      id: key, name: name || 'Snake',
+      coins: 0, totalScore: 0, totalKills: 0,
+      gamesPlayed: 0, highScore: 0,
       unlockedCosmetics: ['title_rookie'],
-      equippedTrail: null,
-      equippedTitle: '[ROOKIE]',
-      equippedBadge: null,
-      firstSeen: Date.now(),
-      lastSeen: Date.now()
+      equippedTrail: null, equippedTitle: null, equippedBadge: null,
+      firstSeen: Date.now(), lastSeen: Date.now(),
+      isPlayFab: !!(playfabId && !playfabId.startsWith('name:')),
     };
   }
-  playerDB[key].lastSeen = Date.now();
-  return playerDB[key];
+  const p = playerDB[key];
+  p.lastSeen = Date.now();
+  if (name && p.name !== name) p.name = name;
+  return p;
 }
 
 // ============================================================
-//  FULL COSMETICS CATALOG — every cosmetic
+//  COSMETICS
 // ============================================================
 const COSMETICS = {
-  // ── TRAILS ────────────────────────────────────────────────
-  trail_fire:       { id:'trail_fire',       type:'trail',  name:'Fire Trail',        price:100,  emoji:'🔥', color:'#ff4400' },
-  trail_ice:        { id:'trail_ice',        type:'trail',  name:'Ice Trail',          price:100,  emoji:'❄️', color:'#00ccff' },
-  trail_gold:       { id:'trail_gold',       type:'trail',  name:'Gold Trail',         price:200,  emoji:'⭐', color:'#ffd700' },
-  trail_rainbow:    { id:'trail_rainbow',    type:'trail',  name:'Rainbow Trail',      price:500,  emoji:'🌈', color:'rainbow' },
-  trail_void:       { id:'trail_void',       type:'trail',  name:'Void Trail',         price:300,  emoji:'🌑', color:'#aa00ff' },
-  trail_electric:   { id:'trail_electric',   type:'trail',  name:'Electric Trail',     price:250,  emoji:'⚡', color:'#00ffff' },
-  trail_toxic:      { id:'trail_toxic',      type:'trail',  name:'Toxic Trail',        price:150,  emoji:'☣️', color:'#88ff00' },
-  trail_blood:      { id:'trail_blood',      type:'trail',  name:'Blood Trail',        price:350,  emoji:'🩸', color:'#cc0000' },
-  trail_galaxy:     { id:'trail_galaxy',     type:'trail',  name:'Galaxy Trail',       price:450,  emoji:'🌌', color:'#4488ff' },
-  trail_sakura:     { id:'trail_sakura',     type:'trail',  name:'Sakura Trail',       price:200,  emoji:'🌸', color:'#ff88cc' },
-  trail_shadow:     { id:'trail_shadow',     type:'trail',  name:'Shadow Trail',       price:300,  emoji:'👤', color:'#220044' },
-  trail_crystal:    { id:'trail_crystal',    type:'trail',  name:'Crystal Trail',      price:400,  emoji:'💎', color:'#88eeff' },
-  trail_lava:       { id:'trail_lava',       type:'trail',  name:'Lava Trail',         price:275,  emoji:'🌋', color:'#ff4400' },
-  trail_neon:       { id:'trail_neon',       type:'trail',  name:'Neon Trail',         price:325,  emoji:'🎆', color:'#ff00ff' },
-  trail_ocean:      { id:'trail_ocean',      type:'trail',  name:'Ocean Trail',        price:175,  emoji:'🌊', color:'#0088ff' },
-  trail_storm:      { id:'trail_storm',      type:'trail',  name:'Storm Trail',        price:380,  emoji:'⛈️', color:'#aaaaff' },
-  trail_dark_matter:{ id:'trail_dark_matter',type:'trail',  name:'Dark Matter Trail',  price:600,  emoji:'🕳️', color:'#110011' },
-  trail_hologram:   { id:'trail_hologram',   type:'trail',  name:'Hologram Trail',     price:550,  emoji:'🔮', color:'#44ffff' },
-  trail_supernova:  { id:'trail_supernova',  type:'trail',  name:'Supernova Trail',    price:750,  emoji:'💫', color:'#ffff00' },
-
-  // ── TITLES ────────────────────────────────────────────────
-  title_rookie:     { id:'title_rookie',     type:'title',  name:'Rookie',             price:0,    emoji:'🐍', text:'[ROOKIE]' },
-  title_hunter:     { id:'title_hunter',     type:'title',  name:'Hunter',             price:150,  emoji:'🏹', text:'[HUNTER]' },
-  title_legend:     { id:'title_legend',     type:'title',  name:'Legend',             price:400,  emoji:'🏆', text:'[LEGEND]' },
-  title_shadow:     { id:'title_shadow',     type:'title',  name:'Shadow',             price:300,  emoji:'🌑', text:'[SHADOW]' },
-  title_god:        { id:'title_god',        type:'title',  name:'God',                price:999,  emoji:'⚡', text:'[GOD]' },
-  title_destroyer:  { id:'title_destroyer',  type:'title',  name:'Destroyer',          price:600,  emoji:'💀', text:'[DESTROYER]' },
-  title_ghost:      { id:'title_ghost',      type:'title',  name:'Ghost',              price:250,  emoji:'👻', text:'[GHOST]' },
-  title_king:       { id:'title_king',       type:'title',  name:'King',               price:800,  emoji:'👑', text:'[KING]' },
-  title_demon:      { id:'title_demon',      type:'title',  name:'Demon',              price:500,  emoji:'😈', text:'[DEMON]' },
-  title_viper:      { id:'title_viper',      type:'title',  name:'Viper',              price:200,  emoji:'🐍', text:'[VIPER]' },
-  title_void:       { id:'title_void',       type:'title',  name:'Void Walker',        price:700,  emoji:'🕳️', text:'[VOID]' },
-  title_titan:      { id:'title_titan',      type:'title',  name:'Titan',              price:850,  emoji:'🏔️', text:'[TITAN]' },
-  title_ninja:      { id:'title_ninja',      type:'title',  name:'Ninja',              price:350,  emoji:'🥷', text:'[NINJA]' },
-  title_omega:      { id:'title_omega',      type:'title',  name:'Omega',              price:950,  emoji:'Ω',  text:'[OMEGA]' },
-  title_rookie2:    { id:'title_rookie2',    type:'title',  name:'Serpent',            price:50,   emoji:'🐉', text:'[SERPENT]' },
-
-  // ── BADGES ────────────────────────────────────────────────
-  badge_skull:      { id:'badge_skull',      type:'badge',  name:'Skull Badge',        price:200,  emoji:'💀' },
-  badge_star:       { id:'badge_star',       type:'badge',  name:'Star Badge',         price:150,  emoji:'⭐' },
-  badge_dragon:     { id:'badge_dragon',     type:'badge',  name:'Dragon Badge',       price:350,  emoji:'🐉' },
-  badge_crown:      { id:'badge_crown',      type:'badge',  name:'Crown Badge',        price:500,  emoji:'👑' },
-  badge_fire:       { id:'badge_fire',       type:'badge',  name:'Fire Badge',         price:180,  emoji:'🔥' },
-  badge_lightning:  { id:'badge_lightning',  type:'badge',  name:'Lightning Badge',    price:220,  emoji:'⚡' },
-  badge_diamond:    { id:'badge_diamond',    type:'badge',  name:'Diamond Badge',      price:600,  emoji:'💎' },
-  badge_moon:       { id:'badge_moon',       type:'badge',  name:'Moon Badge',         price:250,  emoji:'🌙' },
-  badge_snake:      { id:'badge_snake',      type:'badge',  name:'Snake Badge',        price:100,  emoji:'🐍' },
-  badge_sword:      { id:'badge_sword',      type:'badge',  name:'Sword Badge',        price:300,  emoji:'⚔️' },
-  badge_alien:      { id:'badge_alien',      type:'badge',  name:'Alien Badge',        price:400,  emoji:'👽' },
-  badge_robot:      { id:'badge_robot',      type:'badge',  name:'Robot Badge',        price:350,  emoji:'🤖' },
-  badge_bomb:       { id:'badge_bomb',       type:'badge',  name:'Bomb Badge',         price:275,  emoji:'💣' },
-  badge_gem:        { id:'badge_gem',        type:'badge',  name:'Gem Badge',          price:450,  emoji:'💠' },
-  badge_infinity:   { id:'badge_infinity',   type:'badge',  name:'Infinity Badge',     price:700,  emoji:'♾️' },
-
-  // ── OWNER EXCLUSIVES ──────────────────────────────────────
-  owner_aura:       { id:'owner_aura',       type:'owner',  name:'Z3N0 Aura',          price:-1,   emoji:'✨', ownerOnly:true, color:'#ffd700' },
-  owner_trail:      { id:'owner_trail',      type:'owner',  name:'Z3N0 Trail',         price:-1,   emoji:'👑', ownerOnly:true, color:'#ffd700' },
-  owner_title:      { id:'owner_title',      type:'owner',  name:'[Z3N0] Title',       price:-1,   emoji:'👑', ownerOnly:true, text:'[Z3N0]' },
-  owner_explode:    { id:'owner_explode',    type:'owner',  name:'Death Explosion',    price:-1,   emoji:'💥', ownerOnly:true },
-  owner_god_trail:  { id:'owner_god_trail',  type:'owner',  name:'God Trail',          price:-1,   emoji:'🌟', ownerOnly:true, color:'#ffffff' },
-  owner_supreme:    { id:'owner_supreme',    type:'owner',  name:'[SUPREME] Title',    price:-1,   emoji:'🔱', ownerOnly:true, text:'[SUPREME]' },
-  owner_creator:    { id:'owner_creator',    type:'owner',  name:'[CREATOR] Title',    price:-1,   emoji:'🌌', ownerOnly:true, text:'[CREATOR]' },
-  owner_galaxy_trail:{ id:'owner_galaxy_trail',type:'owner',name:'Galaxy God Trail',   price:-1,   emoji:'🌌', ownerOnly:true, color:'#4444ff' },
-  owner_rainbow_aura:{ id:'owner_rainbow_aura',type:'owner',name:'Rainbow Aura',       price:-1,   emoji:'🌈', ownerOnly:true, color:'rainbow' },
-  owner_black_hole: { id:'owner_black_hole', type:'owner',  name:'Black Hole Trail',   price:-1,   emoji:'🕳️', ownerOnly:true, color:'#000000' },
-  owner_divine_badge:{ id:'owner_divine_badge',type:'owner',name:'Divine Badge',       price:-1,   emoji:'🔱', ownerOnly:true },
-  owner_death_badge:{ id:'owner_death_badge',type:'owner',  name:'Death God Badge',    price:-1,   emoji:'☠️', ownerOnly:true },
+  trail_fire:     { id:'trail_fire',     type:'trail', name:'Fire Trail',     price:100, emoji:'🔥' },
+  trail_ice:      { id:'trail_ice',      type:'trail', name:'Ice Trail',      price:100, emoji:'❄️' },
+  trail_gold:     { id:'trail_gold',     type:'trail', name:'Gold Trail',     price:200, emoji:'⭐' },
+  trail_rainbow:  { id:'trail_rainbow',  type:'trail', name:'Rainbow Trail',  price:500, emoji:'🌈' },
+  trail_void:     { id:'trail_void',     type:'trail', name:'Void Trail',     price:300, emoji:'🌑' },
+  trail_electric: { id:'trail_electric', type:'trail', name:'Electric Trail', price:250, emoji:'⚡' },
+  title_rookie:   { id:'title_rookie',   type:'title', name:'Rookie',         price:0,   emoji:'🐍', text:'[ROOKIE]' },
+  title_hunter:   { id:'title_hunter',   type:'title', name:'Hunter',         price:150, emoji:'🏹', text:'[HUNTER]' },
+  title_legend:   { id:'title_legend',   type:'title', name:'Legend',         price:400, emoji:'🏆', text:'[LEGEND]' },
+  title_shadow:   { id:'title_shadow',   type:'title', name:'Shadow',         price:300, emoji:'🌑', text:'[SHADOW]' },
+  title_god:      { id:'title_god',      type:'title', name:'God',            price:999, emoji:'⚡', text:'[GOD]' },
+  badge_skull:    { id:'badge_skull',    type:'badge', name:'Skull Badge',    price:200, emoji:'💀' },
+  badge_star:     { id:'badge_star',     type:'badge', name:'Star Badge',     price:150, emoji:'⭐' },
+  badge_dragon:   { id:'badge_dragon',   type:'badge', name:'Dragon Badge',   price:350, emoji:'🐉' },
+  badge_crown:    { id:'badge_crown',    type:'badge', name:'Crown Badge',    price:500, emoji:'👑' },
+  owner_aura:     { id:'owner_aura',     type:'owner', name:'Z3N0 Aura',      price:-1,  emoji:'✨', ownerOnly:true },
+  owner_trail:    { id:'owner_trail',    type:'owner', name:'Z3N0 Trail',     price:-1,  emoji:'👑', ownerOnly:true },
+  owner_title:    { id:'owner_title',    type:'owner', name:'[Z3N0]',         price:-1,  emoji:'👑', ownerOnly:true, text:'[Z3N0]' },
+  owner_explode:  { id:'owner_explode',  type:'owner', name:'Death Explosion',price:-1,  emoji:'💥', ownerOnly:true },
 };
 
 // ============================================================
 //  GAME STATE
 // ============================================================
 let players = {};
-let orbs = {};
+let orbs    = {};
 let activeEvent = null;
 let leaderboard = [];
 
-function createOrb(id) {
-  const colors = ['#ff2244','#ff6600','#ffdd00','#44ff22','#00ccff','#aa44ff','#ff44aa','#00ffcc','#ff9900','#ffffff','#ff88ff','#44ffff'];
+// ============================================================
+//  ORBS
+// ============================================================
+const ORB_COLORS = ['#ff2244','#ff6600','#ffdd00','#44ff22','#00ccff','#aa44ff','#ff44aa','#00ffcc','#ff9900','#ffffff'];
+
+function mkOrb() {
   return {
-    id: id || uuidv4(),
+    id: uuidv4(),
     x: Math.random() * MAP_SIZE,
     y: Math.random() * MAP_SIZE,
-    color: colors[Math.floor(Math.random() * colors.length)],
+    color: ORB_COLORS[Math.random() * ORB_COLORS.length | 0],
     size: Math.random() * 6 + 4,
-    value: Math.floor(Math.random() * 3) + 1
+    value: (Math.random() * 3 | 0) + 1,
   };
 }
 
-function initOrbs() {
-  for (let i = 0; i < ORB_COUNT; i++) {
-    const orb = createOrb();
-    orbs[orb.id] = orb;
+for (let i = 0; i < ORB_COUNT; i++) { const o = mkOrb(); orbs[o.id] = o; }
+
+function mkSegs(x, y, len) {
+  const a = [];
+  for (let i = 0; i < len; i++) a.push({ x: x - i * SEG_DIST, y });
+  return a;
+}
+
+function dsq(a, b) { const dx = a.x-b.x, dy = a.y-b.y; return dx*dx+dy*dy; }
+
+// ============================================================
+//  AI BOTS
+// ============================================================
+const BOT_NAMES = ['Slinky','Viper','NightCrawler','Zapper','Coil','Fang','Serpentine','Nexus'];
+const BOT_SKINS = ['fire','ice','toxic','gold','midnight','sunset','ocean','lava'];
+
+function mkBot(i) {
+  const x = Math.random()*(MAP_SIZE-600)+300, y = Math.random()*(MAP_SIZE-600)+300;
+  return {
+    id: 'bot_' + uuidv4(), socketId: null, isBot: true,
+    name: BOT_NAMES[i % BOT_NAMES.length],
+    skin: BOT_SKINS[i % BOT_SKINS.length],
+    grantedSkin: null, playfabId: null,
+    segments: mkSegs(x, y, INIT_LEN * 5),
+    angle: Math.random() * Math.PI * 2,
+    speed: SNAKE_SPEED, boosting: false,
+    growBuffer: 0, score: 0, sessionCoins: 0, kills: 0,
+    width: 8, dead: false, alive: true,
+    isOwner: false, effect: null,
+    equippedTrail: null, equippedTitle: '[BOT]', equippedBadge: '🤖',
+    unlockedCosmetics: [],
+    // AI state
+    _turnTimer: 0, _boostTimer: 0, _wanderAngle: Math.random()*Math.PI*2,
+  };
+}
+
+function lerpAngle(a, b, t) {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI*2;
+  while (d < -Math.PI) d += Math.PI*2;
+  return a + d * t;
+}
+
+function tickBot(bot) {
+  const h = bot.segments[0];
+  bot._turnTimer--;
+  bot._boostTimer--;
+
+  // Wall avoidance (hard override)
+  const M = 350;
+  if (h.x < M)            { bot.angle = lerpAngle(bot.angle, 0, 0.25);          }
+  else if (h.x > MAP_SIZE-M){ bot.angle = lerpAngle(bot.angle, Math.PI, 0.25);  }
+  if (h.y < M)            { bot.angle = lerpAngle(bot.angle, Math.PI/2, 0.25);  }
+  else if (h.y > MAP_SIZE-M){ bot.angle = lerpAngle(bot.angle, -Math.PI/2, 0.25);}
+
+  // Seek nearest orb
+  let nearOrb = null, nearD = 500*500;
+  for (const oid in orbs) {
+    const o = orbs[oid], d = dsq(h, o);
+    if (d < nearD) { nearD = d; nearOrb = o; }
+  }
+  if (nearOrb) {
+    bot.angle = lerpAngle(bot.angle, Math.atan2(nearOrb.y-h.y, nearOrb.x-h.x), 0.12);
+  } else {
+    if (bot._turnTimer <= 0) {
+      bot._wanderAngle += (Math.random()-0.5)*1.4;
+      bot._turnTimer = 40 + Math.random()*80 | 0;
+    }
+    bot.angle = lerpAngle(bot.angle, bot._wanderAngle, 0.08);
+  }
+
+  // Dodge other heads
+  for (const pid in players) {
+    const o = players[pid];
+    if (o.id === bot.id || o.dead || !o.segments) continue;
+    if (dsq(h, o.segments[0]) < 140*140) {
+      bot.angle = lerpAngle(bot.angle, Math.atan2(h.y-o.segments[0].y, h.x-o.segments[0].x), 0.3);
+      break;
+    }
+  }
+
+  if (bot._boostTimer <= 0) {
+    bot.boosting = Math.random() < 0.15;
+    bot._boostTimer = 30 + Math.random()*50 | 0;
   }
 }
-initOrbs();
 
-function createSegments(x, y, length) {
-  const segs = [];
-  for (let i = 0; i < length; i++) segs.push({ x: x - i * SEGMENT_DISTANCE, y });
-  return segs;
+function respawnBot(bot) {
+  const x = Math.random()*(MAP_SIZE-600)+300, y = Math.random()*(MAP_SIZE-600)+300;
+  bot.segments = mkSegs(x, y, INIT_LEN * 5);
+  bot.angle = Math.random()*Math.PI*2;
+  bot.dead = false; bot.alive = true;
+  bot.score = 0; bot.sessionCoins = 0;
+  bot.growBuffer = 0; bot.width = 8; bot.boosting = false;
 }
 
-function dist(a, b) {
-  const dx = a.x - b.x, dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
-}
+for (let i = 0; i < BOT_COUNT; i++) { const b = mkBot(i); players[b.id] = b; }
 
-function getSnakeHead(p) { return p.segments[0]; }
+// ============================================================
+//  KILL
+// ============================================================
+function killPlayer(player, killer) {
+  if (player.dead) return;
+  player.dead = true;
+
+  if (!player.isBot && player.socketId) {
+    const pr = getProfile(player.playfabId, player.name);
+    pr.totalScore += player.score;
+    pr.coins      += player.sessionCoins;
+    pr.gamesPlayed++;
+    if (player.score > pr.highScore) pr.highScore = player.score;
+  }
+
+  // Drop orbs
+  const dropN = Math.min(Math.floor(player.segments.length / 3), 60);
+  const dropped = [];
+  for (let i = 0; i < dropN; i++) {
+    const seg = player.segments[Math.random() * player.segments.length | 0];
+    const o = mkOrb();
+    o.x = seg.x + (Math.random()-0.5)*60;
+    o.y = seg.y + (Math.random()-0.5)*60;
+    o.size = 10; o.value = 2;
+    orbs[o.id] = o;
+    dropped.push(o);
+  }
+
+  io.emit('playerDied', { id: player.id, killerName: killer ? killer.name : 'the wall', droppedOrbs: dropped });
+
+  if (killer) {
+    killer.score        += Math.floor(player.score * 0.3);
+    killer.sessionCoins += Math.floor(player.score * 0.3);
+    killer.kills = (killer.kills || 0) + 1;
+    if (!killer.isBot) getProfile(killer.playfabId, killer.name).totalKills++;
+    if (killer.socketId) io.to(killer.socketId).emit('killConfirmed', { victimName: player.name });
+  }
+
+  if (!player.isBot && player.socketId) {
+    io.to(player.socketId).emit('youDied', {
+      killerName: killer ? killer.name : 'the wall',
+      coinsEarned: player.sessionCoins,
+    });
+    setTimeout(() => { delete players[player.id]; io.emit('playerLeft', player.id); }, 1000);
+  } else if (player.isBot) {
+    setTimeout(() => respawnBot(player), 3000 + Math.random()*2000);
+  }
+}
 
 // ============================================================
 //  COLLISION
 // ============================================================
 function checkCollisions() {
-  const pArr = Object.values(players);
-  for (const p of pArr) {
-    if (p.dead || !p.alive) continue;
-    const head = getSnakeHead(p);
+  const arr = Object.values(players);
+  for (const p of arr) {
+    if (p.dead) continue;
+    const h = p.segments[0];
 
-    // Border collision
-    if (head.x < 0 || head.x > MAP_SIZE || head.y < 0 || head.y > MAP_SIZE) {
-      killPlayer(p, null);
-      continue;
-    }
+    // Wall
+    if (h.x < 0 || h.x > MAP_SIZE || h.y < 0 || h.y > MAP_SIZE) { killPlayer(p, null); continue; }
 
-    // Orb collision
+    // Orbs
     for (const oid in orbs) {
-      const orb = orbs[oid];
-      if (dist(head, orb) < p.width + orb.size) {
-        p.growBuffer += GROW_PER_ORB * orb.value;
-        p.score += orb.value;
-        p.sessionCoins += orb.value;
+      const o = orbs[oid];
+      const r = p.width + o.size;
+      if (dsq(h, o) < r*r) {
+        p.growBuffer    += GROW_PER_ORB * o.value;
+        p.score         += o.value;
+        p.sessionCoins  += o.value;
         delete orbs[oid];
-        const newOrb = createOrb();
-        orbs[newOrb.id] = newOrb;
-        io.emit('orbEaten', { oid, newOrb });
+        const neo = mkOrb(); orbs[neo.id] = neo;
+        io.emit('orbEaten', { oid, newOrb: neo });
         break;
       }
     }
+    if (p.dead) continue;
 
-    // Snake collision
-    for (const other of pArr) {
+    // Snake vs snake
+    for (const other of arr) {
       if (other.id === p.id || other.dead) continue;
-
-      // Body collision (skip first 3 segs to prevent false positives)
-      for (let si = 3; si < other.segments.length; si++) {
-        if (dist(head, other.segments[si]) < p.width + other.width - 4) {
-          killPlayer(p, other);
-          break;
-        }
+      const segs = other.segments;
+      // Body collision — check every 2nd segment for perf, always check first 5
+      for (let si = 3; si < segs.length; si += (si < 20 ? 1 : 2)) {
+        const r = p.width + other.width - 4;
+        if (dsq(h, segs[si]) < r*r) { killPlayer(p, other); break; }
       }
       if (p.dead) break;
-
-      // Head-on collision (smaller snake dies)
+      // Head-on-head (smaller or equal loses)
       if (p.segments.length <= other.segments.length) {
-        if (dist(head, getSnakeHead(other)) < p.width + other.width) {
-          killPlayer(p, other);
-          break;
-        }
+        const r = p.width + other.width;
+        if (dsq(h, segs[0]) < r*r) { killPlayer(p, other); break; }
       }
     }
   }
-}
-
-function killPlayer(player, killer) {
-  if (player.dead) return;
-  player.dead = true;
-
-  const profile = getOrCreateProfile(player.name);
-  profile.totalScore += player.score;
-  const earnedCoins = player.sessionCoins;
-  profile.coins += earnedCoins;
-  profile.gamesPlayed++;
-  if (player.score > profile.highScore) profile.highScore = player.score;
-
-  // Drop orbs from body
-  const dropCount = Math.min(Math.floor(player.segments.length / 2), 100);
-  const droppedOrbs = [];
-  for (let i = 0; i < dropCount; i++) {
-    const seg = player.segments[Math.floor(Math.random() * player.segments.length)];
-    const orb = createOrb();
-    orb.x = seg.x + (Math.random() - 0.5) * 60;
-    orb.y = seg.y + (Math.random() - 0.5) * 60;
-    orb.size = 10;
-    orb.value = 2;
-    orbs[orb.id] = orb;
-    droppedOrbs.push(orb);
-  }
-
-  io.emit('playerDied', { id: player.id, killerName: killer ? killer.name : 'the void', droppedOrbs });
-
-  if (killer) {
-    const killBonus = Math.floor(player.score * 0.3) + 10;
-    killer.score += killBonus;
-    killer.sessionCoins += killBonus;
-    killer.kills = (killer.kills || 0) + 1;
-    getOrCreateProfile(killer.name).totalKills++;
-    io.to(killer.socketId).emit('killConfirmed', { victimName: player.name });
-  }
-
-  io.to(player.socketId).emit('youDied', {
-    killerName: killer ? killer.name : 'the wall',
-    coinsEarned: earnedCoins
-  });
-
-  // Persist the session coins now (already added above)
-  player.sessionCoins = 0;
-
-  setTimeout(() => {
-    delete players[player.id];
-    io.emit('playerLeft', player.id);
-  }, 1000);
 }
 
 // ============================================================
@@ -286,141 +311,112 @@ function gameTick() {
   for (const pid in players) {
     const p = players[pid];
     if (p.dead || !p.alive) continue;
+    if (p.isBot) tickBot(p);
 
-    const speed = p.boosting ? BOOST_SPEED : SNAKE_SPEED;
-    const head = p.segments[0];
-    p.segments.unshift({
-      x: head.x + Math.cos(p.angle) * speed,
-      y: head.y + Math.sin(p.angle) * speed
-    });
+    const spd = p.boosting ? BOOST_SPEED : (p.speed || SNAKE_SPEED);
+    const h = p.segments[0];
+    p.segments.unshift({ x: h.x + Math.cos(p.angle)*spd, y: h.y + Math.sin(p.angle)*spd });
 
     if (p.growBuffer > 0) p.growBuffer--;
     else p.segments.pop();
 
-    p.width = Math.max(6, Math.min(26, 6 + p.segments.length * 0.03));
+    p.width = Math.max(6, Math.min(24, 6 + p.segments.length * 0.03));
 
-    // Boosting drops orbs from tail
-    if (p.boosting && p.segments.length > INITIAL_LENGTH * SEGMENT_DISTANCE) {
-      if (Math.random() < 0.3) {
-        const tail = p.segments[p.segments.length - 1];
-        const orb = createOrb();
-        orb.x = tail.x;
-        orb.y = tail.y;
-        orb.size = 8;
-        orb.value = 1;
-        orbs[orb.id] = orb;
-        p.segments.pop();
-        io.emit('orbSpawned', orb);
-      }
+    // Boost sheds orbs
+    if (p.boosting && p.segments.length > INIT_LEN * SEG_DIST && Math.random() < 0.25) {
+      const tail = p.segments[p.segments.length - 1];
+      const o = mkOrb(); o.x = tail.x; o.y = tail.y; o.size = 7; o.value = 1;
+      orbs[o.id] = o; p.segments.pop();
     }
   }
   checkCollisions();
-  updateLeaderboard();
-}
 
-function updateLeaderboard() {
+  // Update leaderboard
   leaderboard = Object.values(players)
     .filter(p => !p.dead)
     .sort((a, b) => b.segments.length - a.segments.length)
     .slice(0, 10)
     .map(p => ({
-      name: p.name, length: p.segments.length, score: p.score,
-      skin: p.skin, isOwner: p.isOwner, id: p.id,
-      equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge
+      id: p.id, name: p.name, length: p.segments.length, score: p.score,
+      skin: p.skin, isOwner: p.isOwner, isBot: p.isBot || false,
+      equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge,
     }));
 }
 
-setInterval(gameTick, TICK_RATE);
+setInterval(gameTick, TICK_MS);
 
-// STATE BROADCAST — segment culling for performance
+// ============================================================
+//  STATE BROADCAST  (per-player, spatial culled)
+// ============================================================
+function buildState(p) {
+  let segs = p.segments;
+  if (segs.length > 120) segs = segs.filter((_, i) => i < 25 || i % 2 === 0);
+  return {
+    segments: segs, angle: p.angle,
+    skin: p.skin, grantedSkin: p.grantedSkin || null,
+    name: p.name, width: p.width, boosting: p.boosting,
+    isOwner: p.isOwner, isBot: p.isBot || false,
+    equippedTrail: p.equippedTrail || null,
+    equippedTitle: p.equippedTitle || null,
+    equippedBadge: p.equippedBadge || null,
+    sessionCoins: p.sessionCoins,
+  };
+}
+
 setInterval(() => {
-  if (Object.keys(players).length === 0) return;
-  const state = {};
+  const alive = Object.values(players).filter(p => !p.dead);
   for (const pid in players) {
-    const p = players[pid];
-    if (p.dead) continue;
-    let segs = p.segments;
-    // Cull distant segments for large snakes
-    if (segs.length > 200) segs = segs.filter((_, i) => i < 20 || i % 2 === 0);
-    state[pid] = {
-      segments: segs, angle: p.angle, skin: p.skin, name: p.name,
-      width: p.width, boosting: p.boosting, isOwner: p.isOwner,
-      grantedSkin: p.grantedSkin, effect: p.effect || null,
-      equippedTrail: p.equippedTrail || null,
-      equippedTitle: p.equippedTitle || null,
-      equippedBadge: p.equippedBadge || null,
-      sessionCoins: p.sessionCoins
-    };
+    const me = players[pid];
+    if (me.isBot || !me.socketId || me.dead) continue;
+    const mh = me.segments[0];
+    const state = {};
+    for (const p of alive) {
+      if (p.id === me.id || dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ)
+        state[p.id] = buildState(p);
+    }
+    io.to(me.socketId).emit('gameState', { players: state, leaderboard, activeEvent });
   }
-  io.emit('gameState', { players: state, leaderboard, activeEvent });
-}, TICK_RATE);
+}, BROADCAST_MS);
 
 // ============================================================
-//  SOCKET HANDLERS
+//  SOCKET IO
 // ============================================================
-io.on('connection', (socket) => {
+io.on('connection', socket => {
 
-  socket.on('joinGame', ({ name, skin, password, playfabId, playfabToken }) => {
-    const trimmedName = (name || 'Snake').trim().slice(0, 20);
+  socket.on('joinGame', ({ name, skin, password, playfabId }) => {
     const isOwner = password === OWNER_PASSWORD;
-
-    // Validate skin — block owner-only skins for non-owners
-    const actualSkin = isOwner ? skin : (OWNER_SKINS.includes(skin) ? 'classic' : skin);
-
-    const startX = Math.random() * (MAP_SIZE - 500) + 250;
-    const startY = Math.random() * (MAP_SIZE - 500) + 250;
-    const profile = getOrCreateProfile(trimmedName);
-
-    // Owner gets all cosmetics automatically
-    const unlockedCosmetics = isOwner
-      ? Object.keys(COSMETICS)
-      : [...profile.unlockedCosmetics];
+    const safeSkin = isOwner ? skin : (OWNER_SKINS.has(skin) ? 'classic' : skin);
+    const x = Math.random()*(MAP_SIZE-600)+300, y = Math.random()*(MAP_SIZE-600)+300;
+    const pr = getProfile(playfabId || null, name);
 
     const player = {
-      id: uuidv4(),
-      socketId: socket.id,
-      name: trimmedName,
-      skin: actualSkin,
-      grantedSkin: null,
-      segments: createSegments(startX, startY, INITIAL_LENGTH),
-      angle: 0,
-      speed: SNAKE_SPEED,
-      boosting: false,
-      growBuffer: 0,
-      score: 0,
-      sessionCoins: 0,
-      kills: 0,
-      width: 8,
-      dead: false,
-      alive: true,
-      isOwner,
-      effect: null,
-      equippedTrail: isOwner ? (profile.equippedTrail || 'owner_trail') : profile.equippedTrail,
-      equippedTitle: isOwner ? '[Z3N0]' : (profile.equippedTitle || '[ROOKIE]'),
-      equippedBadge: isOwner ? '🔱' : profile.equippedBadge,
-      unlockedCosmetics
+      id: uuidv4(), socketId: socket.id, isBot: false,
+      name: name || 'Snake', skin: safeSkin, grantedSkin: null,
+      playfabId: playfabId || null,
+      segments: mkSegs(x, y, INIT_LEN),
+      angle: 0, speed: SNAKE_SPEED, boosting: false,
+      growBuffer: 0, score: 0, sessionCoins: 0, kills: 0,
+      width: 8, dead: false, alive: true, isOwner, effect: null,
+      equippedTrail: pr.equippedTrail,
+      equippedTitle: isOwner ? '[Z3N0]' : pr.equippedTitle,
+      equippedBadge: isOwner ? '👑' : pr.equippedBadge,
+      unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...pr.unlockedCosmetics],
     };
 
     players[player.id] = player;
     socket.playerId = player.id;
 
     socket.emit('joined', {
-      playerId: player.id,
-      isOwner,
-      mapSize: MAP_SIZE,
+      playerId: player.id, isOwner, mapSize: MAP_SIZE,
       orbs: Object.values(orbs),
       profile: {
-        coins: profile.coins,
-        totalScore: profile.totalScore,
-        totalKills: profile.totalKills,
-        gamesPlayed: profile.gamesPlayed,
-        highScore: profile.highScore,
+        coins: pr.coins, totalScore: pr.totalScore, totalKills: pr.totalKills,
+        gamesPlayed: pr.gamesPlayed, highScore: pr.highScore,
         unlockedCosmetics: player.unlockedCosmetics,
-        equippedTrail: player.equippedTrail,
-        equippedTitle: player.equippedTitle,
-        equippedBadge: player.equippedBadge
+        equippedTrail: player.equippedTrail, equippedTitle: player.equippedTitle,
+        equippedBadge: player.equippedBadge, isLegacyAccount: !playfabId,
       },
-      cosmeticsCatalog: COSMETICS
+      cosmeticsCatalog: COSMETICS,
     });
 
     io.emit('playerJoined', { id: player.id, name: player.name, isOwner });
@@ -429,219 +425,108 @@ io.on('connection', (socket) => {
   socket.on('input', ({ angle, boosting }) => {
     const p = players[socket.playerId];
     if (!p || p.dead) return;
-    if (typeof angle === 'number' && isFinite(angle)) p.angle = angle;
-    p.boosting = !!boosting;
+    p.angle = angle; p.boosting = !!boosting;
   });
 
   socket.on('buyCosmetic', ({ cosmeticId }) => {
-    const p = players[socket.playerId];
-    if (!p) return;
-    const cosmetic = COSMETICS[cosmeticId];
-    if (!cosmetic || cosmetic.ownerOnly || cosmetic.price < 0) {
-      socket.emit('cosmeticError', 'Not available.');
-      return;
-    }
-    const profile = getOrCreateProfile(p.name);
-    if (profile.unlockedCosmetics.includes(cosmeticId)) {
-      socket.emit('cosmeticError', 'Already owned!');
-      return;
-    }
-    const totalCoins = profile.coins;
-    if (totalCoins < cosmetic.price) {
-      socket.emit('cosmeticError', `Need ${cosmetic.price} coins (you have ${totalCoins})`);
-      return;
-    }
-    profile.coins -= cosmetic.price;
-    profile.unlockedCosmetics.push(cosmeticId);
+    const p = players[socket.playerId]; if (!p) return;
+    const c = COSMETICS[cosmeticId];
+    if (!c || c.ownerOnly || c.price < 0) { socket.emit('cosmeticError','Not available.'); return; }
+    const pr = getProfile(p.playfabId, p.name);
+    if (pr.unlockedCosmetics.includes(cosmeticId)) { socket.emit('cosmeticError','Already owned!'); return; }
+    if (pr.coins < c.price) { socket.emit('cosmeticError',`Need ${c.price} coins (you have ${pr.coins})`); return; }
+    pr.coins -= c.price;
+    pr.unlockedCosmetics.push(cosmeticId);
     p.unlockedCosmetics.push(cosmeticId);
-    socket.emit('cosmeticBought', {
-      cosmeticId,
-      newCoinBalance: profile.coins,
-      unlockedCosmetics: profile.unlockedCosmetics
-    });
+    socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: pr.coins, unlockedCosmetics: pr.unlockedCosmetics });
   });
 
   socket.on('equipCosmetic', ({ cosmeticId }) => {
-    const p = players[socket.playerId];
-    if (!p) return;
-    const cosmetic = COSMETICS[cosmeticId];
-    if (!cosmetic) return;
-    if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId)) {
-      socket.emit('cosmeticError', "You don't own this!");
-      return;
-    }
-    const profile = getOrCreateProfile(p.name);
-    const t = cosmetic.type;
-
-    if (t === 'trail' || (t === 'owner' && cosmetic.color)) {
-      p.equippedTrail = cosmeticId;
-      profile.equippedTrail = cosmeticId;
-    } else if (t === 'title' || (t === 'owner' && cosmetic.text)) {
-      if (cosmetic.text) {
-        p.equippedTitle = cosmetic.text;
-        profile.equippedTitle = cosmetic.text;
-      }
-    } else if (t === 'badge' || (t === 'owner' && cosmetic.emoji && !cosmetic.text && !cosmetic.color)) {
-      p.equippedBadge = cosmetic.emoji;
-      profile.equippedBadge = cosmetic.emoji;
-    }
-
-    socket.emit('cosmeticEquipped', {
-      cosmeticId,
-      equippedTrail: p.equippedTrail,
-      equippedTitle: p.equippedTitle,
-      equippedBadge: p.equippedBadge
-    });
+    const p = players[socket.playerId]; if (!p) return;
+    const c = COSMETICS[cosmeticId]; if (!c) return;
+    if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId)) { socket.emit('cosmeticError','You don\'t own this!'); return; }
+    const pr = getProfile(p.playfabId, p.name);
+    const t = c.type;
+    if (t === 'trail') { p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId; }
+    else if (t === 'title' || t === 'owner') { if (c.text) { p.equippedTitle = c.text; pr.equippedTitle = c.text; } }
+    else if (t === 'badge') { p.equippedBadge = c.emoji; pr.equippedBadge = c.emoji; }
+    socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail:p.equippedTrail, equippedTitle:p.equippedTitle, equippedBadge:p.equippedBadge });
   });
 
   socket.on('unequipCosmetic', ({ slot }) => {
-    const p = players[socket.playerId];
-    if (!p || p.isOwner) return; // Owner always keeps their cosmetics
-    const profile = getOrCreateProfile(p.name);
-    if (slot === 'trail') { p.equippedTrail = null; profile.equippedTrail = null; }
-    if (slot === 'title') { p.equippedTitle = null; profile.equippedTitle = null; }
-    if (slot === 'badge') { p.equippedBadge = null; profile.equippedBadge = null; }
-    socket.emit('cosmeticEquipped', {
-      cosmeticId: null,
-      equippedTrail: p.equippedTrail,
-      equippedTitle: p.equippedTitle,
-      equippedBadge: p.equippedBadge
-    });
+    const p = players[socket.playerId]; if (!p) return;
+    const pr = getProfile(p.playfabId, p.name);
+    if (slot==='trail') { p.equippedTrail=null; pr.equippedTrail=null; }
+    if (slot==='title') { p.equippedTitle=null; pr.equippedTitle=null; }
+    if (slot==='badge') { p.equippedBadge=null; pr.equippedBadge=null; }
+    socket.emit('cosmeticEquipped', { cosmeticId:null, equippedTrail:p.equippedTrail, equippedTitle:p.equippedTitle, equippedBadge:p.equippedBadge });
   });
 
   socket.on('ownerAction', ({ action, targetId, value, password }) => {
-    if (password !== OWNER_PASSWORD) {
-      socket.emit('ownerError', 'Invalid password.');
-      return;
-    }
+    if (password !== OWNER_PASSWORD) { socket.emit('ownerError','Invalid password.'); return; }
     const target = targetId ? Object.values(players).find(p => p.id === targetId) : null;
 
     switch (action) {
       case 'kick':
-        if (target) {
-          io.to(target.socketId).emit('kicked', { reason: value || 'Kicked by Z3N0.' });
+        if (target && !target.isBot) {
+          io.to(target.socketId).emit('kicked', { reason: value || 'Kicked by owner.' });
           killPlayer(target, null);
-          setTimeout(() => {
-            const ts = io.sockets.sockets.get(target.socketId);
-            if (ts) ts.disconnect(true);
-          }, 500);
+          setTimeout(() => { const s = io.sockets.sockets.get(target.socketId); if(s) s.disconnect(true); }, 500);
           socket.emit('ownerSuccess', `Kicked ${target.name}`);
         } break;
-
       case 'instaKill':
-        if (target) {
-          killPlayer(target, null);
-          io.to(target.socketId).emit('systemMessage', '☠️ Eliminated by Z3N0');
-          socket.emit('ownerSuccess', `Killed ${target.name}`);
-        } break;
-
+        if (target) { killPlayer(target, null); if(target.socketId) io.to(target.socketId).emit('systemMessage','☠️ Eliminated by Z3N0'); socket.emit('ownerSuccess',`Killed ${target.name}`); } break;
       case 'giveSkin':
-        if (target) {
-          target.skin = value;
-          target.grantedSkin = value;
-          io.to(target.socketId).emit('skinGranted', { skin: value });
-          socket.emit('ownerSuccess', `Gave ${value} skin to ${target.name}`);
-        } break;
-
+        if (target) { target.skin = value; target.grantedSkin = value; if(target.socketId) io.to(target.socketId).emit('skinGranted',{skin:value}); socket.emit('ownerSuccess',`Gave skin to ${target.name}`); } break;
       case 'giveSize':
         if (target) {
-          const amount = parseInt(value) || 50;
-          const tail = target.segments[target.segments.length - 1];
-          for (let i = 0; i < amount * SEGMENT_DISTANCE; i++)
-            target.segments.push({ x: tail.x, y: tail.y });
-          target.score += amount * 10;
-          io.to(target.socketId).emit('systemMessage', `📏 Z3N0 granted you +${amount} size!`);
-          socket.emit('ownerSuccess', `Gave ${amount} size to ${target.name}`);
+          const n = parseInt(value) || 50, tail = target.segments[target.segments.length-1];
+          for (let i = 0; i < n * SEG_DIST; i++) target.segments.push({x:tail.x,y:tail.y});
+          target.score += n * 10;
+          if(target.socketId) io.to(target.socketId).emit('systemMessage',`📏 Z3N0 granted you +${n} size!`);
+          socket.emit('ownerSuccess',`Gave ${n} size to ${target.name}`);
         } break;
-
       case 'giveCoins':
-        if (target) {
-          const amount = parseInt(value) || 100;
-          const profile = getOrCreateProfile(target.name);
-          profile.coins += amount;
-          io.to(target.socketId).emit('coinsGranted', { amount, newBalance: profile.coins });
-          io.to(target.socketId).emit('systemMessage', `💰 Z3N0 granted you +${amount} coins!`);
-          socket.emit('ownerSuccess', `Gave ${amount} coins to ${target.name}`);
+        if (target && !target.isBot) {
+          const n = parseInt(value)||100, pr = getProfile(target.playfabId, target.name);
+          pr.coins += n;
+          if(target.socketId){ io.to(target.socketId).emit('coinsGranted',{amount:n,newBalance:pr.coins}); io.to(target.socketId).emit('systemMessage',`💰 Z3N0 gave you +${n} coins!`); }
+          socket.emit('ownerSuccess',`Gave ${n} coins to ${target.name}`);
         } break;
-
       case 'giveCosmetic':
-        if (target) {
-          const profile = getOrCreateProfile(target.name);
-          if (!profile.unlockedCosmetics.includes(value)) profile.unlockedCosmetics.push(value);
-          if (!target.unlockedCosmetics.includes(value)) target.unlockedCosmetics.push(value);
-          io.to(target.socketId).emit('cosmeticGranted', {
-            cosmeticId: value,
-            unlockedCosmetics: profile.unlockedCosmetics
-          });
-          io.to(target.socketId).emit('systemMessage', `🎨 Z3N0 granted you: ${COSMETICS[value]?.name || value}!`);
-          socket.emit('ownerSuccess', `Gave cosmetic to ${target.name}`);
+        if (target && !target.isBot) {
+          const pr = getProfile(target.playfabId, target.name);
+          if(!pr.unlockedCosmetics.includes(value)) pr.unlockedCosmetics.push(value);
+          if(!target.unlockedCosmetics.includes(value)) target.unlockedCosmetics.push(value);
+          if(target.socketId){ io.to(target.socketId).emit('cosmeticGranted',{cosmeticId:value,unlockedCosmetics:pr.unlockedCosmetics}); io.to(target.socketId).emit('systemMessage',`🎨 Z3N0 granted: ${COSMETICS[value]?.name||value}!`); }
+          socket.emit('ownerSuccess',`Granted cosmetic to ${target.name}`);
         } break;
-
       case 'swapSize': {
-        const p1 = Object.values(players).find(p => p.id === targetId);
-        const p2 = Object.values(players).find(p => p.id === value);
+        const p1 = Object.values(players).find(p=>p.id===targetId);
+        const p2 = Object.values(players).find(p=>p.id===value);
         if (p1 && p2) {
-          [p1.segments, p2.segments] = [p2.segments, p1.segments];
-          [p1.score, p2.score] = [p2.score, p1.score];
-          io.to(p1.socketId).emit('systemMessage', '🔄 Z3N0 swapped your size!');
-          io.to(p2.socketId).emit('systemMessage', '🔄 Z3N0 swapped your size!');
-          socket.emit('ownerSuccess', `Swapped ${p1.name} ↔ ${p2.name}`);
+          [p1.segments,p2.segments] = [p2.segments,p1.segments];
+          [p1.score,p2.score] = [p2.score,p1.score];
+          if(p1.socketId) io.to(p1.socketId).emit('systemMessage','🔄 Z3N0 swapped your size!');
+          if(p2.socketId) io.to(p2.socketId).emit('systemMessage','🔄 Z3N0 swapped your size!');
+          socket.emit('ownerSuccess',`Swapped ${p1.name} ↔ ${p2.name}`);
         } break;
       }
-
       case 'startEvent':
-        activeEvent = {
-          id: uuidv4(), type: value, name: getEventName(value),
-          startedAt: Date.now(), duration: 60000
-        };
-        applyEvent(activeEvent);
-        io.emit('liveEvent', activeEvent);
-        socket.emit('ownerSuccess', `Started event: ${activeEvent.name}`);
-        setTimeout(() => { activeEvent = null; resetEvent(); io.emit('eventEnded'); }, 60000);
+        activeEvent = { id:uuidv4(), type:value, name:eventName(value), startedAt:Date.now(), duration:60000 };
+        applyEvent(activeEvent); io.emit('liveEvent', activeEvent);
+        socket.emit('ownerSuccess',`Started: ${activeEvent.name}`);
+        setTimeout(() => { activeEvent=null; resetEvent(); io.emit('eventEnded'); }, 60000);
         break;
-
-      case 'endEvent':
-        activeEvent = null;
-        resetEvent();
-        io.emit('eventEnded');
-        socket.emit('ownerSuccess', 'Event ended.');
-        break;
-
-      case 'broadcast':
-        io.emit('ownerBroadcast', { message: value });
-        socket.emit('ownerSuccess', 'Broadcast sent!');
-        break;
-
-      case 'teleport':
-        if (target) {
-          const tx = parseInt(value) || MAP_SIZE / 2;
-          const ty = parseInt(targetId) || MAP_SIZE / 2;
-          const head = target.segments[0];
-          const dx = tx - head.x, dy = ty - head.y;
-          target.segments = target.segments.map(s => ({ x: s.x + dx, y: s.y + dy }));
-          socket.emit('ownerSuccess', `Teleported ${target.name}`);
-        } break;
-
-      case 'freezeAll':
-        Object.values(players).forEach(p => { if (!p.isOwner) p.frozen = true; });
-        setTimeout(() => Object.values(players).forEach(p => p.frozen = false), parseInt(value) * 1000 || 5000);
-        io.emit('systemMessage', '🧊 Z3N0 froze the realm!');
-        socket.emit('ownerSuccess', 'All players frozen!');
-        break;
-
+      case 'endEvent': activeEvent=null; resetEvent(); io.emit('eventEnded'); socket.emit('ownerSuccess','Event ended.'); break;
+      case 'broadcast': io.emit('ownerBroadcast',{message:value}); socket.emit('ownerSuccess','Broadcast sent!'); break;
       case 'getPlayers':
-        socket.emit('playerList', Object.values(players).filter(p => !p.dead).map(p => {
-          const pr = getOrCreateProfile(p.name);
-          return {
-            id: p.id, name: p.name, skin: p.skin, score: p.score,
-            length: p.segments.length, isOwner: p.isOwner,
-            coins: pr.coins, sessionCoins: p.sessionCoins,
-            unlockedCosmetics: pr.unlockedCosmetics,
-            equippedTrail: p.equippedTrail,
-            equippedTitle: p.equippedTitle,
-            equippedBadge: p.equippedBadge,
-            kills: p.kills || 0
-          };
+        socket.emit('playerList', Object.values(players).filter(p=>!p.dead).map(p => {
+          const pr = p.isBot ? {coins:0,unlockedCosmetics:[]} : getProfile(p.playfabId,p.name);
+          return { id:p.id, name:p.name, skin:p.skin, score:p.score, length:p.segments.length,
+            isOwner:p.isOwner, isBot:p.isBot||false, coins:pr.coins, sessionCoins:p.sessionCoins,
+            unlockedCosmetics:pr.unlockedCosmetics||[], equippedTrail:p.equippedTrail,
+            equippedTitle:p.equippedTitle, equippedBadge:p.equippedBadge, kills:p.kills||0 };
         }));
         break;
     }
@@ -649,155 +534,81 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     const p = players[socket.playerId];
-    if (p && !p.dead) {
-      // Save session coins to profile on disconnect
-      const profile = getOrCreateProfile(p.name);
-      profile.coins += p.sessionCoins;
-      profile.totalScore += p.score;
-      profile.gamesPlayed++;
-      if (p.score > profile.highScore) profile.highScore = p.score;
-      p.sessionCoins = 0;
+    if (p && !p.isBot) {
+      const pr = getProfile(p.playfabId, p.name);
+      pr.coins += p.sessionCoins; p.sessionCoins = 0;
       killPlayer(p, null);
-      setTimeout(() => {
-        delete players[socket.playerId];
-        io.emit('playerLeft', socket.playerId);
-      }, 500);
+      setTimeout(() => { delete players[socket.playerId]; io.emit('playerLeft', socket.playerId); }, 500);
     }
   });
 });
 
-// ============================================================
-//  EVENTS
-// ============================================================
-function getEventName(type) {
-  return {
-    speedBoost: '⚡ HYPERSPEED FRENZY',
-    orbFrenzy:  '🌟 ORB OVERLOAD',
-    shrinkAll:  '💀 DEATH SHRINK',
-    growAll:    '🐍 TITAN RISE',
-    darkness:   '🌑 BLACKOUT',
-    rainbow:    '🌈 RAINBOW CHAOS',
-    coinRain:   '💰 COIN RAIN',
-    godMode:    '⭐ GOD MODE'
-  }[type] || type;
+function eventName(t) {
+  return {speedBoost:'⚡ HYPERSPEED FRENZY',orbFrenzy:'🌟 ORB OVERLOAD',shrinkAll:'💀 DEATH SHRINK',growAll:'🐍 TITAN RISE',darkness:'🌑 BLACKOUT',rainbow:'🌈 RAINBOW CHAOS'}[t]||t;
 }
-
-function applyEvent(event) {
-  if (event.type === 'speedBoost')
-    Object.values(players).forEach(p => p.speed = SNAKE_SPEED * 2);
-  if (event.type === 'orbFrenzy') {
-    for (let i = 0; i < 400; i++) { const o = createOrb(); orbs[o.id] = o; }
-    io.emit('orbFrenzy', Object.values(orbs));
-  }
-  if (event.type === 'shrinkAll')
-    Object.values(players).forEach(p => {
-      if (!p.isOwner) p.segments = p.segments.slice(0, Math.max(INITIAL_LENGTH * SEGMENT_DISTANCE, Math.floor(p.segments.length / 2)));
-    });
-  if (event.type === 'growAll')
-    Object.values(players).forEach(p => {
-      const t = p.segments[p.segments.length - 1];
-      for (let i = 0; i < 100 * SEGMENT_DISTANCE; i++) p.segments.push({ x: t.x, y: t.y });
-    });
-  if (event.type === 'coinRain')
-    Object.values(players).forEach(p => {
-      const profile = getOrCreateProfile(p.name);
-      const bonus = 200;
-      profile.coins += bonus;
-      io.to(p.socketId).emit('coinsGranted', { amount: bonus, newBalance: profile.coins });
-    });
+function applyEvent(ev) {
+  if (ev.type==='speedBoost') for (const p of Object.values(players)) p.speed = SNAKE_SPEED*2;
+  if (ev.type==='orbFrenzy') { for (let i=0;i<300;i++){const o=mkOrb();orbs[o.id]=o;} io.emit('orbFrenzy',Object.values(orbs)); }
+  if (ev.type==='shrinkAll') for (const p of Object.values(players)) if(!p.isOwner) p.segments=p.segments.slice(0,Math.max(INIT_LEN*SEG_DIST,p.segments.length>>1));
+  if (ev.type==='growAll') for (const p of Object.values(players)){const t=p.segments[p.segments.length-1];for(let i=0;i<100*SEG_DIST;i++)p.segments.push({x:t.x,y:t.y});}
 }
-
-function resetEvent() {
-  Object.values(players).forEach(p => p.speed = SNAKE_SPEED);
-}
+function resetEvent() { for (const p of Object.values(players)) p.speed = SNAKE_SPEED; }
 
 // ============================================================
 //  HTTP API
 // ============================================================
-app.get('/api/leaderboard', (req, res) => res.json(leaderboard));
-app.get('/api/stats', (req, res) => res.json({
-  players: Object.keys(players).length,
-  orbs: Object.keys(orbs).length,
-  activeEvent: activeEvent ? activeEvent.name : null
+app.get('/api/leaderboard', (_, res) => res.json(leaderboard));
+app.get('/api/stats', (_, res) => res.json({
+  players: Object.values(players).filter(p=>!p.isBot&&!p.dead).length,
+  bots:    Object.values(players).filter(p=>p.isBot&&!p.dead).length,
+  orbs:    Object.keys(orbs).length,
+  activeEvent: activeEvent?.name || null,
 }));
 
-const adminAuth = (req, res, next) => {
-  if (req.headers['x-admin-password'] === ADMIN_SITE_PASSWORD) return next();
-  res.status(401).json({ error: 'Unauthorized' });
-};
-
-app.post('/api/admin/auth', (req, res) => {
-  res.json({ success: req.body.password === ADMIN_SITE_PASSWORD });
-});
-
-app.get('/api/admin/players', adminAuth, (req, res) => {
-  const liveByName = {};
-  Object.values(players).forEach(p => { liveByName[p.name.toLowerCase()] = p; });
-  res.json(Object.values(playerDB).map(profile => {
-    const live = liveByName[profile.name.toLowerCase()];
-    return {
-      name: profile.name, online: !!live,
-      coins: profile.coins + (live ? live.sessionCoins : 0),
-      totalScore: profile.totalScore + (live ? live.score : 0),
-      totalKills: profile.totalKills + (live ? live.kills || 0 : 0),
-      gamesPlayed: profile.gamesPlayed,
-      highScore: profile.highScore,
-      unlockedCosmetics: profile.unlockedCosmetics,
-      equippedTrail: live ? live.equippedTrail : profile.equippedTrail,
-      equippedTitle: live ? live.equippedTitle : profile.equippedTitle,
-      equippedBadge: live ? live.equippedBadge : profile.equippedBadge,
-      currentSize: live ? live.segments.length : 0,
-      currentSkin: live ? live.skin : null,
-      firstSeen: profile.firstSeen,
-      lastSeen: profile.lastSeen
-    };
+const adminAuth = (req,res,next) => req.headers['x-admin-password']===ADMIN_PASS ? next() : res.status(401).json({error:'Unauthorized'});
+app.post('/api/admin/auth',   (req,res) => res.json({success:req.body.password===ADMIN_PASS}));
+app.get('/api/admin/cosmetics', adminAuth, (_,res) => res.json(COSMETICS));
+app.get('/api/admin/players', adminAuth, (_,res) => {
+  const live = {};
+  Object.values(players).filter(p=>!p.isBot).forEach(p => { live[p.playfabId||('name:'+p.name.toLowerCase())] = p; });
+  res.json(Object.values(playerDB).filter(pr=>!pr.id.startsWith('bot:')).map(pr => {
+    const p = live[pr.id];
+    return { name:pr.name, online:!!p, isPlayFab:pr.isPlayFab||false,
+      coins:pr.coins+(p?p.sessionCoins:0), totalScore:pr.totalScore+(p?p.score:0),
+      totalKills:pr.totalKills+(p?p.kills||0:0), gamesPlayed:pr.gamesPlayed, highScore:pr.highScore,
+      unlockedCosmetics:pr.unlockedCosmetics, currentSize:p?p.segments.length:0,
+      currentSkin:p?p.skin:null, firstSeen:pr.firstSeen, lastSeen:pr.lastSeen };
   }));
 });
-
-app.get('/api/admin/cosmetics', adminAuth, (req, res) => res.json(COSMETICS));
-
-app.post('/api/admin/giveCoins', adminAuth, (req, res) => {
-  const { name, amount } = req.body;
-  const profile = playerDB[name.toLowerCase()];
-  if (!profile) return res.status(404).json({ error: 'Player not found' });
-  profile.coins += parseInt(amount) || 0;
-  const live = Object.values(players).find(p => p.name.toLowerCase() === name.toLowerCase());
-  if (live) {
-    io.to(live.socketId).emit('coinsGranted', { amount, newBalance: profile.coins });
-    io.to(live.socketId).emit('systemMessage', `💰 Admin granted you +${amount} coins!`);
-  }
-  res.json({ success: true, newBalance: profile.coins });
+app.post('/api/admin/giveCoins', adminAuth, (req,res) => {
+  const {name,amount} = req.body;
+  const pr = Object.values(playerDB).find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if (!pr) return res.status(404).json({error:'Not found'});
+  pr.coins += parseInt(amount)||0;
+  const lp = Object.values(players).find(p=>!p.isBot&&p.name.toLowerCase()===name.toLowerCase());
+  if (lp?.socketId) { io.to(lp.socketId).emit('coinsGranted',{amount,newBalance:pr.coins}); io.to(lp.socketId).emit('systemMessage',`💰 Admin gave you +${amount} coins!`); }
+  res.json({success:true, newBalance:pr.coins});
+});
+app.post('/api/admin/setCoins', adminAuth, (req,res) => {
+  const {name,amount} = req.body;
+  const pr = Object.values(playerDB).find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if (!pr) return res.status(404).json({error:'Not found'});
+  pr.coins = parseInt(amount)||0;
+  res.json({success:true, newBalance:pr.coins});
+});
+app.post('/api/admin/giveCosmetic', adminAuth, (req,res) => {
+  const {name,cosmeticId} = req.body;
+  const pr = Object.values(playerDB).find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if (!pr) return res.status(404).json({error:'Not found'});
+  if (!pr.unlockedCosmetics.includes(cosmeticId)) pr.unlockedCosmetics.push(cosmeticId);
+  const lp = Object.values(players).find(p=>!p.isBot&&p.name.toLowerCase()===name.toLowerCase());
+  if (lp?.socketId) { if(!lp.unlockedCosmetics.includes(cosmeticId)) lp.unlockedCosmetics.push(cosmeticId); io.to(lp.socketId).emit('cosmeticGranted',{cosmeticId,unlockedCosmetics:pr.unlockedCosmetics}); io.to(lp.socketId).emit('systemMessage',`🎨 Admin granted: ${COSMETICS[cosmeticId]?.name||cosmeticId}!`); }
+  res.json({success:true});
 });
 
-app.post('/api/admin/setCoins', adminAuth, (req, res) => {
-  const { name, amount } = req.body;
-  const profile = playerDB[name.toLowerCase()];
-  if (!profile) return res.status(404).json({ error: 'Player not found' });
-  profile.coins = parseInt(amount) || 0;
-  res.json({ success: true, newBalance: profile.coins });
-});
-
-app.post('/api/admin/giveCosmetic', adminAuth, (req, res) => {
-  const { name, cosmeticId } = req.body;
-  const profile = playerDB[name.toLowerCase()];
-  if (!profile) return res.status(404).json({ error: 'Player not found' });
-  if (!profile.unlockedCosmetics.includes(cosmeticId)) profile.unlockedCosmetics.push(cosmeticId);
-  const live = Object.values(players).find(p => p.name.toLowerCase() === name.toLowerCase());
-  if (live) {
-    if (!live.unlockedCosmetics.includes(cosmeticId)) live.unlockedCosmetics.push(cosmeticId);
-    io.to(live.socketId).emit('cosmeticGranted', { cosmeticId, unlockedCosmetics: profile.unlockedCosmetics });
-    io.to(live.socketId).emit('systemMessage', `🎨 Admin granted: ${COSMETICS[cosmeticId]?.name || cosmeticId}!`);
-  }
-  res.json({ success: true });
-});
-
-// ============================================================
-//  START
-// ============================================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`🐍 Z3N0 Slither Server running on port ${PORT}`);
-  console.log(`👑 Owner password: ${OWNER_PASSWORD}`);
-  console.log(`🔐 Admin password: ${ADMIN_SITE_PASSWORD}`);
-  console.log(`🎨 Loaded ${Object.keys(COSMETICS).length} cosmetics`);
+  console.log(`🐍 Z3N0 Snake Server — port ${PORT}`);
+  console.log(`👑 Owner: ${OWNER_PASSWORD}  🔐 Admin: ${ADMIN_PASS}`);
+  console.log(`🤖 ${BOT_COUNT} AI bots active`);
 });
