@@ -75,6 +75,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 .btn-gold{background:linear-gradient(135deg,rgba(255,215,0,.18),rgba(255,215,0,.08));color:var(--gold);border:1px solid var(--gold);}
 .btn-blue{background:linear-gradient(135deg,rgba(0,180,255,.18),rgba(0,180,255,.08));color:#00ccff;border:1px solid #00ccff;}
 .btn-blue:hover{box-shadow:0 0 28px rgba(0,180,255,.28);transform:translateY(-1px);}
+.btn-purple{background:linear-gradient(135deg,rgba(170,68,255,.18),rgba(170,68,255,.08));color:#cc88ff;border:1px solid #aa44ff;}
 .btn-sm{padding:7px 14px;font-size:9px;}
 .btn-row{display:flex;gap:8px;}
 .btn-row .btn{flex:1;}
@@ -98,6 +99,8 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 #hud-score{position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center;background:rgba(0,0,8,.7);border:1px solid var(--border);border-radius:3px;padding:8px 18px;backdrop-filter:blur(10px);}
 #hud-score .val{font-family:'Orbitron',monospace;font-size:28px;font-weight:900;color:var(--glow);line-height:1;}
 #hud-score .lbl{font-size:9px;letter-spacing:3px;color:var(--dim);}
+#hud-score.score-bump{animation:score-bump .25s ease;}
+@keyframes score-bump{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.13)}}
 #hud-coins{position:absolute;top:20px;left:20px;background:rgba(0,0,8,.7);border:1px solid rgba(255,215,0,.2);border-radius:3px;padding:8px 14px;backdrop-filter:blur(10px);font-family:'Orbitron',monospace;font-size:14px;color:var(--gold);}
 #hud-len{position:absolute;top:20px;right:20px;background:rgba(0,0,8,.7);border:1px solid var(--border);border-radius:3px;padding:8px 14px;backdrop-filter:blur(10px);text-align:center;}
 #hud-len .val{font-family:'Orbitron',monospace;font-size:18px;color:var(--text);}
@@ -127,13 +130,13 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 
 /* Minimap */
 #minimap{position:absolute;bottom:20px;right:20px;border:1px solid rgba(0,255,140,.2);border-radius:2px;overflow:hidden;}
-#minimapCanvas{display:block;width:120px;height:120px;}
+#minimapCanvas{display:block;width:150px;height:150px;}
 
 /* Event banner */
 #eventBanner{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,8,.9);border:1px solid var(--glow3);border-radius:3px;padding:8px 20px;font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--glow3);display:none;animation:pulse 1.5s ease infinite;white-space:nowrap;}
 
 /* In-game cosmetics */
-#inGameCosmeticsBtn{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);margin-left:130px;pointer-events:auto;display:none;}
+#inGameCosmeticsBtn{position:absolute;bottom:20px;left:calc(50% + 130px);transform:translateX(-50%);pointer-events:auto;display:none;}
 #ingameCosmeticsPanel{position:fixed;right:0;top:0;height:100%;width:min(340px,90vw);background:rgba(0,0,12,.97);border-left:1px solid var(--border);z-index:500;display:none;overflow-y:auto;padding:20px;}
 #ingameCosmeticsPanel::-webkit-scrollbar{width:4px;}
 #ingameCosmeticsPanel::-webkit-scrollbar-thumb{background:rgba(0,255,140,.2);border-radius:2px;}
@@ -259,6 +262,59 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   .owner-nav-btn span{display:none;}
   .owner-sidebar-header h2,.owner-sidebar-header p{display:none;}
 }
+
+/* ── PERFORMANCE: contain layers ── */
+#gameCanvas{contain:strict;}
+
+/* Score popup */
+.score-pop{position:fixed;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;pointer-events:none;z-index:9997;animation:score-rise 1.4s ease forwards;white-space:nowrap;text-shadow:0 0 12px currentColor;}
+@keyframes score-rise{0%{opacity:1;transform:translateY(0) scale(1)}40%{opacity:1;transform:translateY(-30px) scale(1.15)}100%{opacity:0;transform:translateY(-72px) scale(0.8)}}
+/* ── FPS counter ── */
+#fps-hud{position:absolute;top:8px;right:8px;font-family:"Space Mono",monospace;font-size:9px;color:rgba(0,255,140,.35);pointer-events:none;letter-spacing:1px;}
+/* ── XP bar ── */
+#xp-bar{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);width:160px;}
+.xp-track{height:2px;background:rgba(170,68,255,.15);border-radius:2px;}
+#xp-fill{height:100%;background:linear-gradient(90deg,#7722ff,#ff44aa);border-radius:2px;width:0%;transition:width .5s ease;}
+.xp-lbl{font-family:"Orbitron",monospace;font-size:6px;letter-spacing:2px;color:rgba(170,68,255,.5);text-align:center;margin-bottom:2px;}
+/* ── Kill streak banner ── */
+#streak-banner{position:absolute;top:100px;left:50%;transform:translateX(-50%);font-family:"Orbitron",monospace;font-size:13px;letter-spacing:3px;color:var(--gold);opacity:0;pointer-events:none;transition:opacity .2s;text-shadow:0 0 20px var(--gold);white-space:nowrap;}
+/* ── Border danger ── */
+#danger-warn{position:absolute;bottom:50%;left:50%;transform:translate(-50%,50%);font-family:"Orbitron",monospace;font-size:12px;letter-spacing:4px;color:#ff2244;opacity:0;pointer-events:none;text-shadow:0 0 16px #ff2244;transition:opacity .2s;}
+/* ── Screen flash ── */
+#screen-flash{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:0;background:transparent;}
+/* ── Chat ── */
+#chat-wrap{position:absolute;bottom:75px;left:18px;width:260px;pointer-events:auto;}
+#chat-msgs{max-height:100px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:4px;}
+#chat-msgs::-webkit-scrollbar{width:2px;}
+#chat-msgs::-webkit-scrollbar-thumb{background:rgba(0,255,140,.15);}
+.chat-line{background:rgba(0,0,8,.78);border-left:2px solid var(--glow);padding:2px 7px;font-size:11px;border-radius:0 2px 2px 0;animation:kf-in .2s ease;line-height:1.4;}
+.chat-line .cn{color:var(--glow);font-weight:700;}
+.chat-line.sys{border-left-color:var(--gold);color:var(--gold);}
+#chat-input{width:100%;background:rgba(0,0,8,.92);border:1px solid rgba(0,255,140,.3);border-radius:2px;padding:5px 9px;color:var(--text);font-family:"Rajdhani",sans-serif;font-size:13px;outline:none;display:none;}
+#chat-input:focus{border-color:var(--glow);}
+#chat-hint{font-family:"Orbitron",monospace;font-size:7px;letter-spacing:2px;color:rgba(0,255,140,.18);margin-bottom:3px;}
+/* ── Combo popup ── */
+#combo-pop{position:absolute;top:80px;left:50%;transform:translateX(-50%);font-family:"Orbitron",monospace;font-size:20px;font-weight:900;color:var(--glow2);opacity:0;pointer-events:none;text-shadow:0 0 20px var(--glow2);transition:opacity .3s;white-space:nowrap;}
+/* ── High score on death ── */
+.death-hs{font-family:"Orbitron",monospace;font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:10px;min-height:18px;}
+/* ── Leaderboard tweaks ── */
+.lb-entry{display:flex;align-items:center;gap:5px;padding:2px 0;}
+.lb-rank{font-family:"Orbitron",monospace;font-size:9px;width:26px;text-align:center;}
+.lb-rank.top1{color:#ffd700;}.lb-rank.top2{color:#c0c0c0;}.lb-rank.top3{color:#cd7f32;}
+.lb-name{font-size:12px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;}
+.lb-name.is-owner{color:#ffd700;}
+.lb-len{font-family:"Space Mono",monospace;font-size:10px;color:var(--dim);}
+.lb-bot{font-size:7px;background:rgba(150,150,255,.15);border-radius:2px;padding:1px 3px;color:rgba(150,150,255,.6);}
+/* ── Rarity badges on cosmetic cards ── */
+.rarity-tag{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:6px;font-family:"Orbitron",monospace;letter-spacing:1px;opacity:.7;}
+.cosmetic-card.r-rare{border-color:rgba(0,160,255,.3);}.cosmetic-card.r-epic{border-color:rgba(160,0,255,.3);}.cosmetic-card.r-legendary{border-color:rgba(255,215,0,.3);}
+.r-rare .rarity-tag{color:#00aaff;}.r-epic .rarity-tag{color:#aa44ff;}.r-legendary .rarity-tag{color:#ffd700;}
+.cosmetic-card.r-mythic{border-color:rgba(255,50,255,.55);box-shadow:0 0 12px rgba(255,50,255,.18);animation:mythic-pulse 2s ease infinite;}
+@keyframes mythic-pulse{0%,100%{box-shadow:0 0 8px rgba(255,50,255,.15)}50%{box-shadow:0 0 22px rgba(255,50,255,.38)}}
+.r-mythic .rarity-tag{color:#ff44ff;animation:mythic-text 1s ease infinite;}
+@keyframes mythic-text{0%,100%{color:#ff44ff}50%{color:#ffffff}}
+/* ── Spectate tag ── */
+#spectate-tag{position:absolute;top:60px;left:50%;transform:translateX(-50%);font-family:"Orbitron",monospace;font-size:9px;letter-spacing:3px;color:rgba(0,255,140,.35);pointer-events:none;display:none;}
 </style>
 </head>
 <body>
@@ -390,13 +446,21 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 
   <div id="killfeed"></div>
-  <div id="eventBanner" id="eventTitle">⚡ EVENT</div>
-  <div id="minimap"><canvas id="minimapCanvas" width="120" height="120"></canvas></div>
+  <div id="eventBanner">⚡ EVENT</div>
+  <div id="minimap"><canvas id="minimapCanvas" width="150" height="150"></canvas></div>
   <div id="sysmsg"></div>
 
   <!-- In-game cosmetics -->
   <button class="btn btn-primary btn-sm" id="inGameCosmeticsBtn" onclick="openIngameCosmetics()" style="pointer-events:auto;">🎨 COSMETICS</button>
   <div id="owner-tag-hud">👑 Z3N0 — OWNER PANEL [F1]</div>
+  <div id="fps-hud">60 FPS</div>
+  <div id="xp-bar"><div class="xp-lbl">LV<span id="xpLvl">1</span> · <span id="xpRank" style="color:#aa44ff;">NOVICE</span></div><div class="xp-track"><div id="xp-fill"></div></div></div>
+  <div id="streak-banner"></div>
+  <div id="danger-warn">⚠ BORDER DANGER ⚠</div>
+  <div id="combo-pop"></div>
+  <div id="spectate-tag">👁 SPECTATING</div>
+  <div id="chat-wrap"><div id="chat-hint">T = CHAT</div><div id="chat-msgs"></div><input id="chat-input" placeholder="Press Enter to send..." maxlength="80"></div>
+  <div id="screen-flash"></div>
 </div>
 
 <!-- ===================== IN-GAME COSMETICS ===================== -->
@@ -418,7 +482,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
 </div>
 
 <!-- ===================== DEATH SCREEN ===================== -->
-<div id="deathScreen" class="hidden">
+<div id="deathScreen" class="screen hidden">
   <div class="death-title">💀 GAME OVER</div>
   <div class="death-killer" id="deathKiller">Eliminated</div>
   <div class="death-stats">
@@ -427,6 +491,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="ds"><div class="dv" id="deathRank">—</div><div class="dl">RANK</div></div>
   </div>
   <div class="death-coins" id="deathCoinsEarned"></div>
+  <div class="death-hs" id="deathHs"></div>
   <div class="death-btns">
     <button class="btn btn-primary" id="respawnBtn">▶ RESPAWN</button>
     <button class="btn btn-danger" id="menuBtn">⟵ MENU</button>
@@ -447,6 +512,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
       <button class="owner-nav-btn" data-tab="events"><span class="owner-nav-icon">🌟</span><span>Events</span></button>
       <button class="owner-nav-btn" data-tab="skins"><span class="owner-nav-icon">🎨</span><span>Skins</span></button>
       <button class="owner-nav-btn" data-tab="ownercosmetics"><span class="owner-nav-icon">👑</span><span>Cosmetics</span></button>
+      <button class="owner-nav-btn" data-tab="playfab"><span class="owner-nav-icon">🔧</span><span>PlayFab Catalog</span></button>
     </nav>
   </div>
   <div class="owner-main">
@@ -507,6 +573,16 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
           <select class="o-select" id="killTarget"></select>
           <button class="btn btn-danger" onclick="doInstaKill()">☠️ KILL</button>
         </div>
+        <div class="o-card"><h3>FREEZE PLAYER</h3>
+          <select class="o-select" id="freezeTarget"></select>
+          <input class="o-input" id="freezeDuration" type="number" placeholder="Duration (ms, e.g. 3000)">
+          <button class="btn btn-blue" onclick="doFreeze()">🧊 FREEZE</button>
+        </div>
+        <div class="o-card"><h3>SET PLAYER SIZE</h3>
+          <select class="o-select" id="setSizeTarget"></select>
+          <input class="o-input" id="setSizeAmount" type="number" placeholder="Exact size (e.g. 500)">
+          <button class="btn btn-gold" onclick="doSetSize()">📐 SET SIZE</button>
+        </div>
       </div>
 
       <!-- EVENTS -->
@@ -517,6 +593,12 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
             <div class="event-card" onclick="ownerAction('startEvent','orbFrenzy')"><span class="event-icon">🌟</span><div class="event-name">ORB OVERLOAD</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','shrinkAll')"><span class="event-icon">💀</span><div class="event-name">DEATH SHRINK</div></div>
             <div class="event-card" onclick="ownerAction('startEvent','growAll')"><span class="event-icon">🐍</span><div class="event-name">TITAN RISE</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','reverseSteering')"><span class="event-icon">🔄</span><div class="event-name">REVERSE CHAOS</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','ghostMode')"><span class="event-icon">👻</span><div class="event-name">GHOST MODE</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','rainbowOrbs')"><span class="event-icon">🌈</span><div class="event-name">RAINBOW FEAST</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','megaOrbs')"><span class="event-icon">💎</span><div class="event-name">MEGA ORBS</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','invertColors')"><span class="event-icon">🎨</span><div class="event-name">NEON RAVE</div></div>
+            <div class="event-card" onclick="ownerAction('startEvent','coinRain')"><span class="event-icon">💰</span><div class="event-name">COIN RAIN</div></div>
             <div class="event-card" onclick="ownerAction('endEvent')"><span class="event-icon">🛑</span><div class="event-name">END EVENT</div></div>
           </div>
         </div>
@@ -543,16 +625,164 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
         <div class="o-card"><h3>GRANT COSMETIC</h3>
           <select class="o-select" id="ownerCosmeticTarget"></select>
           <select class="o-select" id="ownerCosmeticToGive">
-            <option value="owner_aura">✨ Z3N0 Aura</option>
-            <option value="owner_trail">👑 Z3N0 Trail</option>
-            <option value="owner_title">👑 [Z3N0] Title</option>
-            <option value="owner_explode">💥 Death Explosion</option>
-            <option value="trail_rainbow">🌈 Rainbow Trail</option>
-            <option value="trail_gold">⭐ Gold Trail</option>
-            <option value="title_god">⚡ [GOD] Title</option>
-            <option value="badge_crown">👑 Crown Badge</option>
+            <optgroup label="★★★ MYTHIC TRAILS ★★★">
+              <option value="owner_trail_genesis">🌌 Genesis Storm [MYTHIC]</option>
+              <option value="owner_trail_void_rift">🔮 Void Rift Tear [MYTHIC]</option>
+              <option value="owner_trail_divine_wrath">⚡ Divine Wrath [MYTHIC]</option>
+              <option value="owner_trail_cosmos">🌠 Cosmos Shatter [MYTHIC]</option>
+              <option value="owner_trail_sovereign_m">👑 Sovereign Gold [MYTHIC]</option>
+              <option value="owner_trail_nebula">🌺 Nebula Collapse [MYTHIC]</option>
+              <option value="owner_trail_quantum">🔬 Quantum Rift [MYTHIC]</option>
+              <option value="owner_trail_solar_flare">☀️ Solar Flare [MYTHIC]</option>
+              <option value="owner_trail_dark_matter">🌑 Dark Matter [MYTHIC]</option>
+              <option value="owner_trail_omega">🔱 Omega Burst [MYTHIC]</option>
+              <option value="owner_trail_prism">💠 Prism Break [MYTHIC]</option>
+              <option value="owner_trail_hellfire">😈 Hellfire [MYTHIC]</option>
+              <option value="owner_trail_abyss_wave">👁️ Abyss Wave [MYTHIC]</option>
+              <option value="owner_trail_supernova">💥 Supernova [MYTHIC]</option>
+              <option value="owner_trail_time_rift">⏳ Time Rift [MYTHIC]</option>
+              <option value="owner_trail_black_hole">🌀 Black Hole [MYTHIC]</option>
+              <option value="owner_trail_dragon_flame">🐉 Dragon Flame [MYTHIC]</option>
+              <option value="owner_trail_astral">✨ Astral Projection [MYTHIC]</option>
+              <option value="owner_trail_crimson_god">🩸 Crimson God [MYTHIC]</option>
+              <option value="owner_trail_spirit">👻 Spirit Ghost [MYTHIC]</option>
+            </optgroup>
+            <optgroup label="── LEGENDARY TRAILS ──">
+              <option value="owner_trail_divine">👑 Divine Gold Trail</option>
+              <option value="owner_trail_void">🌌 Void Rift Trail</option>
+              <option value="owner_trail_inferno">🔥 INFERNO STORM Trail</option>
+              <option value="owner_trail_aurora">🌈 Aurora Borealis Trail</option>
+              <option value="owner_trail_lightning">⚡ GODSTRIKE Lightning Trail</option>
+              <option value="owner_trail_galaxy">🌀 Galaxy Spiral Trail</option>
+              <option value="owner_trail_blood">🩸 Crimson Blood Trail</option>
+              <option value="owner_trail_antimatter">💜 Antimatter Trail</option>
+              <option value="owner_trail_matrix">💚 Matrix Code Trail</option>
+              <option value="owner_trail_angelic">🤍 Angelic Halo Trail</option>
+              <option value="owner_trail_phoenix">🦅 Phoenix Rebirth Trail</option>
+              <option value="owner_trail_tsunami">🌊 TSUNAMI Wave Trail</option>
+              <option value="owner_trail_prismatic">🌠 Prismatic Storm Trail</option>
+              <option value="owner_trail_singularity">🕳️ Singularity Trail</option>
+            </optgroup>
+            <optgroup label="★★★ MYTHIC TITLES ★★★">
+              <option value="owner_title_genesis">[GENESIS] ★★★</option>
+              <option value="owner_title_sovereign">[SOVEREIGN] ★★★</option>
+              <option value="owner_title_celestial_king">[CELESTIAL KING] ★★★</option>
+              <option value="owner_title_omega">[OMEGA] ★★★</option>
+              <option value="owner_title_quantum">[QUANTUM] ★★★</option>
+              <option value="owner_title_nebula_lord">[NEBULA LORD] ★★★</option>
+              <option value="owner_title_dark_matter">[DARK MATTER] ★★★</option>
+              <option value="owner_title_solar_king">[SOLAR KING] ★★★</option>
+              <option value="owner_title_hellborn">[HELLBORN] ★★★</option>
+              <option value="owner_title_god_of_death">[GOD OF DEATH] ★★★</option>
+              <option value="owner_title_universe">[UNIVERSE] ★★★</option>
+              <option value="owner_title_abyss_king">[ABYSS KING] ★★★</option>
+              <option value="owner_title_prism_lord">[PRISM LORD] ★★★</option>
+              <option value="owner_title_time_god">[TIME GOD] ★★★</option>
+              <option value="owner_title_supernova">[SUPERNOVA] ★★★</option>
+              <option value="owner_title_black_hole">[BLACK HOLE] ★★★</option>
+              <option value="owner_title_dragon_god">[DRAGON GOD] ★★★</option>
+              <option value="owner_title_astral_king">[ASTRAL KING] ★★★</option>
+              <option value="owner_title_crimson_god">[CRIMSON GOD] ★★★</option>
+              <option value="owner_title_void_emperor">[VOID EMPEROR] ★★★</option>
+            </optgroup>
+            <optgroup label="── LEGENDARY TITLES ──">
+              <option value="owner_title_z3n0">[Z3N0]</option>
+              <option value="owner_title_god">[GOD]</option>
+              <option value="owner_title_supreme">[SUPREME]</option>
+              <option value="owner_title_almighty">[ALMIGHTY]</option>
+              <option value="owner_title_deathlord">[DEATHLORD]</option>
+              <option value="owner_title_omnipotent">[OMNIPOTENT]</option>
+              <option value="owner_title_galaxyking">[GALAXY KING]</option>
+              <option value="owner_title_voidwalker">[VOID WALKER]</option>
+              <option value="owner_title_serpentgod">[SERPENT GOD]</option>
+              <option value="owner_title_transcendent">[TRANSCENDENT]</option>
+              <option value="owner_title_eternal">[ETERNAL]</option>
+              <option value="owner_title_dimension">[DIMENSION LORD]</option>
+              <option value="owner_title_deathbringer">[DEATH BRINGER]</option>
+              <option value="owner_title_chaos">[CHAOS]</option>
+              <option value="owner_title_celestial">[CELESTIAL]</option>
+              <option value="owner_title_singularity">[SINGULARITY]</option>
+              <option value="owner_title_creator">[CREATOR]</option>
+            </optgroup>
+            <optgroup label="★★★ MYTHIC BADGES ★★★">
+              <option value="owner_badge_sovereign">👑 Sovereign Crown [MYTHIC]</option>
+              <option value="owner_badge_genesis">🌌 Genesis Eye [MYTHIC]</option>
+              <option value="owner_badge_void_heart">🔮 Void Heart [MYTHIC]</option>
+              <option value="owner_badge_celestial_star">⭐ Celestial Star [MYTHIC]</option>
+              <option value="owner_badge_omega_core">⚛️ Omega Core [MYTHIC]</option>
+              <option value="owner_badge_quantum_eye">👁️ Quantum Eye [MYTHIC]</option>
+              <option value="owner_badge_nebula_heart">💜 Nebula Heart [MYTHIC]</option>
+              <option value="owner_badge_solar_flare">☀️ Solar Flare Core [MYTHIC]</option>
+              <option value="owner_badge_dark_matter">🌑 Dark Matter Shard [MYTHIC]</option>
+              <option value="owner_badge_hellfire">😈 Hellfire Mark [MYTHIC]</option>
+              <option value="owner_badge_prism">💠 Prism Crystal [MYTHIC]</option>
+              <option value="owner_badge_universe">🌐 Universe Core [MYTHIC]</option>
+              <option value="owner_badge_abyss">🕶️ Abyss Eye [MYTHIC]</option>
+              <option value="owner_badge_supernova">💥 Supernova Shard [MYTHIC]</option>
+              <option value="owner_badge_time">⏳ Time Crystal [MYTHIC]</option>
+              <option value="owner_badge_black_hole">🌀 Black Hole Shard [MYTHIC]</option>
+              <option value="owner_badge_dragon_eye">🐉 Dragon Eye [MYTHIC]</option>
+              <option value="owner_badge_astral">✨ Astral Core [MYTHIC]</option>
+              <option value="owner_badge_crimson_heart">🩸 Crimson God Heart [MYTHIC]</option>
+              <option value="owner_badge_void_emperor">🕳️ Void Emperor Seal [MYTHIC]</option>
+            </optgroup>
+            <optgroup label="── LEGENDARY BADGES ──">
+              <option value="owner_badge_crown">👑 Royal Crown</option>
+              <option value="owner_badge_dragon">🐉 Dragon Emperor</option>
+              <option value="owner_badge_skull">💀 Death Mark</option>
+              <option value="owner_badge_lightning">⚡ Thunder God</option>
+              <option value="owner_badge_star">⭐ Supreme Star</option>
+              <option value="owner_badge_fire">🔥 Inferno Lord</option>
+              <option value="owner_badge_gem">💎 Diamond Elite</option>
+              <option value="owner_badge_infinity">♾️ Infinite</option>
+              <option value="owner_badge_alien">👽 Alien Overlord</option>
+              <option value="owner_badge_devil">😈 Demon King</option>
+              <option value="owner_badge_angel">😇 Celestial Angel</option>
+              <option value="owner_badge_nuclear">☢️ Nuclear Core</option>
+              <option value="owner_badge_trident">🔱 God Trident</option>
+              <option value="owner_badge_eye">👁️ All-Seeing Eye</option>
+              <option value="owner_badge_void">🌑 Void Shard</option>
+              <option value="owner_badge_galaxy">🌌 Galaxy Core</option>
+              <option value="owner_badge_singularity">🕳️ Singularity Core</option>
+            </optgroup>
+            <optgroup label="── PUBLIC TRAILS (Give to anyone) ──">
+              <option value="trail_rainbow">🌈 Rainbow Trail</option>
+              <option value="trail_emerald">💚 Emerald Trail</option>
+              <option value="trail_angel">😇 Angel Trail</option>
+              <option value="trail_cosmic">🌌 Cosmic Trail</option>
+              <option value="trail_gold">⭐ Gold Trail</option>
+              <option value="trail_electric">⚡ Electric Trail</option>
+            </optgroup>
           </select>
-          <button class="btn btn-gold" onclick="doGiveCosmetic()">🎨 GRANT</button>
+                    <button class="btn btn-gold" onclick="doGiveCosmetic()">🎨 GRANT</button>
+        </div>
+      </div><!-- /tab-ownercosmetics -->
+
+      <!-- PLAYFAB CATALOG TAB -->
+      <div class="owner-tab" id="tab-playfab">
+        <div class="o-card"><h3>PLAYFAB CATALOG JSON</h3>
+          <p style="font-size:11px;color:rgba(255,215,0,.4);margin-bottom:10px;">Generate then paste into PlayFab &rsaquo; Economy &rsaquo; Catalog (version: Z3N0_v1)</p>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn btn-gold" onclick="generateCatalogJSON()" style="flex:1;">&#128203; GENERATE CATALOG</button>
+            <button class="btn btn-sm" onclick="copyCatalogJSON()" style="width:auto;padding:7px 14px;border:1px solid rgba(255,215,0,.3);color:rgba(255,215,0,.7);">COPY</button>
+          </div>
+          <textarea id="catalogJsonOutput" style="width:100%;height:230px;background:rgba(0,0,0,.5);border:1px solid rgba(255,215,0,.18);border-radius:3px;color:rgba(255,215,0,.65);font-family:'Space Mono',monospace;font-size:8.5px;padding:10px;outline:none;resize:vertical;" readonly placeholder="Click Generate Catalog..."></textarea>
+        </div>
+        <div class="o-card"><h3>CLOUDSCRIPT (Automation)</h3>
+          <p style="font-size:11px;color:rgba(255,215,0,.4);margin-bottom:10px;">Paste into PlayFab &rsaquo; Automation &rsaquo; CloudScript. Handles coins, purchases, equip, owner grants.</p>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn btn-gold" onclick="generateCloudScript()" style="flex:1;">&#128203; GENERATE CLOUDSCRIPT</button>
+            <button class="btn btn-sm" onclick="copyCloudScript()" style="width:auto;padding:7px 14px;border:1px solid rgba(255,215,0,.3);color:rgba(255,215,0,.7);">COPY</button>
+          </div>
+          <textarea id="cloudScriptOutput" style="width:100%;height:230px;background:rgba(0,0,0,.5);border:1px solid rgba(255,215,0,.18);border-radius:3px;color:rgba(255,215,0,.65);font-family:'Space Mono',monospace;font-size:8.5px;padding:10px;outline:none;resize:vertical;" readonly placeholder="Click Generate CloudScript..."></textarea>
+        </div>
+        <div class="o-card"><h3>REQUIRED TITLE DATA KEYS</h3>
+          <div style="font-family:'Space Mono',monospace;font-size:10px;color:rgba(255,215,0,.6);line-height:2.4;">
+            <div>Key: <span style="color:#00ff8c">OwnerPassword</span> &rarr; your secret password</div>
+            <div>Key: <span style="color:#00ff8c">GameVersion</span> &rarr; 1.0.0</div>
+            <div>Key: <span style="color:#00ff8c">CoinMultiplier</span> &rarr; 1</div>
+            <div>Key: <span style="color:#00ff8c">MaxPlayers</span> &rarr; 200</div>
+          </div>
         </div>
       </div>
     </div>
@@ -575,6 +805,7 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
     <div class="pf-tabs">
       <button class="pf-tab active" id="pf-tab-login" onclick="pfTab('login')">SIGN IN</button>
       <button class="pf-tab" id="pf-tab-register" onclick="pfTab('register')">CREATE NEW</button>
+      <button class="pf-tab" id="pf-tab-loggedin" onclick="pfTab('loggedin')" style="display:none;">MY ACCOUNT</button>
     </div>
 
     <div class="pf-content active" id="pf-login">
@@ -623,251 +854,455 @@ body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradi
   </div>
 </div>
 
+
 <script>
 'use strict';
 // ================================================================
-//  SKIN DEFINITIONS
+//  Z3N0 SNAKE REALM — Complete Client Script
+//  Performance-first, bug-free, slither.io killer
 // ================================================================
+
+// ── SKIN DEFINITIONS ──────────────────────────────────────────────
 const SKINS = {
-  classic:        { name:'Classic',     emoji:'🐍', colors:['#00ff8c','#00cc70'],  glow:'#00ff8c' },
-  fire:           { name:'Fire',        emoji:'🔥', colors:['#ff4400','#ff8800'],  glow:'#ff6600' },
-  ice:            { name:'Ice',         emoji:'❄️', colors:['#00ccff','#0066ff'],  glow:'#00ccff' },
-  toxic:          { name:'Toxic',       emoji:'☣️', colors:['#88ff00','#44aa00'],  glow:'#88ff00' },
-  gold:           { name:'Gold',        emoji:'⭐', colors:['#ffd700','#ffaa00'],  glow:'#ffd700' },
-  midnight:       { name:'Midnight',    emoji:'🌙', colors:['#4400ff','#8800ff'],  glow:'#6600ff' },
-  sunset:         { name:'Sunset',      emoji:'🌅', colors:['#ff0066','#ff8800'],  glow:'#ff4488' },
-  ocean:          { name:'Ocean',       emoji:'🌊', colors:['#0044ff','#00ffcc'],  glow:'#00aaff' },
-  lava:           { name:'Lava',        emoji:'🌋', colors:['#ff2200','#ffdd00'],  glow:'#ff4400' },
-  forest:         { name:'Forest',      emoji:'🌲', colors:['#006600','#88cc00'],  glow:'#44aa00' },
-  rainbow_god:    { name:'Rainbow God', emoji:'🌈', colors:['rainbow'],            glow:'#ffffff', ownerOnly:true },
-  void_lord:      { name:'Void Lord',   emoji:'🌑', colors:['#110011','#440044'],  glow:'#aa00ff', ownerOnly:true },
-  galaxy_emperor: { name:'Galaxy',      emoji:'🌌', colors:['#000033','#0000aa'],  glow:'#4488ff', ownerOnly:true },
-  neon_death:     { name:'Neon Death',  emoji:'⚡', colors:['#ff0000','#00ffff'],  glow:'#ffffff', ownerOnly:true },
-  chrome_divine:  { name:'Chrome',      emoji:'✨', colors:['#888888','#ffffff'],  glow:'#ffffff', ownerOnly:true },
+  classic:        {name:'Classic',       emoji:'🐍', colors:['#00ff8c','#00cc70'], glow:'#00ff8c'},
+  fire:           {name:'Fire',          emoji:'🔥', colors:['#ff4400','#ff8800'], glow:'#ff6600'},
+  ice:            {name:'Ice',           emoji:'❄️', colors:['#00ccff','#0066ff'], glow:'#00ccff'},
+  toxic:          {name:'Toxic',         emoji:'☣️', colors:['#88ff00','#44aa00'], glow:'#88ff00'},
+  gold:           {name:'Gold',          emoji:'⭐', colors:['#ffd700','#ffaa00'], glow:'#ffd700'},
+  midnight:       {name:'Midnight',      emoji:'🌙', colors:['#4400ff','#8800ff'], glow:'#6600ff'},
+  sunset:         {name:'Sunset',        emoji:'🌅', colors:['#ff0066','#ff8800'], glow:'#ff4488'},
+  ocean:          {name:'Ocean',         emoji:'🌊', colors:['#0044ff','#00ffcc'], glow:'#00aaff'},
+  lava:           {name:'Lava',          emoji:'🌋', colors:['#ff2200','#ffdd00'], glow:'#ff4400'},
+  forest:         {name:'Forest',        emoji:'🌲', colors:['#006600','#88cc00'], glow:'#44aa00'},
+  rose:           {name:'Rose',          emoji:'🌹', colors:['#ff4488','#ff88aa'], glow:'#ff66aa'},
+  arctic:         {name:'Arctic',        emoji:'🏔️', colors:['#aaddff','#ffffff'], glow:'#cceeff'},
+  shadow:         {name:'Shadow',        emoji:'👤', colors:['#222233','#5555aa'], glow:'#8888ff'},
+  copper:         {name:'Copper',        emoji:'🔶', colors:['#cc6600','#ff9944'], glow:'#ff8822'},
+  rainbow_god:    {name:'Rainbow God',   emoji:'🌈', colors:['rainbow'],           glow:'#ffffff', ownerOnly:true},
+  void_lord:      {name:'Void Lord',     emoji:'🌑', colors:['#110011','#440044'], glow:'#aa00ff', ownerOnly:true},
+  galaxy_emperor: {name:'Galaxy',        emoji:'🌌', colors:['#000033','#0000aa'], glow:'#4488ff', ownerOnly:true},
+  neon_death:     {name:'Neon Death',    emoji:'⚡', colors:['#ff0000','#00ffff'], glow:'#ffffff', ownerOnly:true},
+  chrome_divine:  {name:'Chrome Divine', emoji:'✨', colors:['#888888','#ffffff'], glow:'#ffffff', ownerOnly:true},
+  inferno_god:    {name:'Inferno God',   emoji:'🔱', colors:['#ff0000','#ff8800'], glow:'#ff4400', ownerOnly:true},
+  abyss_king:     {name:'Abyss King',    emoji:'👁️', colors:['#000000','#220022'], glow:'#cc00ff', ownerOnly:true},
+  divine_serpent: {name:'Divine Serpent',emoji:'🐉', colors:['#ffcc00','#ff6600'], glow:'#ffaa00', ownerOnly:true},
 };
 
-// ================================================================
-//  SETTINGS
-// ================================================================
-let controlScheme = localStorage.getItem('controlScheme') || 'mouse';
-let boostKey      = localStorage.getItem('boostKey')      || 'shift';
-let mouseAlways   = localStorage.getItem('mouseAlways')   !== 'off';
+// ── TRAIL COLOR TABLE (no per-frame string building) ─────────────
+const TRAIL_CLR = {
+  // Public trails
+  trail_fire:'#ff4400',trail_ice:'#00ccff',trail_gold:'#ffd700',trail_void:'#aa00ff',
+  trail_electric:'#00ffff',trail_toxic:'#88ff00',trail_blood:'#cc0000',trail_cosmic:'#4488ff',
+  trail_plasma:'#ff00ff',trail_neon:'#ff00aa',trail_lava:'#ff2200',trail_storm:'#aaccff',
+  trail_angel:'#ffffff',trail_nature:'#44ff44',trail_ocean:'#00aaff',trail_rose:'#ff66aa',
+  trail_copper:'#ff8822',trail_shadow:'#8888ff',trail_thunder:'#ffff00',trail_emerald:'#00ff88',
+  trail_rainbow:'#ffffff',
+  // Owner legendary trails
+  owner_trail_divine:'#ffd700',owner_trail_void:'#aa00ff',owner_trail_inferno:'#ff2200',
+  owner_trail_aurora:'#00ffcc',owner_trail_lightning:'#ffffff',owner_trail_galaxy:'#4488ff',
+  owner_trail_blood:'#ff0000',owner_trail_antimatter:'#cc00ff',owner_trail_matrix:'#00ff00',
+  owner_trail_angelic:'#ffffff',owner_trail_phoenix:'#ff8800',owner_trail_tsunami:'#00ccff',
+  owner_trail_prismatic:'#ff44ff',owner_trail_singularity:'#880088',
+  // Owner mythic trails
+  owner_trail_genesis:'#00ffff',owner_trail_void_rift:'#4400cc',owner_trail_divine_wrath:'#ffff00',
+  owner_trail_cosmos:'#ff00ff',owner_trail_sovereign_m:'#ffd700',owner_trail_nebula:'#ff44cc',
+  owner_trail_quantum:'#44ffff',owner_trail_solar_flare:'#ffcc00',owner_trail_dark_matter:'#220055',
+  owner_trail_omega:'#ffffff',owner_trail_prism:'#00ffff',owner_trail_hellfire:'#ff1100',
+  owner_trail_abyss_wave:'#cc00ff',owner_trail_supernova:'#ffaa00',owner_trail_time_rift:'#88ffff',
+  owner_trail_black_hole:'#330033',owner_trail_dragon_flame:'#ff6600',owner_trail_astral:'#ccaaff',
+  owner_trail_crimson_god:'#990000',owner_trail_spirit:'#aaffee',
+};
 
-function saveSettings() {
-  localStorage.setItem('controlScheme', controlScheme);
-  localStorage.setItem('boostKey',      boostKey);
-  localStorage.setItem('mouseAlways',   mouseAlways ? 'on' : 'off');
+// ── COSMETICS CATALOG (full) ──────────────────────────────────────
+const CATALOG = {
+  // TRAILS - Rare
+  trail_fire:       {id:'trail_fire',      type:'trail',name:'Fire Trail',       emoji:'🔥',price:300, glow:'#ff4400',rarity:'rare'},
+  trail_ice:        {id:'trail_ice',       type:'trail',name:'Ice Trail',        emoji:'❄️',price:300, glow:'#00ccff',rarity:'rare'},
+  trail_toxic:      {id:'trail_toxic',     type:'trail',name:'Toxic Trail',      emoji:'☣️',price:350, glow:'#88ff00',rarity:'rare'},
+  trail_electric:   {id:'trail_electric',  type:'trail',name:'Electric Trail',   emoji:'⚡',price:400, glow:'#00ffff',rarity:'rare'},
+  trail_nature:     {id:'trail_nature',    type:'trail',name:'Nature Trail',     emoji:'🌿',price:300, glow:'#44ff44',rarity:'rare'},
+  trail_ocean:      {id:'trail_ocean',     type:'trail',name:'Ocean Trail',      emoji:'🌊',price:400, glow:'#00aaff',rarity:'rare'},
+  trail_rose:       {id:'trail_rose',      type:'trail',name:'Rose Trail',       emoji:'🌹',price:350, glow:'#ff66aa',rarity:'rare'},
+  trail_copper:     {id:'trail_copper',    type:'trail',name:'Copper Trail',     emoji:'🔶',price:350, glow:'#ff8822',rarity:'rare'},
+  // TRAILS - Epic
+  trail_gold:       {id:'trail_gold',      type:'trail',name:'Gold Trail',       emoji:'⭐',price:500, glow:'#ffd700',rarity:'epic'},
+  trail_void:       {id:'trail_void',      type:'trail',name:'Void Trail',       emoji:'💜',price:500, glow:'#aa00ff',rarity:'epic'},
+  trail_blood:      {id:'trail_blood',     type:'trail',name:'Blood Trail',      emoji:'🩸',price:600, glow:'#cc0000',rarity:'epic'},
+  trail_cosmic:     {id:'trail_cosmic',    type:'trail',name:'Cosmic Trail',     emoji:'🌌',price:700, glow:'#4488ff',rarity:'epic'},
+  trail_plasma:     {id:'trail_plasma',    type:'trail',name:'Plasma Trail',     emoji:'🔮',price:450, glow:'#ff00ff',rarity:'epic'},
+  trail_neon:       {id:'trail_neon',      type:'trail',name:'Neon Trail',       emoji:'💡',price:550, glow:'#ff00aa',rarity:'epic'},
+  trail_lava:       {id:'trail_lava',      type:'trail',name:'Lava Trail',       emoji:'🌋',price:600, glow:'#ff2200',rarity:'epic'},
+  trail_storm:      {id:'trail_storm',     type:'trail',name:'Storm Trail',      emoji:'🌪️',price:650, glow:'#aaccff',rarity:'epic'},
+  trail_shadow:     {id:'trail_shadow',    type:'trail',name:'Shadow Trail',     emoji:'👤',price:550, glow:'#8888ff',rarity:'epic'},
+  trail_thunder:    {id:'trail_thunder',   type:'trail',name:'Thunder Trail',    emoji:'⚡',price:600, glow:'#ffff00',rarity:'epic'},
+  // TRAILS - Legendary
+  trail_rainbow:    {id:'trail_rainbow',   type:'trail',name:'Rainbow Trail',    emoji:'🌈',price:800, glow:'#ffffff',rarity:'legendary'},
+  trail_angel:      {id:'trail_angel',     type:'trail',name:'Angel Trail',      emoji:'😇',price:750, glow:'#ffffff',rarity:'legendary'},
+  trail_emerald:    {id:'trail_emerald',   type:'trail',name:'Emerald Trail',    emoji:'💚',price:900, glow:'#00ff88',rarity:'legendary'},
+  // TITLES - Rare
+  title_snake:      {id:'title_snake',     type:'title',name:'[SNAKE]',     text:'[SNAKE]',     emoji:'🐍',price:200, rarity:'rare'},
+  title_hunter:     {id:'title_hunter',    type:'title',name:'[HUNTER]',    text:'[HUNTER]',    emoji:'🎯',price:300, rarity:'rare'},
+  title_phantom:    {id:'title_phantom',   type:'title',name:'[PHANTOM]',   text:'[PHANTOM]',   emoji:'👻',price:350, rarity:'rare'},
+  title_viper:      {id:'title_viper',     type:'title',name:'[VIPER]',     text:'[VIPER]',     emoji:'🐍',price:350, rarity:'rare'},
+  // TITLES - Epic
+  title_killer:     {id:'title_killer',    type:'title',name:'[KILLER]',    text:'[KILLER]',    emoji:'💀',price:400, rarity:'epic'},
+  title_beast:      {id:'title_beast',     type:'title',name:'[BEAST]',     text:'[BEAST]',     emoji:'🔥',price:500, rarity:'epic'},
+  title_titan:      {id:'title_titan',     type:'title',name:'[TITAN]',     text:'[TITAN]',     emoji:'💪',price:550, rarity:'epic'},
+  title_shadow:     {id:'title_shadow',    type:'title',name:'[SHADOW]',    text:'[SHADOW]',    emoji:'🌑',price:500, rarity:'epic'},
+  title_reaper:     {id:'title_reaper',    type:'title',name:'[REAPER]',    text:'[REAPER]',    emoji:'⚔️',price:700, rarity:'epic'},
+  title_elite:      {id:'title_elite',     type:'title',name:'[ELITE]',     text:'[ELITE]',     emoji:'💎',price:800, rarity:'epic'},
+  // TITLES - Legendary
+  title_legend:     {id:'title_legend',    type:'title',name:'[LEGEND]',    text:'[LEGEND]',    emoji:'⭐',price:600, rarity:'legendary'},
+  title_destroyer:  {id:'title_destroyer', type:'title',name:'[DESTROYER]', text:'[DESTROYER]', emoji:'💥',price:900, rarity:'legendary'},
+  title_warlord:    {id:'title_warlord',   type:'title',name:'[WARLORD]',   text:'[WARLORD]',   emoji:'⚔️',price:1000,rarity:'legendary'},
+  title_galaxy:     {id:'title_galaxy',    type:'title',name:'[GALAXY]',    text:'[GALAXY]',    emoji:'🌌',price:1200,rarity:'legendary'},
+  title_overlord:   {id:'title_overlord',  type:'title',name:'[OVERLORD]',  text:'[OVERLORD]',  emoji:'👑',price:1500,rarity:'legendary'},
+  // BADGES - Rare
+  badge_snake:      {id:'badge_snake',     type:'badge',name:'Snake',       emoji:'🐍',price:100, rarity:'rare'},
+  badge_heart:      {id:'badge_heart',     type:'badge',name:'Heart',       emoji:'❤️',price:100, rarity:'rare'},
+  badge_fire:       {id:'badge_fire',      type:'badge',name:'Fire',        emoji:'🔥',price:150, rarity:'rare'},
+  badge_ice:        {id:'badge_ice',       type:'badge',name:'Ice',         emoji:'❄️',price:150, rarity:'rare'},
+  badge_ghost:      {id:'badge_ghost',     type:'badge',name:'Ghost',       emoji:'👻',price:200, rarity:'rare'},
+  badge_toxic:      {id:'badge_toxic',     type:'badge',name:'Toxic',       emoji:'☣️',price:200, rarity:'rare'},
+  badge_sword:      {id:'badge_sword',     type:'badge',name:'Sword',       emoji:'⚔️',price:300, rarity:'rare'},
+  badge_skull:      {id:'badge_skull',     type:'badge',name:'Skull',       emoji:'💀',price:300, rarity:'rare'},
+  badge_spider:     {id:'badge_spider',    type:'badge',name:'Spider',      emoji:'🕷️',price:300, rarity:'rare'},
+  badge_robot:      {id:'badge_robot',     type:'badge',name:'Robot',       emoji:'🤖',price:350, rarity:'rare'},
+  badge_thunder:    {id:'badge_thunder',   type:'badge',name:'Thunder',     emoji:'⚡',price:250, rarity:'rare'},
+  // BADGES - Epic
+  badge_demon:      {id:'badge_demon',     type:'badge',name:'Demon',       emoji:'😈',price:350, rarity:'epic'},
+  badge_rocket:     {id:'badge_rocket',    type:'badge',name:'Rocket',      emoji:'🚀',price:400, rarity:'epic'},
+  badge_alien:      {id:'badge_alien',     type:'badge',name:'Alien',       emoji:'👽',price:450, rarity:'epic'},
+  badge_star:       {id:'badge_star',      type:'badge',name:'Star',        emoji:'⭐',price:400, rarity:'epic'},
+  badge_nuclear:    {id:'badge_nuclear',   type:'badge',name:'Nuclear',     emoji:'☢️',price:600, rarity:'epic'},
+  badge_diamond:    {id:'badge_diamond',   type:'badge',name:'Diamond',     emoji:'💎',price:500, rarity:'epic'},
+  badge_dragon:     {id:'badge_dragon',    type:'badge',name:'Dragon',      emoji:'🐉',price:550, rarity:'epic'},
+  badge_lightning:  {id:'badge_lightning', type:'badge',name:'Lightning',   emoji:'🌩️',price:450, rarity:'epic'},
+  // BADGES - Legendary
+  badge_infinity:   {id:'badge_infinity',  type:'badge',name:'Infinity',    emoji:'♾️',price:800, rarity:'legendary'},
+  badge_crystal:    {id:'badge_crystal',   type:'badge',name:'Crystal',     emoji:'💠',price:700, rarity:'legendary'},
+  badge_crown:      {id:'badge_crown',     type:'badge',name:'Crown',       emoji:'👑',price:1000,rarity:'legendary'},
+  // OWNER ONLY — TRAILS
+  owner_trail_divine:      {id:'owner_trail_divine',      type:'trail',name:'Divine Gold',        emoji:'👑',ownerOnly:true,glow:'#ffd700',rarity:'legendary'},
+  owner_trail_void:        {id:'owner_trail_void',        type:'trail',name:'Void Rift',          emoji:'🌌',ownerOnly:true,glow:'#aa00ff',rarity:'legendary'},
+  owner_trail_inferno:     {id:'owner_trail_inferno',     type:'trail',name:'INFERNO STORM',      emoji:'🔥',ownerOnly:true,glow:'#ff2200',rarity:'legendary'},
+  owner_trail_aurora:      {id:'owner_trail_aurora',      type:'trail',name:'Aurora Borealis',    emoji:'🌈',ownerOnly:true,glow:'#00ffcc',rarity:'legendary'},
+  owner_trail_lightning:   {id:'owner_trail_lightning',   type:'trail',name:'GODSTRIKE Lightning',emoji:'⚡',ownerOnly:true,glow:'#ffffff',rarity:'legendary'},
+  owner_trail_galaxy:      {id:'owner_trail_galaxy',      type:'trail',name:'Galaxy Spiral',      emoji:'🌀',ownerOnly:true,glow:'#4488ff',rarity:'legendary'},
+  owner_trail_blood:       {id:'owner_trail_blood',       type:'trail',name:'Crimson Blood',      emoji:'🩸',ownerOnly:true,glow:'#ff0000',rarity:'legendary'},
+  owner_trail_antimatter:  {id:'owner_trail_antimatter',  type:'trail',name:'Antimatter',         emoji:'💜',ownerOnly:true,glow:'#cc00ff',rarity:'legendary'},
+  owner_trail_matrix:      {id:'owner_trail_matrix',      type:'trail',name:'Matrix Code',        emoji:'💚',ownerOnly:true,glow:'#00ff00',rarity:'legendary'},
+  owner_trail_angelic:     {id:'owner_trail_angelic',     type:'trail',name:'Angelic Halo',       emoji:'🤍',ownerOnly:true,glow:'#ffffff',rarity:'legendary'},
+  owner_trail_phoenix:     {id:'owner_trail_phoenix',     type:'trail',name:'Phoenix Rebirth',    emoji:'🦅',ownerOnly:true,glow:'#ff8800',rarity:'legendary'},
+  owner_trail_tsunami:     {id:'owner_trail_tsunami',     type:'trail',name:'TSUNAMI Wave',       emoji:'🌊',ownerOnly:true,glow:'#00ccff',rarity:'legendary'},
+  owner_trail_prismatic:   {id:'owner_trail_prismatic',   type:'trail',name:'Prismatic Storm',    emoji:'🌠',ownerOnly:true,glow:'#ff44ff',rarity:'legendary'},
+  owner_trail_singularity: {id:'owner_trail_singularity', type:'trail',name:'Singularity',        emoji:'🕳️',ownerOnly:true,glow:'#440000',rarity:'legendary'},
+  // OWNER ONLY — TITLES
+  owner_title_z3n0:        {id:'owner_title_z3n0',        type:'title',name:'[Z3N0]',           text:'[Z3N0]',           emoji:'👑',ownerOnly:true,rarity:'legendary'},
+  owner_title_god:         {id:'owner_title_god',         type:'title',name:'[GOD]',            text:'[GOD]',            emoji:'⚡',ownerOnly:true,rarity:'legendary'},
+  owner_title_supreme:     {id:'owner_title_supreme',     type:'title',name:'[SUPREME]',        text:'[SUPREME]',        emoji:'🌟',ownerOnly:true,rarity:'legendary'},
+  owner_title_almighty:    {id:'owner_title_almighty',    type:'title',name:'[ALMIGHTY]',       text:'[ALMIGHTY]',       emoji:'💫',ownerOnly:true,rarity:'legendary'},
+  owner_title_deathlord:   {id:'owner_title_deathlord',   type:'title',name:'[DEATHLORD]',      text:'[DEATHLORD]',      emoji:'💀',ownerOnly:true,rarity:'legendary'},
+  owner_title_omnipotent:  {id:'owner_title_omnipotent',  type:'title',name:'[OMNIPOTENT]',     text:'[OMNIPOTENT]',     emoji:'♾️',ownerOnly:true,rarity:'legendary'},
+  owner_title_galaxyking:  {id:'owner_title_galaxyking',  type:'title',name:'[GALAXY KING]',    text:'[GALAXY KING]',    emoji:'🌌',ownerOnly:true,rarity:'legendary'},
+  owner_title_voidwalker:  {id:'owner_title_voidwalker',  type:'title',name:'[VOID WALKER]',    text:'[VOID WALKER]',    emoji:'🌑',ownerOnly:true,rarity:'legendary'},
+  owner_title_serpentgod:  {id:'owner_title_serpentgod',  type:'title',name:'[SERPENT GOD]',    text:'[SERPENT GOD]',    emoji:'🐍',ownerOnly:true,rarity:'legendary'},
+  owner_title_transcendent:{id:'owner_title_transcendent',type:'title',name:'[TRANSCENDENT]',   text:'[TRANSCENDENT]',   emoji:'✨',ownerOnly:true,rarity:'legendary'},
+  owner_title_eternal:     {id:'owner_title_eternal',     type:'title',name:'[ETERNAL]',        text:'[ETERNAL]',        emoji:'♾️',ownerOnly:true,rarity:'legendary'},
+  owner_title_dimension:   {id:'owner_title_dimension',   type:'title',name:'[DIMENSION LORD]', text:'[DIMENSION LORD]', emoji:'🌀',ownerOnly:true,rarity:'legendary'},
+  owner_title_deathbringer:{id:'owner_title_deathbringer',type:'title',name:'[DEATH BRINGER]',  text:'[DEATH BRINGER]',  emoji:'⚔️',ownerOnly:true,rarity:'legendary'},
+  owner_title_chaos:       {id:'owner_title_chaos',       type:'title',name:'[CHAOS]',          text:'[CHAOS]',          emoji:'🔥',ownerOnly:true,rarity:'legendary'},
+  owner_title_celestial:   {id:'owner_title_celestial',   type:'title',name:'[CELESTIAL]',      text:'[CELESTIAL]',      emoji:'🌠',ownerOnly:true,rarity:'legendary'},
+  owner_title_singularity: {id:'owner_title_singularity', type:'title',name:'[SINGULARITY]',    text:'[SINGULARITY]',    emoji:'🕳️',ownerOnly:true,rarity:'legendary'},
+  owner_title_creator:     {id:'owner_title_creator',     type:'title',name:'[CREATOR]',        text:'[CREATOR]',        emoji:'🔱',ownerOnly:true,rarity:'legendary'},
+  // OWNER ONLY — BADGES
+  owner_badge_crown:       {id:'owner_badge_crown',       type:'badge',name:'Royal Crown',      emoji:'👑',ownerOnly:true,rarity:'legendary'},
+  owner_badge_dragon:      {id:'owner_badge_dragon',      type:'badge',name:'Dragon Emperor',   emoji:'🐉',ownerOnly:true,rarity:'legendary'},
+  owner_badge_skull:       {id:'owner_badge_skull',       type:'badge',name:'Death Mark',       emoji:'💀',ownerOnly:true,rarity:'legendary'},
+  owner_badge_lightning:   {id:'owner_badge_lightning',   type:'badge',name:'Thunder God',      emoji:'⚡',ownerOnly:true,rarity:'legendary'},
+  owner_badge_star:        {id:'owner_badge_star',        type:'badge',name:'Supreme Star',     emoji:'⭐',ownerOnly:true,rarity:'legendary'},
+  owner_badge_fire:        {id:'owner_badge_fire',        type:'badge',name:'Inferno Lord',     emoji:'🔥',ownerOnly:true,rarity:'legendary'},
+  owner_badge_gem:         {id:'owner_badge_gem',         type:'badge',name:'Diamond Elite',    emoji:'💎',ownerOnly:true,rarity:'legendary'},
+  owner_badge_infinity:    {id:'owner_badge_infinity',    type:'badge',name:'Infinite',         emoji:'♾️',ownerOnly:true,rarity:'legendary'},
+  owner_badge_alien:       {id:'owner_badge_alien',       type:'badge',name:'Alien Overlord',   emoji:'👽',ownerOnly:true,rarity:'legendary'},
+  owner_badge_devil:       {id:'owner_badge_devil',       type:'badge',name:'Demon King',       emoji:'😈',ownerOnly:true,rarity:'legendary'},
+  owner_badge_angel:       {id:'owner_badge_angel',       type:'badge',name:'Celestial',        emoji:'😇',ownerOnly:true,rarity:'legendary'},
+  owner_badge_nuclear:     {id:'owner_badge_nuclear',     type:'badge',name:'Nuclear',          emoji:'☢️',ownerOnly:true,rarity:'legendary'},
+  owner_badge_trident:     {id:'owner_badge_trident',     type:'badge',name:'God Trident',      emoji:'🔱',ownerOnly:true,rarity:'legendary'},
+  owner_badge_eye:         {id:'owner_badge_eye',         type:'badge',name:'All-Seeing Eye',   emoji:'👁️',ownerOnly:true,rarity:'legendary'},
+  owner_badge_void:        {id:'owner_badge_void',        type:'badge',name:'Void Shard',       emoji:'🌑',ownerOnly:true,rarity:'legendary'},
+  owner_badge_galaxy:      {id:'owner_badge_galaxy',      type:'badge',name:'Galaxy Core',      emoji:'🌌',ownerOnly:true,rarity:'legendary'},
+  owner_badge_singularity: {id:'owner_badge_singularity', type:'badge',name:'Singularity',      emoji:'🕳️',ownerOnly:true,rarity:'legendary'},
+};
+// ═══ MYTHIC-ONLY ADDITIONS (new items not in base CATALOG) ═══
+Object.assign(CATALOG,{
+  // MYTHIC TRAILS — new unique items only
+  owner_trail_genesis:     {id:'owner_trail_genesis',    type:'trail',name:'Genesis Storm',      emoji:'🌌',ownerOnly:true,glow:'#00ffff',rarity:'mythic'},
+  owner_trail_void_rift:   {id:'owner_trail_void_rift',  type:'trail',name:'Void Rift Tear',     emoji:'🔮',ownerOnly:true,glow:'#4400cc',rarity:'mythic'},
+  owner_trail_divine_wrath:{id:'owner_trail_divine_wrath',type:'trail',name:'Divine Wrath',      emoji:'⚡',ownerOnly:true,glow:'#ffff00',rarity:'mythic'},
+  owner_trail_cosmos:      {id:'owner_trail_cosmos',     type:'trail',name:'Cosmos Shatter',     emoji:'🌠',ownerOnly:true,glow:'#ff00ff',rarity:'mythic'},
+  owner_trail_sovereign_m: {id:'owner_trail_sovereign_m',type:'trail',name:'Sovereign Gold',     emoji:'👑',ownerOnly:true,glow:'#ffd700',rarity:'mythic'},
+  owner_trail_nebula:      {id:'owner_trail_nebula',     type:'trail',name:'Nebula Collapse',    emoji:'🌺',ownerOnly:true,glow:'#ff44cc',rarity:'mythic'},
+  owner_trail_quantum:     {id:'owner_trail_quantum',    type:'trail',name:'Quantum Rift',       emoji:'🔬',ownerOnly:true,glow:'#44ffff',rarity:'mythic'},
+  owner_trail_solar_flare: {id:'owner_trail_solar_flare',type:'trail',name:'Solar Flare',        emoji:'☀️',ownerOnly:true,glow:'#ffcc00',rarity:'mythic'},
+  owner_trail_dark_matter: {id:'owner_trail_dark_matter',type:'trail',name:'Dark Matter',        emoji:'🌑',ownerOnly:true,glow:'#220055',rarity:'mythic'},
+  owner_trail_omega:       {id:'owner_trail_omega',      type:'trail',name:'Omega Burst',        emoji:'🔱',ownerOnly:true,glow:'#ffffff',rarity:'mythic'},
+  owner_trail_prism:       {id:'owner_trail_prism',      type:'trail',name:'Prism Break',        emoji:'💠',ownerOnly:true,glow:'#00ffff',rarity:'mythic'},
+  owner_trail_hellfire:    {id:'owner_trail_hellfire',   type:'trail',name:'Hellfire',           emoji:'😈',ownerOnly:true,glow:'#ff1100',rarity:'mythic'},
+  owner_trail_abyss_wave:  {id:'owner_trail_abyss_wave', type:'trail',name:'Abyss Wave',         emoji:'👁️',ownerOnly:true,glow:'#cc00ff',rarity:'mythic'},
+  owner_trail_supernova:   {id:'owner_trail_supernova',  type:'trail',name:'Supernova',          emoji:'💥',ownerOnly:true,glow:'#ffaa00',rarity:'mythic'},
+  owner_trail_time_rift:   {id:'owner_trail_time_rift',  type:'trail',name:'Time Rift',          emoji:'⏳',ownerOnly:true,glow:'#88ffff',rarity:'mythic'},
+  owner_trail_black_hole:  {id:'owner_trail_black_hole', type:'trail',name:'Black Hole',         emoji:'🌀',ownerOnly:true,glow:'#000000',rarity:'mythic'},
+  owner_trail_dragon_flame:{id:'owner_trail_dragon_flame',type:'trail',name:'Dragon Flame',      emoji:'🐉',ownerOnly:true,glow:'#ff6600',rarity:'mythic'},
+  owner_trail_astral:      {id:'owner_trail_astral',     type:'trail',name:'Astral Projection',  emoji:'✨',ownerOnly:true,glow:'#ccaaff',rarity:'mythic'},
+  owner_trail_crimson_god: {id:'owner_trail_crimson_god',type:'trail',name:'Crimson God',        emoji:'🩸',ownerOnly:true,glow:'#990000',rarity:'mythic'},
+  owner_trail_spirit:      {id:'owner_trail_spirit',     type:'trail',name:'Spirit Ghost',       emoji:'👻',ownerOnly:true,glow:'#aaffee',rarity:'mythic'},
+  // MYTHIC TITLES — new unique items only
+  owner_title_genesis:        {id:'owner_title_genesis',       type:'title',name:'[GENESIS]',        text:'[GENESIS]',        emoji:'🌌',ownerOnly:true,rarity:'mythic'},
+  owner_title_sovereign:      {id:'owner_title_sovereign',     type:'title',name:'[SOVEREIGN]',      text:'[SOVEREIGN]',      emoji:'👑',ownerOnly:true,rarity:'mythic'},
+  owner_title_celestial_king: {id:'owner_title_celestial_king',type:'title',name:'[CELESTIAL KING]', text:'[CELESTIAL KING]', emoji:'✨',ownerOnly:true,rarity:'mythic'},
+  owner_title_omega:          {id:'owner_title_omega',         type:'title',name:'[OMEGA]',          text:'[OMEGA]',          emoji:'🔱',ownerOnly:true,rarity:'mythic'},
+  owner_title_quantum:        {id:'owner_title_quantum',       type:'title',name:'[QUANTUM]',        text:'[QUANTUM]',        emoji:'🔬',ownerOnly:true,rarity:'mythic'},
+  owner_title_nebula_lord:    {id:'owner_title_nebula_lord',   type:'title',name:'[NEBULA LORD]',    text:'[NEBULA LORD]',    emoji:'🌺',ownerOnly:true,rarity:'mythic'},
+  owner_title_dark_matter:    {id:'owner_title_dark_matter',   type:'title',name:'[DARK MATTER]',    text:'[DARK MATTER]',    emoji:'🌑',ownerOnly:true,rarity:'mythic'},
+  owner_title_solar_king:     {id:'owner_title_solar_king',    type:'title',name:'[SOLAR KING]',     text:'[SOLAR KING]',     emoji:'☀️',ownerOnly:true,rarity:'mythic'},
+  owner_title_hellborn:       {id:'owner_title_hellborn',      type:'title',name:'[HELLBORN]',       text:'[HELLBORN]',       emoji:'😈',ownerOnly:true,rarity:'mythic'},
+  owner_title_god_of_death:   {id:'owner_title_god_of_death',  type:'title',name:'[GOD OF DEATH]',   text:'[GOD OF DEATH]',   emoji:'💀',ownerOnly:true,rarity:'mythic'},
+  owner_title_universe:       {id:'owner_title_universe',      type:'title',name:'[UNIVERSE]',       text:'[UNIVERSE]',       emoji:'🌐',ownerOnly:true,rarity:'mythic'},
+  owner_title_abyss_king:     {id:'owner_title_abyss_king',    type:'title',name:'[ABYSS KING]',     text:'[ABYSS KING]',     emoji:'👁️',ownerOnly:true,rarity:'mythic'},
+  owner_title_prism_lord:     {id:'owner_title_prism_lord',    type:'title',name:'[PRISM LORD]',     text:'[PRISM LORD]',     emoji:'💠',ownerOnly:true,rarity:'mythic'},
+  owner_title_time_god:       {id:'owner_title_time_god',      type:'title',name:'[TIME GOD]',       text:'[TIME GOD]',       emoji:'⏳',ownerOnly:true,rarity:'mythic'},
+  owner_title_supernova:      {id:'owner_title_supernova',     type:'title',name:'[SUPERNOVA]',      text:'[SUPERNOVA]',      emoji:'💥',ownerOnly:true,rarity:'mythic'},
+  owner_title_black_hole:     {id:'owner_title_black_hole',    type:'title',name:'[BLACK HOLE]',     text:'[BLACK HOLE]',     emoji:'🌀',ownerOnly:true,rarity:'mythic'},
+  owner_title_dragon_god:     {id:'owner_title_dragon_god',    type:'title',name:'[DRAGON GOD]',     text:'[DRAGON GOD]',     emoji:'🐉',ownerOnly:true,rarity:'mythic'},
+  owner_title_astral_king:    {id:'owner_title_astral_king',   type:'title',name:'[ASTRAL KING]',    text:'[ASTRAL KING]',    emoji:'✨',ownerOnly:true,rarity:'mythic'},
+  owner_title_crimson_god:    {id:'owner_title_crimson_god',   type:'title',name:'[CRIMSON GOD]',    text:'[CRIMSON GOD]',    emoji:'🩸',ownerOnly:true,rarity:'mythic'},
+  owner_title_void_emperor:   {id:'owner_title_void_emperor',  type:'title',name:'[VOID EMPEROR]',   text:'[VOID EMPEROR]',   emoji:'🕳️',ownerOnly:true,rarity:'mythic'},
+  // MYTHIC BADGES — new unique items only
+  owner_badge_sovereign:      {id:'owner_badge_sovereign',    type:'badge',name:'Sovereign Crown',  emoji:'👑',ownerOnly:true,rarity:'mythic'},
+  owner_badge_genesis:        {id:'owner_badge_genesis',      type:'badge',name:'Genesis Eye',      emoji:'🌌',ownerOnly:true,rarity:'mythic'},
+  owner_badge_void_heart:     {id:'owner_badge_void_heart',   type:'badge',name:'Void Heart',       emoji:'🔮',ownerOnly:true,rarity:'mythic'},
+  owner_badge_celestial_star: {id:'owner_badge_celestial_star',type:'badge',name:'Celestial Star',  emoji:'⭐',ownerOnly:true,rarity:'mythic'},
+  owner_badge_omega_core:     {id:'owner_badge_omega_core',   type:'badge',name:'Omega Core',       emoji:'⚛️',ownerOnly:true,rarity:'mythic'},
+  owner_badge_quantum_eye:    {id:'owner_badge_quantum_eye',  type:'badge',name:'Quantum Eye',      emoji:'👁️',ownerOnly:true,rarity:'mythic'},
+  owner_badge_nebula_heart:   {id:'owner_badge_nebula_heart', type:'badge',name:'Nebula Heart',     emoji:'💜',ownerOnly:true,rarity:'mythic'},
+  owner_badge_solar_flare:    {id:'owner_badge_solar_flare',  type:'badge',name:'Solar Flare Core', emoji:'☀️',ownerOnly:true,rarity:'mythic'},
+  owner_badge_dark_matter:    {id:'owner_badge_dark_matter',  type:'badge',name:'Dark Matter Shard',emoji:'🌑',ownerOnly:true,rarity:'mythic'},
+  owner_badge_hellfire:       {id:'owner_badge_hellfire',     type:'badge',name:'Hellfire Mark',    emoji:'😈',ownerOnly:true,rarity:'mythic'},
+  owner_badge_prism:          {id:'owner_badge_prism',        type:'badge',name:'Prism Crystal',    emoji:'💠',ownerOnly:true,rarity:'mythic'},
+  owner_badge_universe:       {id:'owner_badge_universe',     type:'badge',name:'Universe Core',    emoji:'🌐',ownerOnly:true,rarity:'mythic'},
+  owner_badge_abyss:          {id:'owner_badge_abyss',        type:'badge',name:'Abyss Eye',        emoji:'🕶️',ownerOnly:true,rarity:'mythic'},
+  owner_badge_supernova:      {id:'owner_badge_supernova',    type:'badge',name:'Supernova Shard',  emoji:'💥',ownerOnly:true,rarity:'mythic'},
+  owner_badge_time:           {id:'owner_badge_time',         type:'badge',name:'Time Crystal',     emoji:'⏳',ownerOnly:true,rarity:'mythic'},
+  owner_badge_black_hole:     {id:'owner_badge_black_hole',   type:'badge',name:'Black Hole Shard', emoji:'🌀',ownerOnly:true,rarity:'mythic'},
+  owner_badge_dragon_eye:     {id:'owner_badge_dragon_eye',   type:'badge',name:'Dragon Eye',       emoji:'🐉',ownerOnly:true,rarity:'mythic'},
+  owner_badge_astral:         {id:'owner_badge_astral',       type:'badge',name:'Astral Core',      emoji:'✨',ownerOnly:true,rarity:'mythic'},
+  owner_badge_crimson_heart:  {id:'owner_badge_crimson_heart',type:'badge',name:'Crimson God Heart',emoji:'🩸',ownerOnly:true,rarity:'mythic'},
+  owner_badge_void_emperor:   {id:'owner_badge_void_emperor', type:'badge',name:'Void Emperor Seal',emoji:'🕳️',ownerOnly:true,rarity:'mythic'},
+});
+let cosmeticsCatalog = {...CATALOG};
+
+// ── SETTINGS ──────────────────────────────────────────────────────
+let controlScheme,boostKey,mouseAlways;
+try{
+  controlScheme = localStorage.getItem('controlScheme') || 'mouse';
+  boostKey      = localStorage.getItem('boostKey')      || 'shift';
+  mouseAlways   = localStorage.getItem('mouseAlways')   !== 'off';
+}catch(e){controlScheme='mouse';boostKey='shift';mouseAlways=true;}
+
+function saveSettings(){
+  try{
+    localStorage.setItem('controlScheme',controlScheme);
+    localStorage.setItem('boostKey',boostKey);
+    localStorage.setItem('mouseAlways',mouseAlways?'on':'off');
+  }catch(e){}
   updateBoostLabel();
 }
-function updateBoostLabel() {
-  const m = { shift:'BOOST [SHIFT/CLICK]', space:'BOOST [SPACE/CLICK]', both_boost:'BOOST [SHIFT/SPACE/CLICK]' };
-  const el = document.getElementById('boostLabel');
-  if (el) el.textContent = m[boostKey] || 'BOOST [HOLD CLICK]';
+function updateBoostLabel(){
+  const m={shift:'BOOST [SHIFT/CLICK]',space:'BOOST [SPACE/CLICK]',both_boost:'BOOST [SHIFT+SPACE/CLICK]'};
+  const el=document.getElementById('boostLabel');
+  if(el) el.textContent=m[boostKey]||'BOOST [HOLD CLICK]';
 }
-
-// Init settings UI
-function initRadioGroup(groupId, attr, current, onPick) {
-  document.querySelectorAll(`#${groupId} .control-radio`).forEach(btn => {
-    btn.classList.toggle('active', btn.dataset[attr] === current);
-    btn.onclick = () => {
-      document.querySelectorAll(`#${groupId} .control-radio`).forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      onPick(btn.dataset[attr]);
+function initRadioGroup(gid,attr,cur,cb){
+  document.querySelectorAll('#'+gid+' .control-radio').forEach(b=>{
+    b.classList.toggle('active',b.dataset[attr]===cur);
+    b.onclick=()=>{
+      document.querySelectorAll('#'+gid+' .control-radio').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); cb(b.dataset[attr]);
     };
   });
 }
-initRadioGroup('controlSchemeGroup','scheme', controlScheme, v => { controlScheme=v; saveSettings(); });
-initRadioGroup('boostKeyGroup',     'boost',  boostKey,      v => { boostKey=v; saveSettings(); });
-initRadioGroup('mouseAlwaysGroup',  'mouse',  mouseAlways?'on':'off', v => { mouseAlways=(v==='on'); saveSettings(); });
-
-document.querySelectorAll('.menu-tab-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.menu-tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.menu-tab-content').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('mtab-' + btn.dataset.mtab).classList.add('active');
+initRadioGroup('controlSchemeGroup','scheme',controlScheme,v=>{controlScheme=v;saveSettings();});
+initRadioGroup('boostKeyGroup','boost',boostKey,v=>{boostKey=v;saveSettings();});
+initRadioGroup('mouseAlwaysGroup','mouse',mouseAlways?'on':'off',v=>{mouseAlways=(v==='on');saveSettings();});
+document.querySelectorAll('.menu-tab-btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.menu-tab-btn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.menu-tab-content').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('mtab-'+b.dataset.mtab).classList.add('active');
   };
 });
 
-// ================================================================
-//  GAME STATE
-// ================================================================
-let socket = null, myPlayerId = null, isOwner = false;
-let gameState = { players:{}, leaderboard:[], activeEvent:null };
-let myAngle = 0, boosting = false, boostEnergy = 100;
-let selectedSkin = localStorage.getItem('selectedSkin') || 'classic';
-let ownerPass = '';
-let currentPlayerList = [];
-let gameActive = false;
-let myDeathScore = 0, myDeathLength = 0;
-let camX = 0, camY = 0;
-let MAP_SIZE = 6000;
-let orbsLocal = {};
-let rainbowT = 0;
-let musicPlaying = false, audioCtx = null, musicInterval = null;
-let myName = '';
-let myProfile = { coins:0, unlockedCosmetics:[], equippedTrail:null, equippedTitle:null, equippedBadge:null };
-let cosmeticsCatalog = {};
-let sessionCoinsDisplay = 0;
-let frameCount = 0;
-// HUD update throttle — only update DOM every 4 frames
-let hudDirty = true;
-// Cached minimap canvas context
-let mmCtx = null;
-// Pre-cached background gradient (avoid recreating every frame)
-let bgGradient = null;
-let bgGradientCX = -1, bgGradientCY = -1;
+// ── GAME STATE ────────────────────────────────────────────────────
+let socket=null, myPlayerId=null, isOwner=false;
+let gameState={players:{},leaderboard:[],activeEvent:null};
+let myAngle=0, boosting=false, boostEnergy=100;
+const ALL_SKIN_IDS=Object.keys(SKINS);
+const PUBLIC_SKINS=ALL_SKIN_IDS.filter(k=>!SKINS[k].ownerOnly);
+let selectedSkin='classic';try{selectedSkin=localStorage.getItem('selectedSkin')||'classic';}catch(e){}
+if(!ALL_SKIN_IDS.includes(selectedSkin)||(!isOwner&&SKINS[selectedSkin]?.ownerOnly)) selectedSkin='classic';
+let ownerPass='', currentPlayerList=[], gameActive=false;
+let myDeathScore=0, myDeathLength=0;
+let camX=0, camY=0, camTX=0, camTY=0, camScale=1, camScaleTarget=1;
+let MAP_SIZE=6000;
+let orbsLocal={};
+let rainbowHue=0;
+let musicPlaying=false, audioCtx=null, musicInterval=null, noteIdx=0;
+let myName='';
+let myProfile={coins:0,unlockedCosmetics:[],equippedTrail:null,equippedTitle:null,equippedBadge:null};
+let sessionCoins=0;
+let frameCount=0, hudDirty=true;
+let mmCtx=null;
+let bgGrad=null, bgGradCX=-1, bgGradCY=-1;
+// New gameplay features
+let killStreak=0, killStreakTimer=null;
+let highScore=0;try{highScore=parseInt(localStorage.getItem('z3n0_hs')||'0')||0;}catch(e){}
+const XP_RANKS=['NOVICE','APPRENTICE','SLAYER','HUNTER','PREDATOR','ELITE','VIPER','PHANTOM','REAPER','TITAN','WARLORD','OVERLORD','LEGEND','GALAXY','MYTH','DEITY','Z3N0'];
+let particles=[];
+let nearBorder=false;
+let chatOpen=false;
+// FPS tracking
+let fpsBucket=0, fpsElapsed=0, currentFPS=60;
+// HUD element cache
+const HDOM={};
+const hel=id=>HDOM[id]||(HDOM[id]=document.getElementById(id));
+// Last HUD values (skip DOM write if unchanged)
+let _lastSc=-1, _lastLen=-1, _lastCoins=-1, _lastBoost=-1;
 
-// ================================================================
-//  PLAYFAB
-// ================================================================
-const PLAYFAB_TITLE_ID = '12F9AF'; // <-- TODO: Replace with your actual PlayFab Title ID (e.g. 'AB12C')
-let pfPlayerId = null, pfSessionTicket = null, pfDisplayName = null;
+// ── PLAYFAB ───────────────────────────────────────────────────────
+const PLAYFAB_TITLE_ID='YOUR_TITLE_ID';
+let pfPlayerId=null, pfSessionTicket=null, pfDisplayName=null;
 
-(function loadPFSession() {
-  try {
-    const d = JSON.parse(localStorage.getItem('z3n0_pf_session') || 'null');
-    if (d) {
-      pfPlayerId = d.playerId; pfSessionTicket = d.sessionTicket; pfDisplayName = d.displayName;
-      updateAccountBar(true, d.displayName);
-      if (d.displayName) document.getElementById('nameInput').value = d.displayName;
+(function restorePFSession(){
+  try{
+    const d=JSON.parse(localStorage.getItem('z3n0_pf_session')||'null');
+    if(d){
+      pfPlayerId=d.playerId; pfSessionTicket=d.sessionTicket; pfDisplayName=d.displayName;
+      updateAccountBar(true,d.displayName);
+      const ni=document.getElementById('nameInput');
+      if(ni&&d.displayName) ni.value=d.displayName;
     }
-  } catch(e){}
+  }catch(e){}
 })();
 
-function updateAccountBar(linked, name) {
-  const st = document.getElementById('accountStatusText');
-  const nt = document.getElementById('accountNameText');
-  const btn = document.getElementById('openAccountBtn');
-  if (linked) {
-    st.textContent = '✅ ACCOUNT LINKED'; st.className = 'acct-status linked';
-    nt.textContent = 'Playing as: ' + (name||'Player');
-    btn.textContent = 'ACCOUNT';
+function updateAccountBar(linked,name){
+  const st=hel('accountStatusText'), nt=hel('accountNameText'), btn=hel('openAccountBtn');
+  if(!st) return;
+  if(linked){
+    st.textContent='✅ ACCOUNT LINKED'; st.className='acct-status linked';
+    nt.textContent='Playing as: '+(name||'Player');
+    if(btn) btn.textContent='ACCOUNT';
   } else {
-    st.textContent = '⚠️ NO ACCOUNT LINKED'; st.className = 'acct-status unlinked';
-    nt.textContent = 'Progress saves by name only';
-    btn.textContent = 'SIGN IN / CREATE';
+    st.textContent='⚠️ NO ACCOUNT LINKED'; st.className='acct-status unlinked';
+    nt.textContent='Progress saves by name only';
+    if(btn) btn.textContent='SIGN IN / CREATE';
   }
 }
-
-function openPFModal(tab) {
+function openPFModal(tab){
   document.getElementById('playfabModal').classList.add('open');
-  pfTab(pfPlayerId ? 'loggedin' : (tab || 'login'));
-  if (pfPlayerId) document.getElementById('pfLoggedInName').textContent = pfDisplayName || 'Player';
+  pfTab(pfPlayerId?'loggedin':(tab||'login'));
+  if(pfPlayerId){ const el=hel('pfLoggedInName'); if(el) el.textContent=pfDisplayName||'Player'; }
 }
-function closePFModal() { document.getElementById('playfabModal').classList.remove('open'); }
-
-function pfTab(tab) {
-  ['login','register','loggedin'].forEach(t => {
-    const btn = document.getElementById('pf-tab-' + t);
-    if (btn) btn.classList.toggle('active', t === tab);
-    const el = document.getElementById('pf-' + t);
-    if (el) el.classList.toggle('active', t === tab);
+function closePFModal(){document.getElementById('playfabModal').classList.remove('open');}
+function pfTab(tab){
+  ['login','register','loggedin'].forEach(t=>{
+    const b=document.getElementById('pf-tab-'+t);
+    if(b){
+      b.classList.toggle('active',t===tab);
+      // loggedin tab button only shows when we're on that tab
+      if(t==='loggedin') b.style.display=(tab==='loggedin'?'inline-block':'none');
+    }
+    const c=document.getElementById('pf-'+t);
+    if(c) c.classList.toggle('active',t===tab);
   });
 }
-
-function pfMsg(id, msg, ok) {
-  const el = document.getElementById(id);
-  el.textContent = msg; el.className = 'pf-msg ' + (ok ? 'ok' : 'err'); el.style.display = 'block';
+function pfMsg(id,msg,ok){
+  const el=document.getElementById(id); if(!el) return;
+  el.textContent=msg; el.className='pf-msg '+(ok?'ok':'err'); el.style.display='block';
 }
-
-async function pfCall(endpoint, body) {
-  const r = await fetch(`https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/${endpoint}`, {
-    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-  });
+async function pfCall(endpoint,body){
+  const r=await fetch(`https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/${endpoint}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   return r.json();
 }
-
-async function pfLogin() {
-  if (!PLAYFAB_TITLE_ID || PLAYFAB_TITLE_ID === 'YOUR_TITLE_ID') {
-    pfMsg('pfLoginMsg', '❌ PlayFab Title ID not configured. Replace YOUR_TITLE_ID in the code with your actual PlayFab Title ID.', false);
-    return;
-  }
-  const user = document.getElementById('pfLoginUser').value.trim();
-  const pass = document.getElementById('pfLoginPass').value;
-  if (!user || !pass) { pfMsg('pfLoginMsg','Enter username/email and password.', false); return; }
-  document.getElementById('pfLoginBtn').textContent = 'SIGNING IN...';
-  try {
-    const isEmail = user.includes('@');
-    const data = await pfCall(isEmail ? 'LoginWithEmailAddress' : 'LoginWithPlayFab',
-      isEmail ? {TitleId:PLAYFAB_TITLE_ID,Email:user,Password:pass,InfoRequestParameters:{GetPlayerProfile:true}}
-               : {TitleId:PLAYFAB_TITLE_ID,Username:user,Password:pass,InfoRequestParameters:{GetPlayerProfile:true}});
-    if (data.code === 200) {
-      pfPlayerId = data.data.PlayFabId;
-      pfSessionTicket = data.data.SessionTicket;
-      pfDisplayName = data.data.InfoResultPayload?.PlayerProfile?.DisplayName || user;
-      localStorage.setItem('z3n0_pf_session', JSON.stringify({playerId:pfPlayerId,sessionTicket:pfSessionTicket,displayName:pfDisplayName}));
-      updateAccountBar(true, pfDisplayName);
-      document.getElementById('nameInput').value = pfDisplayName;
-      pfMsg('pfLoginMsg','✅ Welcome back, ' + pfDisplayName, true);
-      setTimeout(() => { pfTab('loggedin'); document.getElementById('pfLoggedInName').textContent = pfDisplayName; }, 700);
-    } else {
-      pfMsg('pfLoginMsg', data.errorMessage || 'Login failed. Check credentials.', false);
-    }
-  } catch(e) {
-    pfMsg('pfLoginMsg', 'Connection error. Is PLAYFAB_TITLE_ID set correctly?', false);
-  }
-  document.getElementById('pfLoginBtn').textContent = 'SIGN IN';
+async function pfLogin(){
+  if(!PLAYFAB_TITLE_ID||PLAYFAB_TITLE_ID==='YOUR_TITLE_ID'){pfMsg('pfLoginMsg','❌ Replace YOUR_TITLE_ID in the code with your actual PlayFab Title ID.',false);return;}
+  const user=(hel('pfLoginUser')||{}).value?.trim()||'';
+  const pass=(hel('pfLoginPass')||{}).value||'';
+  if(!user||!pass){pfMsg('pfLoginMsg','Enter username/email and password.',false);return;}
+  const btn=hel('pfLoginBtn'); btn.textContent='SIGNING IN...'; btn.disabled=true;
+  try{
+    const isEmail=user.includes('@');
+    const data=await pfCall(isEmail?'LoginWithEmailAddress':'LoginWithPlayFab',
+      isEmail?{TitleId:PLAYFAB_TITLE_ID,Email:user,Password:pass,InfoRequestParameters:{GetPlayerProfile:true}}
+             :{TitleId:PLAYFAB_TITLE_ID,Username:user,Password:pass,InfoRequestParameters:{GetPlayerProfile:true}});
+    if(data.code===200){
+      pfPlayerId=data.data.PlayFabId; pfSessionTicket=data.data.SessionTicket;
+      pfDisplayName=data.data.InfoResultPayload?.PlayerProfile?.DisplayName||user;
+      localStorage.setItem('z3n0_pf_session',JSON.stringify({playerId:pfPlayerId,sessionTicket:pfSessionTicket,displayName:pfDisplayName}));
+      updateAccountBar(true,pfDisplayName);
+      const ni=hel('nameInput'); if(ni) ni.value=pfDisplayName;
+      pfMsg('pfLoginMsg','✅ Welcome back, '+pfDisplayName,true);
+      setTimeout(()=>{pfTab('loggedin');const el=hel('pfLoggedInName');if(el)el.textContent=pfDisplayName;},700);
+    } else pfMsg('pfLoginMsg',data.errorMessage||'Login failed.',false);
+  }catch(e){pfMsg('pfLoginMsg','Connection error. Check PLAYFAB_TITLE_ID.',false);}
+  btn.textContent='SIGN IN'; btn.disabled=false;
+}
+async function pfRegister(){
+  if(!PLAYFAB_TITLE_ID||PLAYFAB_TITLE_ID==='YOUR_TITLE_ID'){pfMsg('pfRegMsg','❌ Replace YOUR_TITLE_ID in the code first.',false);return;}
+  const name=(hel('pfRegName')||{}).value?.trim()||'';
+  const user=(hel('pfRegUser')||{}).value?.trim()||'';
+  const email=(hel('pfRegEmail')||{}).value?.trim()||'';
+  const pass=(hel('pfRegPass')||{}).value||'';
+  if(!name||!user||!email||!pass){pfMsg('pfRegMsg','All fields required.',false);return;}
+  if(pass.length<6){pfMsg('pfRegMsg','Password must be ≥ 6 characters.',false);return;}
+  if(!/^[a-zA-Z0-9_]{3,20}$/.test(user)){pfMsg('pfRegMsg','Username: 3-20 chars, letters/numbers/_',false);return;}
+  const btn=hel('pfRegBtn'); btn.textContent='CREATING...'; btn.disabled=true;
+  try{
+    const data=await pfCall('RegisterPlayFabUser',{TitleId:PLAYFAB_TITLE_ID,Username:user,Email:email,Password:pass,DisplayName:name,RequireBothUsernameAndEmail:true});
+    if(data.code===200){
+      pfPlayerId=data.data.PlayFabId; pfSessionTicket=data.data.SessionTicket; pfDisplayName=name;
+      localStorage.setItem('z3n0_pf_session',JSON.stringify({playerId:pfPlayerId,sessionTicket:pfSessionTicket,displayName:pfDisplayName}));
+      updateAccountBar(true,pfDisplayName);
+      const ni=hel('nameInput'); if(ni) ni.value=pfDisplayName;
+      pfMsg('pfRegMsg','✅ Account created! Welcome, '+pfDisplayName,true);
+      setTimeout(()=>{pfTab('loggedin');const el=hel('pfLoggedInName');if(el)el.textContent=pfDisplayName;},700);
+    } else pfMsg('pfRegMsg',data.errorMessage||'Registration failed.',false);
+  }catch(e){pfMsg('pfRegMsg','Connection error.',false);}
+  btn.textContent='CREATE ACCOUNT'; btn.disabled=false;
+}
+function pfLogout(){
+  pfPlayerId=null; pfSessionTicket=null; pfDisplayName=null;
+  try{localStorage.removeItem('z3n0_pf_session');}catch(e){}
+  myProfile={coins:0,unlockedCosmetics:[],equippedTrail:null,equippedTitle:null,equippedBadge:null};
+  updateAccountBar(false,null); updateCoinDisplays();
+  pfTab('login'); closePFModal();
+  showToast('Signed out.');
 }
 
-async function pfRegister() {
-  if (!PLAYFAB_TITLE_ID || PLAYFAB_TITLE_ID === 'YOUR_TITLE_ID') {
-    pfMsg('pfRegMsg', '❌ PlayFab Title ID not configured. Replace YOUR_TITLE_ID in the code with your actual PlayFab Title ID.', false);
-    return;
-  }
-  const name = document.getElementById('pfRegName').value.trim();
-  const user = document.getElementById('pfRegUser').value.trim();
-  const email = document.getElementById('pfRegEmail').value.trim();
-  const pass = document.getElementById('pfRegPass').value;
-  if (!name||!user||!email||!pass) { pfMsg('pfRegMsg','All fields required.',false); return; }
-  if (pass.length < 6) { pfMsg('pfRegMsg','Password must be ≥ 6 characters.',false); return; }
-  document.getElementById('pfRegBtn').textContent = 'CREATING...';
-  try {
-    const data = await pfCall('RegisterPlayFabUser', {
-      TitleId:PLAYFAB_TITLE_ID, Username:user, Email:email, Password:pass, DisplayName:name, RequireBothUsernameAndEmail:true
-    });
-    if (data.code === 200) {
-      pfPlayerId = data.data.PlayFabId;
-      pfSessionTicket = data.data.SessionTicket;
-      pfDisplayName = name;
-      localStorage.setItem('z3n0_pf_session', JSON.stringify({playerId:pfPlayerId,sessionTicket:pfSessionTicket,displayName:pfDisplayName}));
-      updateAccountBar(true, pfDisplayName);
-      document.getElementById('nameInput').value = pfDisplayName;
-      pfMsg('pfRegMsg','✅ Account created! Welcome, ' + pfDisplayName, true);
-      setTimeout(() => { pfTab('loggedin'); document.getElementById('pfLoggedInName').textContent = pfDisplayName; }, 700);
-    } else {
-      pfMsg('pfRegMsg', data.errorMessage || 'Registration failed.', false);
-    }
-  } catch(e) {
-    pfMsg('pfRegMsg', 'Connection error. Check PLAYFAB_TITLE_ID.', false);
-  }
-  document.getElementById('pfRegBtn').textContent = 'CREATE ACCOUNT';
-}
-
-function pfLogout() {
-  pfPlayerId = null; pfSessionTicket = null; pfDisplayName = null;
-  localStorage.removeItem('z3n0_pf_session');
-  updateAccountBar(false);
-  closePFModal();
-  showToast('Signed out.', null);
-}
-
-// ================================================================
-//  SKIN SELECTOR
-// ================================================================
-function buildSkinSelector() {
-  const sel = document.getElementById('skinSelector');
-  sel.innerHTML = '';
-  for (const [id, skin] of Object.entries(SKINS)) {
-    if (skin.ownerOnly && !isOwner) continue;
-    const d = document.createElement('div');
-    d.className = 'skin-opt' + (skin.ownerOnly ? ' owner-only' : '') + (id === selectedSkin ? ' selected' : '');
-    d.title = skin.name;
-    d.textContent = skin.emoji;
-    d.onclick = () => {
-      selectedSkin = id;
-      localStorage.setItem('selectedSkin', id);
-      document.querySelectorAll('.skin-opt').forEach(s => s.classList.remove('selected'));
+// ── SKIN SELECTOR ─────────────────────────────────────────────────
+function buildSkinSelector(){
+  const sel=hel('skinSelector'); if(!sel) return;
+  sel.innerHTML='';
+  for(const[id,skin]of Object.entries(SKINS)){
+    if(skin.ownerOnly&&!isOwner) continue;
+    const d=document.createElement('div');
+    d.className='skin-opt'+(skin.ownerOnly?' owner-only':'')+(id===selectedSkin?' selected':'');
+    d.title=skin.name; d.textContent=skin.emoji;
+    d.onclick=()=>{
+      selectedSkin=id; try{localStorage.setItem('selectedSkin',id);}catch(e){}
+      document.querySelectorAll('.skin-opt').forEach(s=>s.classList.remove('selected'));
       d.classList.add('selected');
     };
     sel.appendChild(d);
@@ -875,842 +1310,946 @@ function buildSkinSelector() {
 }
 buildSkinSelector();
 
-// ================================================================
-//  MUSIC
-// ================================================================
-const MELODY = [261,293,329,349,392,440,493,523,493,440,392,349,329,293,261,293,329,392,440,493,523,587,523,493,440,392,349,329];
-const BASS   = [65,73,82,87,98,110,65,73];
-let noteIdx = 0;
-
-function initMusic() {
-  if (audioCtx) return;
-  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+// ── MUSIC ─────────────────────────────────────────────────────────
+const MELODY=[261,293,329,349,392,440,493,523,493,440,392,349,329,293,261,293,329,392,440,493,523,587,523,493,440,392,349,329];
+const BASS=[65,73,82,87,98,110,65,73];
+function initMusic(){if(audioCtx)return;try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function playNote(freq,type,dur,gain,t){
+  if(!audioCtx||!musicPlaying)return;
+  const osc=audioCtx.createOscillator(),g=audioCtx.createGain(),flt=audioCtx.createBiquadFilter();
+  flt.type='lowpass';flt.frequency.value=1800;
+  osc.connect(flt);flt.connect(g);g.connect(audioCtx.destination);
+  osc.type=type;osc.frequency.value=freq;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(gain,t+0.02);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  osc.start(t);osc.stop(t+dur+0.05);
 }
-
-function playNote(freq, type, dur, gain, t) {
-  if (!audioCtx || !musicPlaying) return;
-  const osc = audioCtx.createOscillator();
-  const g   = audioCtx.createGain();
-  const flt = audioCtx.createBiquadFilter();
-  flt.type='lowpass'; flt.frequency.value=2000;
-  osc.connect(flt); flt.connect(g); g.connect(audioCtx.destination);
-  osc.type = type; osc.frequency.value = freq;
-  g.gain.setValueAtTime(0, t);
-  g.gain.linearRampToValueAtTime(gain, t+0.02);
-  g.gain.exponentialRampToValueAtTime(0.001, t+dur);
-  osc.start(t); osc.stop(t+dur+0.05);
-}
-
-function scheduleMusicNotes() {
-  if (musicInterval) clearInterval(musicInterval);
-  const tempo = 0.18; let beat = 0;
-  musicInterval = setInterval(() => {
-    if (!musicPlaying || !audioCtx) return;
-    const now = audioCtx.currentTime;
-    playNote(MELODY[noteIdx % MELODY.length], 'triangle', tempo*1.5, 0.07, now);
-    playNote(MELODY[noteIdx % MELODY.length]*2, 'sine', tempo, 0.025, now+0.05);
-    if (beat%2===0) playNote(BASS[beat%BASS.length], 'sawtooth', tempo*2, 0.05, now);
-    if (beat%4===0) {
-      const k = audioCtx.createOscillator(), kg = audioCtx.createGain();
-      k.connect(kg); kg.connect(audioCtx.destination);
-      k.frequency.setValueAtTime(150,now); k.frequency.exponentialRampToValueAtTime(0.001,now+0.28);
-      kg.gain.setValueAtTime(0.25,now); kg.gain.exponentialRampToValueAtTime(0.001,now+0.28);
-      k.start(now); k.stop(now+0.32);
+function scheduleMusicNotes(){
+  if(musicInterval)clearInterval(musicInterval);
+  const tempo=0.18;let beat=0;
+  musicInterval=setInterval(()=>{
+    if(!musicPlaying||!audioCtx)return;
+    const now=audioCtx.currentTime;
+    playNote(MELODY[noteIdx%MELODY.length],'triangle',tempo*1.5,0.065,now);
+    playNote(MELODY[noteIdx%MELODY.length]*2,'sine',tempo,0.022,now+0.05);
+    if(beat%2===0) playNote(BASS[beat%BASS.length],'sawtooth',tempo*2,0.045,now);
+    if(beat%4===0){
+      const k=audioCtx.createOscillator(),kg=audioCtx.createGain();
+      k.connect(kg);kg.connect(audioCtx.destination);
+      k.frequency.setValueAtTime(150,now);k.frequency.exponentialRampToValueAtTime(0.001,now+0.28);
+      kg.gain.setValueAtTime(0.22,now);kg.gain.exponentialRampToValueAtTime(0.001,now+0.28);
+      k.start(now);k.stop(now+0.32);
     }
-    noteIdx++; beat++;
-  }, tempo*1000);
+    noteIdx++;beat++;
+  },tempo*1000);
 }
+function playMusic(){musicPlaying=true;hel('musicVis').classList.remove('music-paused');hel('musicToggle').textContent='🎵';scheduleMusicNotes();}
+function pauseMusic(){musicPlaying=false;hel('musicVis').classList.add('music-paused');hel('musicToggle').textContent='⏸';if(musicInterval){clearInterval(musicInterval);musicInterval=null;}}
+hel('musicToggle').onclick=()=>{if(!audioCtx){initMusic();if(audioCtx)playMusic();return;}musicPlaying?pauseMusic():playMusic();};
 
-function playMusic() { musicPlaying=true; document.getElementById('musicVis').classList.remove('music-paused'); document.getElementById('musicToggle').textContent='🎵'; scheduleMusicNotes(); }
-function pauseMusic() { musicPlaying=false; document.getElementById('musicVis').classList.add('music-paused'); document.getElementById('musicToggle').textContent='⏸'; if(musicInterval){clearInterval(musicInterval);musicInterval=null;} }
-
-document.getElementById('musicToggle').onclick = () => {
-  if (!audioCtx) { initMusic(); if(audioCtx) playMusic(); return; }
-  musicPlaying ? pauseMusic() : playMusic();
+// ── PLAY ──────────────────────────────────────────────────────────
+hel('playBtn').onclick=()=>{
+  const name=(hel('nameInput').value.trim()||'Snake').substring(0,20);
+  myName=name; ownerPass=hel('ownerPass').value;
+  connectAndJoin(name,selectedSkin,ownerPass);
 };
-
-// ================================================================
-//  PLAY
-// ================================================================
-document.getElementById('playBtn').onclick = () => {
-  const name = document.getElementById('nameInput').value.trim() || 'Snake';
-  myName = name; ownerPass = document.getElementById('ownerPass').value;
-  connectAndJoin(name, selectedSkin, ownerPass);
-};
-document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('playBtn').click(); });
-
-// Owner toggle
-document.getElementById('ownerToggleBtn').addEventListener('dblclick', () => {
-  const grp = document.getElementById('ownerPassGroup');
-  grp.style.display = grp.style.display==='none' ? 'flex' : 'none';
+hel('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')hel('playBtn').click();});
+hel('ownerToggleBtn').addEventListener('click',()=>{
+  const g=hel('ownerPassGroup');
+  g.style.display=g.style.display==='none'?'flex':'none';
 });
 
-// ================================================================
-//  SOCKET
-// ================================================================
-function connectAndJoin(name, skin, password) {
-  if (socket) { socket.disconnect(); socket = null; }
-  socket = io({ transports:['websocket'] });
+// ── SOCKET ────────────────────────────────────────────────────────
+function connectAndJoin(name,skin,password){
+  if(socket){socket.disconnect();socket=null;}
+  killStreak=0; particles=[];
+  socket=io({transports:['websocket'],reconnectionAttempts:5,reconnectionDelay:1000});
 
-  socket.on('connect', () => {
-    socket.emit('joinGame', { name, skin, password, playfabId: pfPlayerId || null });
-  });
+  socket.on('connect',()=>socket.emit('joinGame',{name,skin,password,playfabId:pfPlayerId||null}));
+  socket.on('connect_error',()=>showToast('Connection failed — retrying...','error'));
 
-  socket.on('joined', data => {
-    myPlayerId = data.playerId; isOwner = data.isOwner; MAP_SIZE = data.mapSize;
-    orbsLocal = {}; data.orbs.forEach(o => orbsLocal[o.id] = o);
-    myProfile = data.profile || myProfile;
-    cosmeticsCatalog = data.cosmeticsCatalog || {};
-    if (data.profile?.isLegacyAccount && !pfPlayerId)
-      document.getElementById('legacyWarning').style.display = 'block';
+  socket.on('joined',data=>{
+    myPlayerId=data.playerId; isOwner=!!data.isOwner; MAP_SIZE=data.mapSize||6000;
+    orbsLocal={}; if(data.orbs) data.orbs.forEach(o=>orbsLocal[o.id]=o);
+    if(data.profile) myProfile={...myProfile,...data.profile};
+    if(!Array.isArray(myProfile.unlockedCosmetics)) myProfile.unlockedCosmetics=[];
+    if(data.cosmeticsCatalog&&Object.keys(data.cosmeticsCatalog).length)
+      cosmeticsCatalog={...cosmeticsCatalog,...data.cosmeticsCatalog};
+    if(data.profile?.isLegacyAccount&&!pfPlayerId)
+      hel('legacyWarning').style.display='block';
     startGame();
-    if (isOwner) {
-      document.getElementById('owner-tag-hud').style.display = 'block';
-      buildSkinSelector();
-      showToast('👑 Welcome back, Z3N0', 'gold');
-    }
-    initMusic();
-    updateCoinDisplays();
+    if(isOwner){hel('owner-tag-hud').style.display='block';buildSkinSelector();showToast('👑 Welcome back, Z3N0','gold');}
+    initMusic(); updateCoinDisplays();
   });
 
-  socket.on('gameState', data => { gameState = data; hudDirty = true; });
-  socket.on('orbEaten', ({ oid, newOrb }) => { delete orbsLocal[oid]; orbsLocal[newOrb.id] = newOrb; });
-  socket.on('orbSpawned', orb => { orbsLocal[orb.id] = orb; });
-  socket.on('orbFrenzy', orbs => { orbs.forEach(o => orbsLocal[o.id] = o); });
-
-  socket.on('playerDied', ({ id, killerName, droppedOrbs }) => {
-    if (droppedOrbs) droppedOrbs.forEach(o => orbsLocal[o.id] = o);
-    if (id !== myPlayerId) addKillFeed(id, killerName);
+  socket.on('gameState',data=>{
+    if(!data) return;
+    gameState=data;
+    if(!gameState.leaderboard) gameState.leaderboard=[];
+    if(!gameState.players)     gameState.players={};
+    hudDirty=true;
   });
 
-  socket.on('youDied', ({ killerName, coinsEarned }) => {
-    myProfile.coins += (coinsEarned || 0);
-    handleDeath(killerName, coinsEarned || 0);
-  });
+  // Orb updates — guard against null newOrb
+  socket.on('orbEaten',({oid,newOrb})=>{delete orbsLocal[oid];if(newOrb)orbsLocal[newOrb.id]=newOrb;});
+  socket.on('orbSpawned',orb=>{if(orb)orbsLocal[orb.id]=orb;});
+  socket.on('orbFrenzy',orbs=>{if(orbs)orbs.forEach(o=>orbsLocal[o.id]=o);});
 
-  socket.on('kicked', ({ reason }) => {
-    socket.disconnect();
-    showScreen('menuScreen');
-    showToast('🚫 ' + (reason || 'Kicked.'), 'error');
-    gameActive = false;
-    document.getElementById('hud').style.display = 'none';
-    document.getElementById('gameCanvas').style.display = 'none';
-    document.getElementById('musicControls').style.display = 'none';
+  socket.on('playerDied',({id,killerName,droppedOrbs})=>{
+    if(droppedOrbs) droppedOrbs.forEach(o=>orbsLocal[o.id]=o);
+    if(id!==myPlayerId) addKillFeed(id,killerName);
   });
-
-  socket.on('systemMessage', d => showSystemMsg(typeof d==='string' ? d : d.message || ''));
-  socket.on('skinGranted', ({ skin:s }) => { selectedSkin = s; showToast(`🎨 Skin: ${SKINS[s]?.name||s}`, 'gold'); });
-  socket.on('killConfirmed', ({ victimName }) => showToast(`💀 Eliminated ${victimName}`));
-
-  socket.on('liveEvent', ev => {
-    document.getElementById('eventBanner').textContent = ev.name;
-    document.getElementById('eventBanner').style.display = 'block';
-    document.getElementById('statEvent').style.display = 'inline';
-    showToast('⚡ ' + ev.name, 'gold');
+  socket.on('youDied',({killerName,coinsEarned})=>{
+    myProfile.coins+=(coinsEarned||0);
+    handleDeath(killerName,coinsEarned||0);
   });
-  socket.on('eventEnded', () => {
-    document.getElementById('eventBanner').style.display = 'none';
-    document.getElementById('statEvent').style.display = 'none';
+  socket.on('kicked',({reason})=>{
+    if(socket){socket.disconnect();socket=null;}
+    gameActive=false; hideGameUI(); showScreen('menuScreen');
+    showToast('🚫 '+(reason||'Kicked.'),'error');
+  });
+  socket.on('systemMessage',d=>showSysMsg(typeof d==='string'?d:d.message||''));
+  socket.on('skinGranted',({skin:s})=>{selectedSkin=s;showToast('🎨 Skin: '+(SKINS[s]?.name||s),'gold');});
+  socket.on('orbEatenClient',({points})=>{if(points)showScorePop('+'+points,'#ffd700');});
+  socket.on('killConfirmed',({victimName})=>{
+    killStreak++; clearTimeout(killStreakTimer);
+    killStreakTimer=setTimeout(()=>{killStreak=0;},10000);
+    showToast('💀 Eliminated '+victimName);
+    if(killStreak>=2) showStreakBanner(killStreak);
+    spawnKillParticles(); screenFlash('rgba(255,34,68,0.18)');
+  });
+  socket.on('chatMessage',({name:n,message:m,isOwner:io})=>addChatLine(n,m,io));
+  socket.on('liveEvent',ev=>{
+    const el=hel('eventBanner'); if(!el) return;
+    el.textContent='⚡ '+(ev.name||'EVENT'); el.style.display='block';
+    const se=hel('statEvent'); if(se) se.style.display='inline';
+    showToast('⚡ '+(ev.name||'EVENT'),'gold');
+    screenFlash('rgba(170,68,255,0.2)');
+  });
+  socket.on('eventEnded',()=>{
+    const el=hel('eventBanner'); if(el) el.style.display='none';
+    const se=hel('statEvent'); if(se) se.style.display='none';
     showToast('Event ended.');
   });
-
-  socket.on('ownerBroadcast', ({ message }) => {
-    document.getElementById('broadcastText').textContent = message;
-    document.getElementById('broadcastBanner').style.display = 'block';
-    setTimeout(() => document.getElementById('broadcastBanner').style.display = 'none', 8000);
+  socket.on('ownerBroadcast',({message})=>{
+    hel('broadcastText').textContent=message;
+    hel('broadcastBanner').style.display='block';
+    setTimeout(()=>hel('broadcastBanner').style.display='none',9000);
   });
-
-  socket.on('ownerSuccess', msg => { showOwnerAlert(msg,'success'); refreshPlayers(); });
-  socket.on('ownerError',   msg => showOwnerAlert(msg,'error'));
-  socket.on('playerList',   list => { currentPlayerList = list; renderPlayerTable(list); populateSelects(list); });
-
-  socket.on('coinsGranted', ({ amount, newBalance }) => {
-    myProfile.coins = newBalance; updateCoinDisplays();
-    showToast(`💰 +${amount} coins!`, 'gold');
+  socket.on('ownerSuccess',msg=>{showOwnerAlert(msg,'success');refreshPlayers();});
+  socket.on('ownerError',msg=>showOwnerAlert(msg,'error'));
+  socket.on('playerList',list=>{currentPlayerList=list;renderPlayerTable(list);populateSelects(list);});
+  socket.on('coinsGranted',({amount,newBalance})=>{
+    myProfile.coins=newBalance; updateCoinDisplays();
+    showToast('💰 +'+amount+' coins!','gold');
   });
-  socket.on('cosmeticBought', ({ cosmeticId, newCoinBalance, unlockedCosmetics }) => {
-    myProfile.coins = newCoinBalance; myProfile.unlockedCosmetics = unlockedCosmetics;
+  socket.on('cosmeticBought',({cosmeticId,newCoinBalance,unlockedCosmetics})=>{
+    myProfile.coins=newCoinBalance;
+    if(unlockedCosmetics) myProfile.unlockedCosmetics=unlockedCosmetics;
     updateCoinDisplays(); renderCosmeticsShop();
-    showToast(`🎨 Bought: ${cosmeticsCatalog[cosmeticId]?.name||cosmeticId}`, 'gold');
+    showToast('🎨 Bought: '+(cosmeticsCatalog[cosmeticId]?.name||cosmeticId),'gold');
   });
-  socket.on('cosmeticGranted', ({ unlockedCosmetics }) => {
-    myProfile.unlockedCosmetics = unlockedCosmetics; renderCosmeticsShop(); showToast(`🎨 Cosmetic granted!`, 'gold');
+  socket.on('cosmeticGranted',({unlockedCosmetics})=>{
+    if(unlockedCosmetics) myProfile.unlockedCosmetics=unlockedCosmetics;
+    renderCosmeticsShop(); showToast('🎨 Cosmetic granted!','gold');
   });
-  socket.on('cosmeticEquipped', ({ equippedTrail, equippedTitle, equippedBadge }) => {
-    myProfile.equippedTrail = equippedTrail; myProfile.equippedTitle = equippedTitle; myProfile.equippedBadge = equippedBadge;
+  socket.on('cosmeticEquipped',({equippedTrail,equippedTitle,equippedBadge})=>{
+    myProfile.equippedTrail=equippedTrail;
+    myProfile.equippedTitle=equippedTitle;
+    myProfile.equippedBadge=equippedBadge;
     updateEquippedDisplay(); renderCosmeticsShop();
   });
-  socket.on('cosmeticError', msg => showToast(msg, 'error'));
-  socket.on('disconnect', () => { if (gameActive) showToast('Disconnected.', 'error'); });
+  socket.on('cosmeticError',msg=>showToast(msg,'error'));
+  socket.on('disconnect',reason=>{if(gameActive){showToast('Disconnected: '+reason,'error');pauseMusic();}});
 }
 
-// ================================================================
-//  GAME START / STOP
-// ================================================================
-function startGame() {
-  gameActive = true;
+// ── GAME START/STOP ───────────────────────────────────────────────
+function hideGameUI(){
+  ['hud','gameCanvas','musicControls','inGameCosmeticsBtn','ingameCosmeticsPanel',
+   'owner-tag-hud','streak-banner'].forEach(id=>{
+    const el=hel(id); if(el) el.style.display='none';
+  });
+  hel('deathScreen').classList.add('hidden');
+  const cb=hel('chat-wrap'); if(cb) cb.style.display='none';
+  const db=hel('danger-warn'); if(db) db.style.opacity='0';
+  const sb=hel('streak-banner'); if(sb) sb.style.opacity='0';
+}
+
+function startGame(){
+  gameActive=true; killStreak=0; particles=[];
+  _lastSc=-1;_lastLen=-1;_lastCoins=-1;_lastBoost=-1;
+  camScale=1; camScaleTarget=1;
   showScreen('game');
-  document.getElementById('gameCanvas').style.display = 'block';
-  document.getElementById('hud').style.display = 'block';
-  document.getElementById('musicControls').style.display = 'flex';
-  document.getElementById('deathScreen').classList.add('hidden');
-  document.getElementById('inGameCosmeticsBtn').style.display = 'block';
-  setupCanvas();
-  bgGradient = null; bgGradientCX = -1; bgGradientCY = -1; // reset cached gradient
-  mmCtx = document.getElementById('minimapCanvas').getContext('2d');
+  hel('gameCanvas').style.display='block';
+  hel('hud').style.display='block';
+  hel('musicControls').style.display='flex';
+  hel('deathScreen').classList.add('hidden');
+  hel('inGameCosmeticsBtn').style.display='block';
+  hel('ingameCosmeticsPanel').style.display='none';
+  const cw=hel('chat-wrap'); if(cw) cw.style.display='block';
+  setupCanvas(); bgGrad=null; bgGradCX=-1; bgGradCY=-1;
+  mmCtx=document.getElementById('minimapCanvas').getContext('2d');
+  lastFrameTs=0; fpsBucket=0; fpsElapsed=0;
   requestAnimationFrame(gameLoop);
 }
 
-function handleDeath(killerName, coinsEarned) {
-  gameActive = false;
-  const me = gameState.players[myPlayerId];
-  myDeathScore  = me ? me.score || 0 : 0;
-  myDeathLength = me ? (me.segments || []).length : 0;
-  document.getElementById('deathKiller').textContent  = `Eliminated by ${killerName || 'the void'}`;
-  document.getElementById('deathScore').textContent   = myDeathScore;
-  document.getElementById('deathLength').textContent  = myDeathLength;
-  document.getElementById('deathCoinsEarned').textContent = coinsEarned > 0 ? `💰 +${coinsEarned} coins earned` : '';
-  const rank = (gameState.leaderboard || []).findIndex(e => e.id === myPlayerId);
-  document.getElementById('deathRank').textContent = rank >= 0 ? '#'+(rank+1) : '—';
-  document.getElementById('deathScreen').classList.remove('hidden');
-  document.getElementById('inGameCosmeticsBtn').style.display = 'none';
+function handleDeath(killerName,coinsEarned){
+  gameActive=false; killStreak=0;
+  if(chatOpen) closeChat();
+  clearTimeout(killStreakTimer);
+  const me=gameState?.players?.[myPlayerId];
+  myDeathScore=me?.score||0;
+  myDeathLength=me?.segments?.length||0;
+  const isNewHS=myDeathScore>highScore;
+  if(isNewHS){highScore=myDeathScore;try{localStorage.setItem('z3n0_hs',highScore);}catch(e){}}
+  const hsEl=hel('deathHs');
+  if(hsEl) hsEl.textContent=isNewHS?'🏆 NEW HIGH SCORE!':'Best: '+highScore;
+  hel('deathKiller').textContent='Eliminated by '+(killerName||'the void');
+  hel('deathScore').textContent=myDeathScore;
+  hel('deathLength').textContent=myDeathLength;
+  hel('deathCoinsEarned').textContent=coinsEarned>0?'💰 +'+coinsEarned+' coins earned':'';
+  const rank=(gameState.leaderboard||[]).findIndex(e=>e.id===myPlayerId);
+  hel('deathRank').textContent=rank>=0?'#'+(rank+1):'—';
+  hel('ingameCosmeticsPanel').style.display='none';
+  hel('deathScreen').classList.remove('hidden');
+  hel('inGameCosmeticsBtn').style.display='none';
+  const sb=hel('streak-banner'); if(sb) sb.style.opacity='0';
+  screenFlash(isNewHS?'rgba(255,215,0,0.3)':'rgba(255,34,68,0.3)');
 }
 
-document.getElementById('respawnBtn').onclick = () => {
-  document.getElementById('deathScreen').classList.add('hidden');
-  connectAndJoin(myName, selectedSkin, ownerPass);
+hel('respawnBtn').onclick=()=>{
+  hel('deathScreen').classList.add('hidden');
+  gameState={players:{},leaderboard:[],activeEvent:null};
+  orbsLocal={}; particles=[];
+  connectAndJoin(myName,selectedSkin,ownerPass);
 };
-document.getElementById('menuBtn').onclick = () => {
-  document.getElementById('deathScreen').classList.add('hidden');
-  document.getElementById('hud').style.display = 'none';
-  document.getElementById('gameCanvas').style.display = 'none';
-  document.getElementById('musicControls').style.display = 'none';
-  document.getElementById('inGameCosmeticsBtn').style.display = 'none';
+hel('menuBtn').onclick=()=>{
+  hideGameUI();
+  hel('deathScreen').classList.add('hidden');
   showScreen('menuScreen');
-  if (socket) { socket.disconnect(); socket = null; }
-  gameActive = false;
+  if(socket){socket.disconnect();socket=null;}
+  gameActive=false;
+  gameState={players:{},leaderboard:[],activeEvent:null};
+  orbsLocal={}; particles=[];
 };
 
-// ================================================================
-//  CANVAS
-// ================================================================
-const canvas = document.getElementById('gameCanvas');
-const ctx    = canvas.getContext('2d');
-function setupCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; bgGradient = null; }
-window.addEventListener('resize', setupCanvas);
+// ── CANVAS ────────────────────────────────────────────────────────
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
+function setupCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;bgGrad=null;}
+window.addEventListener('resize',setupCanvas,{passive:true});
 
-// Cursor
-document.addEventListener('mousemove', e => {
-  const c = document.getElementById('cursor');
-  c.style.left = e.clientX + 'px'; c.style.top = e.clientY + 'px';
-});
+// Custom cursor
+const cursorEl=document.getElementById('cursor');
+document.addEventListener('mousemove',e=>{
+  cursorEl.style.left=e.clientX+'px';
+  cursorEl.style.top=e.clientY+'px';
+},{passive:true});
 
-// ================================================================
-//  INPUT
-// ================================================================
-let lastInputEmit = 0;
-function emitInput() {
-  const now = performance.now();
-  if (now - lastInputEmit < 14) return;
-  lastInputEmit = now;
-  if (socket) socket.emit('input', { angle: myAngle, boosting });
+// ── INPUT ─────────────────────────────────────────────────────────
+let lastEmitTs=0;
+function emitInput(){
+  const now=performance.now();
+  if(now-lastEmitTs<16)return;
+  lastEmitTs=now;
+  if(socket) socket.emit('input',{angle:myAngle,boosting});
 }
 
-canvas.addEventListener('mousemove', e => {
-  if (!gameActive || !myPlayerId) return;
-  if (controlScheme !== 'mouse' && !mouseAlways) return;
-  const me = gameState.players[myPlayerId];
-  if (!me?.segments?.length) return;
-  const h = me.segments[0];
-  myAngle = Math.atan2(e.clientY - (h.y - camY), e.clientX - (h.x - camX));
+canvas.addEventListener('mousemove',e=>{
+  if(!gameActive||!myPlayerId||chatOpen)return;
+  if(controlScheme!=='mouse'&&!mouseAlways)return;
+  const me=gameState.players[myPlayerId];
+  if(!me?.segments?.length)return;
+  // BUG FIX: account for camera scale transform
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const wx=(e.clientX-cx)/camScale+cx, wy=(e.clientY-cy)/camScale+cy;
+  myAngle=Math.atan2(wy-(me.segments[0].y-camY),wx-(me.segments[0].x-camX));
   emitInput();
-});
-canvas.addEventListener('mousedown', e => { if (e.button===0||e.button===2) { boosting=true; emitInput(); } });
-canvas.addEventListener('mouseup', () => { boosting=false; emitInput(); });
-canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-canvas.addEventListener('touchmove', e => {
+},{passive:true});
+canvas.addEventListener('mousedown',e=>{if(e.button===0||e.button===2){boosting=true;emitInput();}});
+canvas.addEventListener('mouseup',()=>{boosting=false;emitInput();});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('touchmove',e=>{
   e.preventDefault();
-  const t = e.touches[0];
-  const me = gameState.players[myPlayerId];
-  if (!me?.segments?.length) return;
-  const h = me.segments[0];
-  myAngle = Math.atan2(t.clientY - (h.y - camY), t.clientX - (h.x - camX));
+  if(!gameActive||chatOpen)return;
+  const t=e.touches[0], me=gameState.players[myPlayerId];
+  if(!me?.segments?.length)return;
+  myAngle=Math.atan2(t.clientY-(me.segments[0].y-camY),t.clientX-(me.segments[0].x-camX));
   emitInput();
-}, { passive:false });
-canvas.addEventListener('touchstart', () => { boosting=true; emitInput(); });
-canvas.addEventListener('touchend',   () => { boosting=false; emitInput(); });
+},{passive:false});
+canvas.addEventListener('touchstart',()=>{boosting=true;emitInput();},{passive:true});
+canvas.addEventListener('touchend',()=>{boosting=false;emitInput();},{passive:true});
 
-const keys = {};
-document.addEventListener('keydown', e => {
-  keys[e.key] = true;
-  if (e.key==='F1' || (e.ctrlKey&&e.key==='o')) { e.preventDefault(); if(isOwner) openOwnerPanel(); return; }
-  if (e.key==='Escape') { document.getElementById('ownerPanel').classList.add('hidden'); document.getElementById('ingameCosmeticsPanel').style.display='none'; return; }
-  if (!gameActive || !socket) return;
-  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
-  if ((e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost')) ||
-      (e.key===' '    &&(boostKey==='space'||boostKey==='both_boost'))) {
-    boosting=true; emitInput();
+const keys={};
+document.addEventListener('keydown',e=>{
+  keys[e.key]=true;
+  if(e.key==='F1'||(e.ctrlKey&&e.key==='o')){e.preventDefault();if(isOwner)openOwnerPanel();return;}
+  if(e.key==='Escape'){
+    hel('ownerPanel').classList.add('hidden');
+    hel('ingameCosmeticsPanel').style.display='none';
+    if(chatOpen)closeChat(); return;
   }
+  if((e.key==='t'||e.key==='T')&&gameActive&&!chatOpen){e.preventDefault();openChat();return;}
+  if(!gameActive||!socket)return;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+  if((e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost'))||
+     (e.key===' '   &&(boostKey==='space' ||boostKey==='both_boost'))){boosting=true;emitInput();}
 });
-document.addEventListener('keyup', e => {
-  keys[e.key] = false;
-  if (!gameActive || !socket) return;
-  if ((e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost')) ||
-      (e.key===' '    &&(boostKey==='space'||boostKey==='both_boost'))) {
-    boosting=false; emitInput();
-  }
+document.addEventListener('keyup',e=>{
+  keys[e.key]=false;
+  if(!gameActive||!socket)return;
+  if((e.key==='Shift'&&(boostKey==='shift'||boostKey==='both_boost'))||
+     (e.key===' '   &&(boostKey==='space' ||boostKey==='both_boost'))){boosting=false;emitInput();}
 });
 
-function handleKeyboardSteering() {
-  if (!gameActive || controlScheme==='mouse') return;
-  const useWASD   = controlScheme==='wasd'   || controlScheme==='both';
-  const useArrows = controlScheme==='arrows' || controlScheme==='both';
-  const L = (useWASD&&(keys['a']||keys['A'])) || (useArrows&&keys['ArrowLeft']);
-  const R = (useWASD&&(keys['d']||keys['D'])) || (useArrows&&keys['ArrowRight']);
-  const U = (useWASD&&(keys['w']||keys['W'])) || (useArrows&&keys['ArrowUp']);
-  const D = (useWASD&&(keys['s']||keys['S'])) || (useArrows&&keys['ArrowDown']);
-  if (!L&&!R&&!U&&!D) return;
-  let dx = (R?1:0)-(L?1:0), dy = (D?1:0)-(U?1:0);
-  if (dx||dy) {
-    const target = Math.atan2(dy, dx);
-    let diff = target - myAngle;
-    while (diff > Math.PI)  diff -= Math.PI*2;
-    while (diff < -Math.PI) diff += Math.PI*2;
-    myAngle += Math.sign(diff) * Math.min(Math.abs(diff), 0.2);
-    emitInput();
-  }
+function handleKeyboardSteering(){
+  if(!gameActive||chatOpen)return;
+  const useW=controlScheme==='wasd'||controlScheme==='both';
+  const useA=controlScheme==='arrows'||controlScheme==='both'||(controlScheme==='mouse'&&mouseAlways);
+  const L=(useW&&(keys['a']||keys['A']))||(useA&&keys['ArrowLeft']);
+  const R=(useW&&(keys['d']||keys['D']))||(useA&&keys['ArrowRight']);
+  const U=(useW&&(keys['w']||keys['W']))||(useA&&keys['ArrowUp']);
+  const D=(useW&&(keys['s']||keys['S']))||(useA&&keys['ArrowDown']);
+  if(!L&&!R&&!U&&!D)return;
+  const dx=(R?1:0)-(L?1:0), dy=(D?1:0)-(U?1:0);
+  if(!dx&&!dy)return;
+  const target=Math.atan2(dy,dx);
+  let diff=target-myAngle;
+  while(diff>Math.PI)diff-=Math.PI*2;
+  while(diff<-Math.PI)diff+=Math.PI*2;
+  myAngle+=Math.sign(diff)*Math.min(Math.abs(diff),0.18);
+  emitInput();
 }
 
-// ================================================================
-//  RENDERING
-// ================================================================
-let lastFrame = 0;
+// ── CHAT ──────────────────────────────────────────────────────────
+function openChat(){
+  chatOpen=true; boosting=false;
+  const inp=hel('chat-input'); if(!inp)return;
+  inp.style.display='block'; inp.focus();
+  inp.onkeydown=e=>{
+    if(e.key==='Enter'){
+      const m=inp.value.trim();
+      if(m&&socket)socket.emit('chatMessage',{message:m.substring(0,80)});
+      inp.value=''; closeChat(); e.preventDefault();
+    }
+    if(e.key==='Escape'){closeChat();e.preventDefault();}
+    e.stopPropagation();
+  };
+}
+function closeChat(){
+  chatOpen=false; boosting=false;
+  const inp=hel('chat-input'); if(!inp)return;
+  inp.style.display='none'; inp.blur();
+}
+function addChatLine(name,msg,isSys){
+  const box=hel('chat-msgs'); if(!box)return;
+  const d=document.createElement('div');
+  d.className='chat-line'+(isSys?' sys':'');
+  d.innerHTML='<span class="cn">'+sanitize(name)+':</span> '+sanitize(msg);
+  box.appendChild(d);
+  while(box.children.length>12)box.removeChild(box.firstChild);
+  box.scrollTop=box.scrollHeight;
+  setTimeout(()=>{if(d.parentNode)d.remove();},12000);
+}
+function sanitize(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-function gameLoop(ts) {
-  if (!gameActive) return;
+// ── PARTICLES ─────────────────────────────────────────────────────
+function spawnKillParticles(){
+  const me=gameState.players[myPlayerId]; if(!me?.segments?.length)return;
+  const sx=me.segments[0].x-camX, sy=me.segments[0].y-camY;
+  const colors=['#ff2244','#ff8800','#ffd700','#ff44aa','#ffffff'];
+  for(let i=0;i<28;i++){
+    const a=(i/28)*Math.PI*2, spd=2+Math.random()*7;
+    particles.push({x:sx,y:sy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-2,life:1,decay:0.020+Math.random()*0.022,color:colors[i%colors.length],size:2.5+Math.random()*4});
+  }
+  // Extra white burst ring
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2, spd=5+Math.random()*3;
+    particles.push({x:sx,y:sy,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:0.65,decay:0.016,color:'#ffffff',size:1.5+Math.random()*2});
+  }
+}
+function updateParticles(){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.12; p.life-=p.decay;
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+function drawParticles(){
+  if(!particles.length)return;
+  const TAU=Math.PI*2;
+  ctx.save();
+  for(const p of particles){
+    ctx.globalAlpha=Math.max(0,p.life*0.85);
+    ctx.fillStyle=p.color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,TAU); ctx.fill();
+  }
+  ctx.globalAlpha=1; ctx.restore();
+}
+
+// ── SCREEN EFFECTS ────────────────────────────────────────────────
+function screenFlash(color){
+  const el=hel('screen-flash'); if(!el)return;
+  el.style.transition='none'; el.style.background=color; el.style.opacity='1';
+  requestAnimationFrame(()=>{el.style.transition='opacity 0.45s ease';el.style.opacity='0';});
+}
+function showStreakBanner(n){
+  const el=hel('streak-banner'); if(!el)return;
+  const msgs={2:'DOUBLE KILL 🔥',3:'TRIPLE KILL 💀',4:'QUAD KILL ⚡',5:'PENTA KILL 🌟',6:'GODLIKE 👑',7:'UNSTOPPABLE ♾️',8:'LEGENDARY 🌌',9:'MYTHIC ★★★',10:'Z3N0 MODE 🔱',11:'TRANSCENDENT ✨',12:'OMEGA KILLER ☠️'};
+  el.textContent=msgs[n]||(n>7?n+'x KILL STREAK 🔱':null)||'';
+  if(!el.textContent)return;
+  el.style.opacity='1'; clearTimeout(el._t);
+  el._t=setTimeout(()=>el.style.opacity='0',3000);
+}
+
+// ── GAME LOOP ─────────────────────────────────────────────────────
+let lastFrameTs=0;
+const TAU=Math.PI*2;
+
+function gameLoop(ts){
+  if(!gameActive){return;}
   requestAnimationFrame(gameLoop);
+  const dt=ts-lastFrameTs;
+  if(dt<15.9)return; // ~63fps cap — enough headroom for 60hz monitors
+  lastFrameTs=ts;
 
-  const dt = ts - lastFrame;
-  if (dt < 14) return; // cap at ~70fps
-  lastFrame = ts;
+  // FPS counter (update every second)
+  fpsBucket++; fpsElapsed+=dt;
+  if(fpsElapsed>=1000){
+    currentFPS=Math.round(fpsBucket*1000/fpsElapsed);
+    fpsBucket=0; fpsElapsed=0;
+    const fe=hel('fps-hud'); if(fe) fe.textContent=currentFPS+' FPS';
+  }
 
   frameCount++;
-  rainbowT += 0.02;
+  rainbowHue=(rainbowHue+1.1)%360;
   handleKeyboardSteering();
 
-  // Smooth camera
-  const me = gameState.players[myPlayerId];
-  if (me?.segments?.length) {
-    const h = me.segments[0];
-    const tx = h.x - canvas.width  * 0.5;
-    const ty = h.y - canvas.height * 0.5;
-    camX += (tx - camX) * 0.12;
-    camY += (ty - camY) * 0.12;
+  // Camera smooth lerp + dynamic zoom
+  const me=gameState.players[myPlayerId];
+  if(me?.segments?.length){
+    const h=me.segments[0];
+    camTX=h.x-canvas.width*0.5; camTY=h.y-canvas.height*0.5;
+    camScaleTarget=Math.max(0.42,1-Math.min(1,(me.segments.length-10)/380)*0.58);
+  }
+  camX+=(camTX-camX)*0.1; camY+=(camTY-camY)*0.1;
+  camScale+=(camScaleTarget-camScale)*0.045;
+
+  // Boost energy update
+  if(boosting) boostEnergy=Math.max(0,boostEnergy-0.5);
+  else         boostEnergy=Math.min(100,boostEnergy+0.3);
+
+  // Border proximity warning
+  if(me?.segments?.length){
+    const h=me.segments[0];
+    const bd=Math.min(h.x,h.y,MAP_SIZE-h.x,MAP_SIZE-h.y);
+    nearBorder=bd<500;
+    const dw=hel('danger-warn');
+    if(dw) dw.style.opacity=nearBorder?Math.min(1,(500-bd)/500).toFixed(2):'0';
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updateParticles();
+
+  // CLEAR
+  ctx.fillStyle='#02020c';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // DRAW with zoom transform
+  ctx.save();
+  if(camScale!==1){
+    ctx.translate(canvas.width/2,canvas.height/2);
+    ctx.scale(camScale,camScale);
+    ctx.translate(-canvas.width/2,-canvas.height/2);
+  }
   drawBackground();
   drawGrid();
   drawOrbs();
 
-  // Draw other snakes first, then self (self always on top)
-  for (const pid in gameState.players) if (pid !== myPlayerId) drawSnake(gameState.players[pid], false);
-  if (gameState.players[myPlayerId]) drawSnake(gameState.players[myPlayerId], true);
+  const pids=Object.keys(gameState.players);
+  for(let i=0;i<pids.length;i++){
+    if(pids[i]!==myPlayerId) drawSnake(gameState.players[pids[i]],false);
+  }
+  if(me) drawSnake(me,true);
 
+  drawParticles();
   drawBorder();
+  ctx.restore();
 
-  // HUD DOM updates throttled to every 4 frames
-  if (frameCount % 4 === 0 || hudDirty) {
-    updateHUD();
-    hudDirty = false;
-  }
-  // Minimap every 6 frames
-  if (frameCount % 6 === 0) drawMinimap();
+  // DOM HUD — throttled, skip if nothing changed
+  if(frameCount%3===0||hudDirty){updateHUD();hudDirty=false;}
+  if(frameCount%8===0)drawMinimap();
 }
 
-// ── Background (static gradient, only recalculate if camera moved far) ──
-function drawBackground() {
-  ctx.fillStyle = '#03030d';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const mcx = (MAP_SIZE/2 - camX) | 0;
-  const mcy = (MAP_SIZE/2 - camY) | 0;
-  const distMoved = Math.abs(mcx - bgGradientCX) + Math.abs(mcy - bgGradientCY);
+// ── PARALLAX STARS ────────────────────────────────────────────────
+const BG_STARS=[];
+(function(){for(let i=0;i<130;i++)BG_STARS.push({x:Math.random()*8000-1000,y:Math.random()*8000-1000,r:Math.random()*1.3+0.3,b:Math.random()});})();
 
-  if (!bgGradient || distMoved > 80) {
-    bgGradient = ctx.createRadialGradient(mcx, mcy, 0, mcx, mcy, MAP_SIZE * 0.55);
-    bgGradient.addColorStop(0, 'rgba(0,90,45,0.07)');
-    bgGradient.addColorStop(1, 'rgba(0,0,0,0)');
-    bgGradientCX = mcx; bgGradientCY = mcy;
+// ── BACKGROUND ────────────────────────────────────────────────────
+function drawBackground(){
+  const mcx=(MAP_SIZE/2-camX)|0, mcy=(MAP_SIZE/2-camY)|0;
+  const d=Math.abs(mcx-bgGradCX)+Math.abs(mcy-bgGradCY);
+  if(!bgGrad||d>50){
+    bgGrad=ctx.createRadialGradient(mcx,mcy,0,mcx,mcy,MAP_SIZE*0.55);
+    bgGrad.addColorStop(0,'rgba(0,100,50,0.07)');
+    bgGrad.addColorStop(0.35,'rgba(0,30,70,0.05)');
+    bgGrad.addColorStop(0.7,'rgba(30,0,60,0.04)');
+    bgGrad.addColorStop(1,'rgba(0,0,0,0)');
+    bgGradCX=mcx; bgGradCY=mcy;
   }
-  ctx.fillStyle = bgGradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-// ── Grid ──
-function drawGrid() {
-  const gs = 80;
-  const ox = ((-camX % gs) + gs) % gs;
-  const oy = ((-camY % gs) + gs) % gs;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(0,255,140,0.035)';
-  ctx.lineWidth = 1;
+  ctx.fillStyle=bgGrad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Parallax twinkling stars
+  const _t=frameCount*0.013;
+  const _sx=camX*0.18,_sy=camY*0.18;
+  ctx.fillStyle='rgba(210,230,255,0.6)';
   ctx.beginPath();
-  for (let x = ox; x < canvas.width;  x += gs) { ctx.moveTo(x,0); ctx.lineTo(x, canvas.height); }
-  for (let y = oy; y < canvas.height; y += gs) { ctx.moveTo(0,y); ctx.lineTo(canvas.width, y); }
+  for(let i=0;i<BG_STARS.length;i++){
+    const st=BG_STARS[i];
+    const px=((st.x-_sx)%canvas.width+canvas.width)%canvas.width;
+    const py=((st.y-_sy)%canvas.height+canvas.height)%canvas.height;
+    const tw=st.r*(0.65+Math.sin(_t+st.b*10)*0.35);
+    ctx.moveTo(px+tw,py);ctx.arc(px,py,tw,0,TAU);
+  }
+  ctx.fill();
+}
+
+// ── GRID ──────────────────────────────────────────────────────────
+function drawGrid(){
+  const gs=80;
+  const ox=((-camX%gs)+gs)%gs|0, oy=((-camY%gs)+gs)%gs|0;
+  const W=canvas.width, H=canvas.height;
+  // Dot intersections
+  ctx.fillStyle='rgba(0,255,140,0.07)';
+  ctx.beginPath();
+  for(let x=ox;x<W;x+=gs)for(let y=oy;y<H;y+=gs){ctx.moveTo(x+1.2,y);ctx.arc(x,y,1.2,0,TAU);}
+  ctx.fill();
+  // Faint grid lines
+  ctx.strokeStyle='rgba(0,255,140,0.013)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let x=ox;x<W;x+=gs){ctx.moveTo(x,0);ctx.lineTo(x,H);}
+  for(let y=oy;y<H;y+=gs){ctx.moveTo(0,y);ctx.lineTo(W,y);}
   ctx.stroke();
-  ctx.restore();
 }
 
-// ── Orbs — batched by color to minimize state changes ──
-function drawOrbs() {
-  // Group orbs by color for batch rendering
-  const byColor = {};
-  for (const oid in orbsLocal) {
-    const o = orbsLocal[oid];
-    const sx = o.x - camX, sy = o.y - camY;
-    if (sx < -20 || sx > canvas.width+20 || sy < -20 || sy > canvas.height+20) continue;
-    if (!byColor[o.color]) byColor[o.color] = [];
-    byColor[o.color].push({ sx, sy, r: o.size * (Math.sin(frameCount*0.07 + o.x*0.007)*0.2 + 0.88) });
+// ── ORBS (fully batched per-color) ───────────────────────────────
+function drawOrbs(){
+  const W=canvas.width, H=canvas.height;
+  const byClr={};
+  const pulse=0.65+Math.sin(frameCount*0.07)*0.35;
+  for(const oid in orbsLocal){
+    const o=orbsLocal[oid];
+    const sx=o.x-camX, sy=o.y-camY;
+    if(sx<-10||sx>W+10||sy<-10||sy>H+10)continue;
+    if(!byClr[o.color])byClr[o.color]=[];
+    byClr[o.color].push(sx,sy,o.size);
   }
-
-  ctx.save();
-  for (const [color, items] of Object.entries(byColor)) {
-    // Glow pass (all at once per color)
-    ctx.globalAlpha = 0.15;
-    ctx.fillStyle = color;
-    for (const { sx, sy, r } of items) {
-      ctx.beginPath(); ctx.arc(sx, sy, r * 2.0, 0, Math.PI*2); ctx.fill();
+  for(const clr in byClr){
+    const arr=byClr[clr];
+    // Glow halo
+    ctx.shadowColor=clr; ctx.shadowBlur=8*pulse;
+    ctx.fillStyle=clr; ctx.globalAlpha=0.22;
+    ctx.beginPath();
+    for(let i=0;i<arr.length;i+=3){const r=arr[i+2]*2.3;ctx.moveTo(arr[i]+r,arr[i+1]);ctx.arc(arr[i],arr[i+1],r,0,TAU);}
+    ctx.fill(); ctx.shadowBlur=0;
+    // Core
+    ctx.fillStyle=clr; ctx.globalAlpha=1;
+    ctx.beginPath();
+    for(let i=0;i<arr.length;i+=3){ctx.moveTo(arr[i]+arr[i+2],arr[i+1]);ctx.arc(arr[i],arr[i+1],arr[i+2],0,TAU);}
+    ctx.fill();
+    // Specular highlight
+    ctx.fillStyle='#fff'; ctx.globalAlpha=0.38;
+    ctx.beginPath();
+    for(let i=0;i<arr.length;i+=3){
+      const r=arr[i+2]*0.28, hx=arr[i]-arr[i+2]*0.24, hy=arr[i+1]-arr[i+2]*0.24;
+      ctx.moveTo(hx+r,hy); ctx.arc(hx,hy,r,0,TAU);
     }
-    // Core pass
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = color;
-    for (const { sx, sy, r } of items) {
-      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.fill();
-    }
-    // Highlight (white dot)
-    ctx.globalAlpha = 0.55;
-    ctx.fillStyle = '#ffffff';
-    for (const { sx, sy, r } of items) {
-      ctx.beginPath(); ctx.arc(sx - r*0.28, sy - r*0.28, r*0.32, 0, Math.PI*2); ctx.fill();
-    }
+    ctx.fill(); ctx.globalAlpha=1;
   }
-  ctx.globalAlpha = 1;
-  ctx.restore();
 }
 
-// ── Snake colors ──
-function skinColors(p) {
-  const s = SKINS[p.grantedSkin || p.skin] || SKINS.classic;
-  if (s.colors[0] === 'rainbow') {
-    const h = (rainbowT * 60) % 360;
-    return [`hsl(${h},100%,50%)`, `hsl(${(h+60)%360},100%,58%)`];
+// ── SNAKE COLORS ─────────────────────────────────────────────────
+function skinClrs(p){
+  const s=SKINS[p.grantedSkin||p.skin]||SKINS.classic;
+  if(s.colors[0]==='rainbow'){
+    return ['hsl('+rainbowHue+',100%,52%)','hsl('+((rainbowHue+60)%360)+',100%,60%)'];
   }
   return s.colors;
 }
-function skinGlow(p) {
-  const s = SKINS[p.grantedSkin || p.skin] || SKINS.classic;
-  if (s.colors[0]==='rainbow') return `hsl(${(rainbowT*60)%360},100%,58%)`;
+function skinGlw(p){
+  const s=SKINS[p.grantedSkin||p.skin]||SKINS.classic;
+  if(s.colors[0]==='rainbow') return 'hsl('+rainbowHue+',100%,60%)';
   return s.glow;
 }
 
-// ── Snake drawing ──
-// KEY FIX: We cannot change lineWidth mid-path. Instead we draw multiple
-// sub-paths of uniform width, grouped by width band. Or we draw each
-// segment as a circle (correct but expensive). Best approach: draw
-// overlapping circles only for on-screen segments, skipping off-screen ones.
-function drawSnake(player, isMe) {
-  const segs = player.segments;
-  if (!segs || segs.length < 2) return;
-
-  const [c1, c2] = skinColors(player);
-  const glow = skinGlow(player);
-  const w = player.width || 8;
-
-  // Screen bounds check (quick cull)
-  const h0 = segs[0];
-  const hsx = h0.x - camX, hsy = h0.y - camY;
-  const margin = w * 3 + 50;
-  // If head is off screen by a lot, check tail too before culling
-  if (hsx < -margin || hsx > canvas.width+margin || hsy < -margin || hsy > canvas.height+margin) {
-    const tail = segs[segs.length-1];
-    const tx = tail.x - camX, ty = tail.y - camY;
-    if (tx < -margin || tx > canvas.width+margin || ty < -margin || ty > canvas.height+margin) return;
+// ── SNAKE DRAW (optimized two-pass) ───────────────────────────────
+function drawSnake(player,isMe){
+  const segs=player.segments;
+  if(!segs||segs.length<2)return;
+  const [c1,c2]=skinClrs(player);
+  const glow=skinGlw(player);
+  const w=player.width||8;
+  const W=canvas.width, H=canvas.height;
+  const h0=segs[0];
+  const hsx=h0.x-camX, hsy=h0.y-camY;
+  const mg=w*5+80;
+  // BUG FIX: cull only when head+tail on SAME off-screen side
+  if(hsx<-mg||hsx>W+mg||hsy<-mg||hsy>H+mg){
+    const tl=segs[segs.length-1];
+    const tlx=tl.x-camX,tly=tl.y-camY;
+    if((hsx<-mg&&tlx<-mg)||(hsx>W+mg&&tlx>W+mg)||(hsy<-mg&&tly<-mg)||(hsy>H+mg&&tly>H+mg))return;
   }
+  const skip=segs.length>160?4:segs.length>80?3:segs.length>40?2:1;
+  const wEnd=Math.max(1.5,w*0.58);
 
   ctx.save();
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
+  ctx.lineCap='round'; ctx.lineJoin='round';
 
-  // Body: draw as a series of same-width strokes grouped by color segment
-  // We render from tail to head so head draws on top
-  // Step: skip alternate segs for long snakes
-  const skip = segs.length > 180 ? 3 : segs.length > 80 ? 2 : 1;
+  // Glow (only self + owner, head area only = cheap)
+  if(isMe||player.isOwner){
+    ctx.shadowColor=glow; ctx.shadowBlur=8;
+    ctx.strokeStyle=glow; ctx.globalAlpha=0.16; ctx.lineWidth=w*2.2;
+    const n=Math.min(5,segs.length);
+    ctx.beginPath(); ctx.moveTo(segs[0].x-camX,segs[0].y-camY);
+    for(let i=1;i<n;i++) ctx.lineTo(segs[i].x-camX,segs[i].y-camY);
+    ctx.stroke(); ctx.shadowBlur=0; ctx.globalAlpha=1;
+  }
 
-  // Build groups of consecutive same-color segments
-  let path = [];
-  let lastColorIdx = -1;
+  // Pass 1: body tapered — BUG FIX new path per lineWidth change
+  ctx.strokeStyle=c1;
+  let open=false,lastLW=-1;
+  for(let i=segs.length-1;i>=0;i-=skip){
+    const sx=segs[i].x-camX, sy=segs[i].y-camY;
+    if(sx<-w-18||sx>W+w+18||sy<-w-18||sy>H+w+18){
+      if(open){ctx.stroke();open=false;}continue;
+    }
+    const t=i/segs.length;
+    const lw=Math.max(1.5,w-t*(w-wEnd))*2;
+    if(Math.abs(lw-lastLW)>0.3){
+      if(open){ctx.stroke();open=false;}
+      ctx.lineWidth=lw;lastLW=lw;
+    }
+    if(!open){ctx.beginPath();ctx.moveTo(sx,sy);open=true;}
+    else ctx.lineTo(sx,sy);
+  }
+  if(open)ctx.stroke();
 
-  function flushPath(colorIdx, segWidth, alpha) {
-    if (path.length < 2) { path = []; return; }
-    ctx.globalAlpha = alpha;
-    ctx.strokeStyle = colorIdx === 0 ? c1 : c2;
-    ctx.lineWidth   = segWidth * 2;
+  // Pass 2: stripe (c2, every ~4 segments, thinner) — BUG FIX: separate open2
+  if(c1!==c2&&segs.length>8){
+    const ss=skip*4||4;
+    ctx.strokeStyle=c2; ctx.globalAlpha=0.48;
+    let open2=false;
+    for(let i=segs.length-1;i>=0;i-=ss){
+      const sx=segs[i].x-camX, sy=segs[i].y-camY;
+      if(sx<-w-18||sx>W+w+18||sy<-w-18||sy>H+w+18){if(open2){ctx.stroke();open2=false;}continue;}
+      const t=i/segs.length;
+      ctx.lineWidth=Math.max(1,(w-t*(w-wEnd))*1.05);
+      if(!open2){ctx.beginPath();ctx.moveTo(sx,sy);open2=true;}
+      else ctx.lineTo(sx,sy);
+    }
+    if(open2)ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  // Trail cosmetic — batched arcs
+  if(player.equippedTrail){
+    const isRainbow=player.equippedTrail==='trail_rainbow';
+    const tc=isRainbow?'hsl('+rainbowHue+',100%,58%)':(TRAIL_CLR[player.equippedTrail]||'#fff');
+    const end=Math.min(24,segs.length);
+    ctx.fillStyle=tc;
     ctx.beginPath();
-    ctx.moveTo(path[0].x, path[0].y);
-    for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-    ctx.stroke();
-    path = [];
-  }
-
-  // Glow only on self / owner — one big blur pass over first 10 segs
-  if (isMe || player.isOwner) {
-    ctx.shadowColor = glow; ctx.shadowBlur = 12;
-    ctx.strokeStyle = glow; ctx.globalAlpha = 0.25; ctx.lineWidth = w * 2.5;
-    ctx.beginPath();
-    const n = Math.min(10, segs.length);
-    ctx.moveTo(segs[0].x - camX, segs[0].y - camY);
-    for (let i = 1; i < n; i++) ctx.lineTo(segs[i].x - camX, segs[i].y - camY);
-    ctx.stroke();
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-  }
-
-  // Render body in color groups (tail → head)
-  let prevColorIdx = -99, prevW = 0;
-  path = [];
-  for (let i = segs.length - 1; i >= 0; i -= skip) {
-    const seg = segs[i];
-    const sx = seg.x - camX, sy = seg.y - camY;
-    if (sx < -w-30 || sx > canvas.width+w+30 || sy < -w-30 || sy > canvas.height+w+30) {
-      if (path.length) {
-        const alpha = 0.35 + 0.65 * (1 - (i / segs.length) * 0.45);
-        flushPath(prevColorIdx, prevW, alpha);
-      }
-      continue;
+    for(let i=3;i<end;i+=2){
+      const sx=segs[i].x-camX, sy=segs[i].y-camY;
+      if(sx<-20||sx>W+20||sy<-20||sy>H+20)continue;
+      ctx.globalAlpha=0.48*(1-i/end);
+      ctx.moveTo(sx+2.5,sy); ctx.arc(sx,sy,2.5,0,TAU);
     }
-    const t = i / segs.length;
-    const segW = Math.max(2, w * (1 - t * 0.38));
-    const colorIdx = (Math.floor(i / 3) % 2);
-    if (colorIdx !== prevColorIdx || Math.abs(segW - prevW) > 1) {
-      if (path.length > 0) {
-        const alpha = 0.35 + 0.65 * (1 - (i / segs.length) * 0.45);
-        flushPath(prevColorIdx, prevW, alpha);
-        path.push({ x: sx, y: sy }); // start new path from last point
-      }
-      prevColorIdx = colorIdx; prevW = segW;
-    }
-    path.push({ x: sx, y: sy });
-  }
-  if (path.length) flushPath(prevColorIdx, prevW, 1);
-  ctx.globalAlpha = 1;
-
-  // Trail cosmetic (particle trail behind snake)
-  if (player.equippedTrail && frameCount % 2 === 0) {
-    const trailPal = { trail_fire:'#ff4400', trail_ice:'#00ccff', trail_gold:'#ffd700', trail_void:'#aa00ff', trail_electric:'#00ffff', owner_trail:'#ffd700' };
-    const tc = player.equippedTrail === 'trail_rainbow'
-      ? `hsl(${(rainbowT*60)%360},100%,60%)` : (trailPal[player.equippedTrail] || '#fff');
-    const end = Math.min(18, segs.length);
-    ctx.fillStyle = tc + 'cc';
-    for (let i = 3; i < end; i += 2) {
-      const seg = segs[i];
-      const sx = seg.x - camX, sy = seg.y - camY;
-      if (sx < -30 || sx > canvas.width+30 || sy < -30 || sy > canvas.height+30) continue;
-      ctx.globalAlpha = 0.6 * (1 - i/end);
-      ctx.beginPath();
-      ctx.arc(sx + (Math.random()-.5)*5, sy + (Math.random()-.5)*5, 2.5, 0, Math.PI*2);
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    ctx.fill(); ctx.globalAlpha=1;
   }
 
   // Boost particles
-  if (player.boosting && segs.length > 3 && frameCount % 2 === 0) {
-    ctx.fillStyle = glow + '99';
-    for (let i = 1; i < 5; i++) {
-      if (Math.random() < 0.5) continue;
-      const seg = segs[Math.min(i+1, segs.length-1)];
-      const sx = seg.x - camX, sy = seg.y - camY;
-      ctx.beginPath(); ctx.arc(sx+(Math.random()-.5)*14, sy+(Math.random()-.5)*14, 2, 0, Math.PI*2); ctx.fill();
+  if(player.boosting&&segs.length>3&&frameCount%3===0){
+    ctx.fillStyle=glow; ctx.globalAlpha=0.5;
+    ctx.beginPath();
+    for(let i=1;i<5;i++){
+      const seg=segs[Math.min(i,segs.length-1)];
+      const sx=seg.x-camX, sy=seg.y-camY;
+      ctx.moveTo(sx+2,sy); ctx.arc(sx,sy,2,0,TAU);
     }
+    ctx.fill(); ctx.globalAlpha=1;
   }
 
   // Head
-  if (isMe || player.isOwner) { ctx.shadowColor = glow; ctx.shadowBlur = 18; }
-  ctx.beginPath();
-  ctx.arc(hsx, hsy, w, 0, Math.PI*2);
-  ctx.fillStyle = c1; ctx.globalAlpha = 1; ctx.fill();
-  ctx.shadowBlur = 0;
+  if(isMe||player.isOwner){ctx.shadowColor=glow;ctx.shadowBlur=12;}
+  ctx.beginPath(); ctx.arc(hsx,hsy,w,0,TAU);
+  ctx.fillStyle=c1; ctx.globalAlpha=1; ctx.fill(); ctx.shadowBlur=0;
 
   // Eyes
-  const ang = player.angle || 0;
-  const ed = w * 0.52, eyeR = w * 0.28;
-  const ex1 = hsx + Math.cos(ang - 0.55) * ed;
-  const ey1 = hsy + Math.sin(ang - 0.55) * ed;
-  const ex2 = hsx + Math.cos(ang + 0.55) * ed;
-  const ey2 = hsy + Math.sin(ang + 0.55) * ed;
-  ctx.fillStyle = '#ffffff'; ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.arc(ex1, ey1, eyeR, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ex2, ey2, eyeR, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.arc(ex1 + Math.cos(ang)*0.7, ey1 + Math.sin(ang)*0.7, eyeR * 0.5, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ex2 + Math.cos(ang)*0.7, ey2 + Math.sin(ang)*0.7, eyeR * 0.5, 0, Math.PI*2); ctx.fill();
+  const ang=player.angle||myAngle;
+  const ed=w*0.52, er=w*0.27;
+  const ex1=hsx+Math.cos(ang-0.55)*ed, ey1=hsy+Math.sin(ang-0.55)*ed;
+  const ex2=hsx+Math.cos(ang+0.55)*ed, ey2=hsy+Math.sin(ang+0.55)*ed;
+  const pa=Math.cos(ang)*0.6, qa=Math.sin(ang)*0.6;
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(ex1,ey1,er,0,TAU);ctx.arc(ex2,ey2,er,0,TAU);ctx.fill();
+  ctx.fillStyle='#111';
+  ctx.beginPath();ctx.arc(ex1+pa,ey1+qa,er*0.48,0,TAU);ctx.arc(ex2+pa,ey2+qa,er*0.48,0,TAU);ctx.fill();
 
   // Owner crown
-  if (player.isOwner) {
-    ctx.font = `${w*1.5}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.globalAlpha = 1; ctx.fillText('👑', hsx, hsy - w);
+  if(player.isOwner){
+    ctx.font=(w*1.4|0)+'px serif';
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    ctx.fillText('👑',hsx,hsy-w);
   }
-
   ctx.restore();
 
-  // Name tag (outside save/restore)
-  if (hsx > -120 && hsx < canvas.width+120 && hsy > -120 && hsy < canvas.height+120) {
-    const badge = player.equippedBadge || '';
-    const titleTxt = player.equippedTitle || '';
-    const botMark  = player.isBot ? ' 🤖' : '';
-    const nameStr  = (player.isOwner ? '👑 ' : '') + badge + (player.name || 'Snake') + botMark;
-    const ny = hsy - w - 6;
-
-    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-
-    if (titleTxt) {
-      ctx.font = 'bold 10px Orbitron,monospace';
-      const tw = ctx.measureText(titleTxt).width;
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(hsx - tw/2 - 5, ny - 28, tw + 10, 14);
-      ctx.fillStyle = player.isOwner ? '#ffd700' : '#aa44ff';
-      ctx.fillText(titleTxt, hsx, ny - 16);
+  // Name tag
+  if(hsx>-150&&hsx<W+150&&hsy>-60&&hsy<H+60){
+    // Resolve badge/title from ID if server sends ID, or use directly if server sends emoji/text
+    const _rawBadge=player.equippedBadge||'';
+    const badge=_rawBadge?(cosmeticsCatalog[_rawBadge]?.emoji||_rawBadge):'';
+    const _rawTitle=player.equippedTitle||'';
+    const ttl=_rawTitle?(cosmeticsCatalog[_rawTitle]?.text||_rawTitle):'';
+    const nm=(player.isOwner?'👑 ':'')+badge+(player.name||'Snake')+(player.isBot?' 🤖':'');
+    const ny=hsy-w-5;
+    ctx.textAlign='center';ctx.textBaseline='bottom';
+    if(ttl){
+      ctx.font='bold 10px Orbitron,monospace';
+      const tw=ctx.measureText(ttl).width;
+      ctx.fillStyle='rgba(0,0,8,0.75)';
+      ctx.fillRect(hsx-tw/2-5,ny-28,tw+10,14);
+      ctx.fillStyle=player.isOwner?'#ffd700':'#aa44ff';
+      ctx.fillText(ttl,hsx,ny-16);
     }
-
-    const nf = `bold ${Math.max(10, w + 3)}px Rajdhani,sans-serif`;
-    ctx.font = nf;
-    const nw = ctx.measureText(nameStr).width;
-    ctx.fillStyle = 'rgba(0,0,0,0.62)';
-    ctx.fillRect(hsx - nw/2 - 4, ny - 14, nw + 8, 15);
-    ctx.fillStyle = player.isBot ? 'rgba(190,190,210,0.8)' : player.isOwner ? '#ffd700' : isMe ? '#ffffff' : '#ccffdd';
-    ctx.fillText(nameStr, hsx, ny);
-    ctx.textBaseline = 'alphabetic';
+    ctx.font='bold '+(Math.max(10,w+3)|0)+'px Rajdhani,sans-serif';
+    const nw=ctx.measureText(nm).width;
+    ctx.fillStyle='rgba(0,0,8,0.72)';
+    ctx.fillRect(hsx-nw/2-4,ny-14,nw+8,15);
+    ctx.fillStyle=player.isBot?'rgba(190,190,210,0.8)':player.isOwner?'#ffd700':isMe?'#fff':'#ccffdd';
+    ctx.fillText(nm,hsx,ny);
+    ctx.textBaseline='alphabetic';
   }
 }
 
-// ── Border ──
-function drawBorder() {
-  const bx = -camX, by = -camY;
+// ── BORDER ────────────────────────────────────────────────────────
+function drawBorder(){
+  const bx=-camX, by=-camY;
+  const pulse=nearBorder?(Math.sin(frameCount*0.14)*0.35+0.65):0.4;
   ctx.save();
-  ctx.setLineDash([20, 10]);
-  ctx.strokeStyle = 'rgba(255,34,68,0.55)'; ctx.lineWidth = 4;
-  ctx.strokeRect(bx, by, MAP_SIZE, MAP_SIZE);
+  ctx.setLineDash([16,8]);
+  ctx.strokeStyle='rgba(255,34,68,'+pulse+')'; ctx.lineWidth=3;
+  ctx.strokeRect(bx,by,MAP_SIZE,MAP_SIZE);
   ctx.setLineDash([]);
-  ctx.shadowColor = '#ff2244'; ctx.shadowBlur = 12;
-  ctx.strokeStyle = 'rgba(255,34,68,0.25)'; ctx.lineWidth = 10;
-  ctx.strokeRect(bx, by, MAP_SIZE, MAP_SIZE);
+  ctx.strokeStyle='rgba(255,34,68,'+(pulse*0.45)+')'; ctx.lineWidth=12;
+  ctx.strokeRect(bx,by,MAP_SIZE,MAP_SIZE);
   ctx.restore();
 }
 
-// ================================================================
-//  HUD
-// ================================================================
-let lastScore = -1, lastLength = -1, lastCoins = -1, lastBoost = -1;
-
-function updateHUD() {
-  const me = gameState.players[myPlayerId];
-  if (me) {
-    const sc = me.score || 0, ln = (me.segments||[]).length;
-    const coins = myProfile.coins + (me.sessionCoins || 0);
-    if (sc !== lastScore)   { document.getElementById('scoreVal').textContent  = sc;    lastScore  = sc; }
-    if (ln !== lastLength)  { document.getElementById('lengthVal').textContent = ln;    lastLength = ln; }
-    if (coins !== lastCoins){ document.getElementById('hudCoins').textContent  = coins; lastCoins  = coins; }
-
-    boosting ? (boostEnergy = Math.max(0, boostEnergy - 0.5)) : (boostEnergy = Math.min(100, boostEnergy + 0.3));
-    const bf = boostEnergy | 0;
-    if (bf !== lastBoost) { document.getElementById('boost-fill').style.width = bf + '%'; lastBoost = bf; }
-    sessionCoinsDisplay = me.sessionCoins || 0;
+// ── HUD ───────────────────────────────────────────────────────────
+function updateHUD(){
+  const me=gameState.players[myPlayerId];
+  if(me){
+    const sc=me.score||0, ln=me.segments?.length||0;
+    const coins=(myProfile.coins+(me.sessionCoins||0))|0;
+    const bf=boostEnergy|0;
+    if(sc!==_lastSc){hel('scoreVal').textContent=sc;_lastSc=sc;}
+    if(ln!==_lastLen){hel('lengthVal').textContent=ln;_lastLen=ln;}
+    if(coins!==_lastCoins){hel('hudCoins').textContent=coins;_lastCoins=coins;}
+    if(bf!==_lastBoost){hel('boost-fill').style.width=bf+'%';_lastBoost=bf;}
+    sessionCoins=me.sessionCoins||0;
+    // XP level (cosmetic, sqrt-based)
+    const lvl=Math.max(1,Math.floor(Math.sqrt(sc/80))+1);
+    const xpNeeded=lvl*lvl*80, xpPrev=(lvl-1)*(lvl-1)*80;
+    const pct=Math.min(100,((sc-xpPrev)/(xpNeeded-xpPrev)*100))||0;
+    const rankIdx=Math.min(XP_RANKS.length-1,Math.floor((lvl-1)/3));
+    const lv=hel('xpLvl'); if(lv) lv.textContent=lvl;
+    const rv=hel('xpRank'); if(rv) rv.textContent=XP_RANKS[rankIdx];
+    const xf=hel('xp-fill'); if(xf) xf.style.width=pct.toFixed(1)+'%';
   }
-
-  const lb = gameState.leaderboard || [];
-  let lbHTML = '';
-  lb.forEach((e, i) => {
-    const rs  = i===0?'top1':i===1?'top2':i===2?'top3':'';
-    const sym = i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
-    const title = e.equippedTitle ? `<span style="font-size:8px;color:#aa44ff;">${e.equippedTitle} </span>` : '';
-    const bot   = e.isBot ? `<span class="lb-bot">BOT</span>` : '';
-    lbHTML += `<div class="lb-entry"><div class="lb-rank ${rs}">${sym}</div><div class="lb-name${e.isOwner?' is-owner':''}">${title}${e.isOwner?'👑 ':''}${e.equippedBadge||''}${e.name}${bot}</div><div class="lb-len">${e.length}</div></div>`;
-  });
-  document.getElementById('lbList').innerHTML = lbHTML;
+  // Leaderboard
+  const lb=gameState.leaderboard||[];
+  const lbel=hel('lbList'); if(!lbel) return;
+  let h=''; const max=Math.min(lb.length,10);
+  for(let i=0;i<max;i++){
+    const e=lb[i];
+    const rc=i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const sym=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    const _et=e.equippedTitle;const _etDisplay=_et?(cosmeticsCatalog[_et]?.text||_et):'';
+    const ttl=_etDisplay?'<span style="font-size:8px;color:#aa44ff;">'+_etDisplay+' </span>':'';
+    const bot=e.isBot?'<span class="lb-bot">BOT</span>':'';
+    const isme=e.id===myPlayerId?' style="color:#00ff8c;"':'';
+    h+='<div class="lb-entry"><div class="lb-rank '+rc+'">'+sym+'</div><div class="lb-name'+(e.isOwner?' is-owner':'')+'"'+isme+'>'+ttl+(e.isOwner?'👑 ':'')+(e.equippedBadge||'')+sanitize(e.name||'?')+bot+'</div><div class="lb-len">'+e.length+'</div></div>';
+  }
+  lbel.innerHTML=h;
 }
 
-function drawMinimap() {
-  if (!mmCtx) return;
-  const W = 120, H = 120, scale = W / MAP_SIZE;
-  mmCtx.fillStyle = 'rgba(0,0,8,0.9)';
-  mmCtx.fillRect(0, 0, W, H);
-
-  // Orbs as 1x1 pixel dots
-  for (const oid in orbsLocal) {
-    const o = orbsLocal[oid];
-    mmCtx.fillStyle = o.color;
-    mmCtx.fillRect(o.x * scale | 0, o.y * scale | 0, 1, 1);
+// ── MINIMAP ───────────────────────────────────────────────────────
+function drawMinimap(){
+  if(!mmCtx)return;
+  const W=150,H=150,sc=W/MAP_SIZE;
+  mmCtx.clearRect(0,0,W,H);
+  mmCtx.fillStyle='rgba(0,0,8,0.9)';mmCtx.fillRect(0,0,W,H);
+  for(const oid in orbsLocal){
+    const o=orbsLocal[oid];
+    mmCtx.fillStyle=o.color;
+    mmCtx.fillRect((o.x*sc)|0,(o.y*sc)|0,1.5,1.5);
   }
-
-  // Player dots
-  for (const pid in gameState.players) {
-    const p = gameState.players[pid];
-    if (!p.segments?.length) continue;
-    const h = p.segments[0];
-    const r = pid === myPlayerId ? 4 : 2.5;
-    mmCtx.fillStyle = pid===myPlayerId ? '#00ff8c' : p.isOwner ? '#ffd700' : '#ffffff88';
-    mmCtx.beginPath(); mmCtx.arc(h.x * scale, h.y * scale, r, 0, Math.PI*2); mmCtx.fill();
+  for(const pid in gameState.players){
+    const p=gameState.players[pid]; if(!p.segments?.length)continue;
+    const hd=p.segments[0]; const r=pid===myPlayerId?4.5:2.8;
+    mmCtx.fillStyle=pid===myPlayerId?'#00ff8c':p.isOwner?'#ffd700':'rgba(255,255,255,0.5)';
+    mmCtx.beginPath();mmCtx.arc(hd.x*sc,hd.y*sc,r,0,Math.PI*2);mmCtx.fill();
+    if(pid===myPlayerId){
+      const ang=p.angle||myAngle;
+      mmCtx.strokeStyle='rgba(0,255,140,0.6)';mmCtx.lineWidth=1;
+      mmCtx.beginPath();mmCtx.moveTo(hd.x*sc,hd.y*sc);
+      mmCtx.lineTo(hd.x*sc+Math.cos(ang)*9,hd.y*sc+Math.sin(ang)*9);mmCtx.stroke();
+    }
   }
-  // Viewport rect
-  const vx = camX * scale, vy = camY * scale;
-  const vw = canvas.width * scale, vh = canvas.height * scale;
-  mmCtx.strokeStyle = 'rgba(0,255,140,0.5)'; mmCtx.lineWidth = 1;
-  mmCtx.strokeRect(vx, vy, vw, vh);
-  // Border
-  mmCtx.strokeStyle = 'rgba(255,34,68,0.5)'; mmCtx.lineWidth = 1;
-  mmCtx.strokeRect(0, 0, W, H);
+  const vw=canvas.width*sc/camScale,vh=canvas.height*sc/camScale;
+  mmCtx.strokeStyle='rgba(0,255,140,0.38)';mmCtx.lineWidth=1;
+  mmCtx.strokeRect(camX*sc,camY*sc,vw,vh);
+  mmCtx.strokeStyle='rgba(255,34,68,0.65)';mmCtx.lineWidth=1.5;
+  mmCtx.strokeRect(0,0,W,H);
+  const cnt=Object.keys(gameState.players).length;
+  mmCtx.fillStyle='rgba(0,255,140,0.35)';
+  mmCtx.font='8px Orbitron,monospace';
+  mmCtx.textAlign='left';mmCtx.textBaseline='bottom';
+  mmCtx.fillText(cnt+' ONLINE',3,H-3);
 }
 
-// ================================================================
-//  KILL FEED
-// ================================================================
-function addKillFeed(killedId, killerName) {
-  const killedName = gameState.players[killedId]?.name || 'Someone';
-  const kf = document.getElementById('killfeed');
-  const el = document.createElement('div');
-  el.className = 'kf-entry';
-  el.innerHTML = `<span style="color:#aaa">${killedName}</span> <span style="color:#ff2244">✕</span> <span style="color:#00ff8c">${killerName}</span>`;
+// ── KILL FEED ─────────────────────────────────────────────────────
+function addKillFeed(killedId,killerName){
+  const killedName=gameState.players?.[killedId]?.name||'Someone';
+  const kf=hel('killfeed'); if(!kf)return;
+  const el=document.createElement('div'); el.className='kf-entry';
+  el.innerHTML='<span style="color:#aaa">'+sanitize(killedName)+'</span> <span style="color:#ff2244">✕</span> <span style="color:#00ff8c">'+sanitize(killerName)+'</span>';
   kf.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
+  while(kf.children.length>6)kf.removeChild(kf.firstChild);
+  setTimeout(()=>{if(el.parentNode)el.remove();},5000);
 }
 
-// ================================================================
-//  TOAST / MESSAGES
-// ================================================================
-function showSystemMsg(msg) {
-  const el = document.getElementById('sysmsg');
-  el.textContent = msg; el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 4000);
+// ── TOASTS / SYS ─────────────────────────────────────────────────
+
+function showScorePop(text,color){
+  const me=gameState.players[myPlayerId]; if(!me?.segments?.length)return;
+  const sx=(me.segments[0].x-camX)*camScale+(canvas.width/2)*(1-camScale);
+  const sy=(me.segments[0].y-camY)*camScale+(canvas.height/2)*(1-camScale);
+  const el=document.createElement('div');el.className='score-pop';
+  el.textContent=text;el.style.cssText='left:'+sx+'px;top:'+(sy-30)+'px;color:'+(color||'#00ff8c')+';';
+  document.body.appendChild(el);setTimeout(()=>el.remove(),1400);
 }
-function showToast(msg, type) {
-  const t = document.createElement('div');
-  t.className = 'toast' + (type ? ' '+type : '');
-  t.textContent = msg;
-  document.getElementById('toast-container').appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2500);
+function showSysMsg(msg){
+  const el=hel('sysmsg'); if(!el)return;
+  el.textContent=msg; el.style.display='block';
+  clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',4000);
 }
-function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
-  if (name === 'menuScreen') document.getElementById('menuScreen').classList.remove('hidden');
+function showToast(msg,type){
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:''); t.textContent=msg;
+  hel('toast-container').appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2800);
+}
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.add('hidden'));
+  if(name==='menuScreen') hel('menuScreen').classList.remove('hidden');
+  // 'game' mode: all .screen elements hidden, canvas/hud shown separately in startGame()
 }
 
-// ================================================================
-//  COSMETICS
-// ================================================================
-function updateCoinDisplays() {
-  const total = myProfile.coins + sessionCoinsDisplay;
-  document.getElementById('menuCoinBalance').textContent   = myProfile.coins;
-  document.getElementById('ingameCoinBalance').textContent = total;
+// ── COSMETICS DISPLAY ─────────────────────────────────────────────
+function updateCoinDisplays(){
+  const total=myProfile.coins+sessionCoins;
+  const mc=hel('menuCoinBalance'); if(mc) mc.textContent=myProfile.coins;
+  const ic=hel('ingameCoinBalance'); if(ic) ic.textContent=total;
   updateEquippedDisplay();
 }
-function updateEquippedDisplay() {
-  const c = cosmeticsCatalog;
-  document.getElementById('equippedTrailDisplay').textContent = myProfile.equippedTrail ? (c[myProfile.equippedTrail]?.name || myProfile.equippedTrail) : 'None';
-  document.getElementById('equippedTitleDisplay').textContent = myProfile.equippedTitle || 'None';
-  document.getElementById('equippedBadgeDisplay').textContent = myProfile.equippedBadge || '—';
+function updateEquippedDisplay(){
+  const et=hel('equippedTrailDisplay'),etl=hel('equippedTitleDisplay'),eb=hel('equippedBadgeDisplay');
+  if(et) et.textContent=myProfile.equippedTrail?(cosmeticsCatalog[myProfile.equippedTrail]?.name||myProfile.equippedTrail):'None';
+  if(etl) etl.textContent=myProfile.equippedTitle?(cosmeticsCatalog[myProfile.equippedTitle]?.name||myProfile.equippedTitle):'None';
+  if(eb) eb.textContent=myProfile.equippedBadge?(cosmeticsCatalog[myProfile.equippedBadge]?.emoji||myProfile.equippedBadge):'—';
 }
-function openIngameCosmetics()  { document.getElementById('ingameCosmeticsPanel').style.display = 'block';  updateCoinDisplays(); renderCosmeticsShop(); }
-function closeIngameCosmetics() { document.getElementById('ingameCosmeticsPanel').style.display = 'none'; }
+function openIngameCosmetics(){hel('ingameCosmeticsPanel').style.display='block';updateCoinDisplays();renderCosmeticsShop();}
+function closeIngameCosmetics(){hel('ingameCosmeticsPanel').style.display='none';}
 
-function renderCosmeticsShop() {
-  const cont = document.getElementById('cosmeticsShopContent');
-  const cat  = cosmeticsCatalog;
-  if (!Object.keys(cat).length) { cont.innerHTML = '<p style="color:var(--dim);text-align:center;padding:20px;">Connect to load cosmetics.</p>'; return; }
+const RARITY_CLS={rare:'r-rare',epic:'r-epic',legendary:'r-legendary',mythic:'r-mythic'};
+const RARITY_LBL={rare:'RARE',epic:'EPIC',legendary:'LEGENDARY',mythic:'MYTHIC ★★★'};
 
-  const sections = { trail:'🔥 TRAILS', title:'📛 TITLES', badge:'🏅 BADGES', owner:'👑 OWNER' };
-  let html = '';
-
-  for (const [type, label] of Object.entries(sections)) {
-    const items = Object.values(cat).filter(c => c.type === type);
-    if (!items.length) continue;
-    html += `<div class="cosmetic-section-label">${label}</div><div class="cosmetic-grid">`;
-
-    for (const c of items) {
-      const owned    = isOwner || myProfile.unlockedCosmetics.includes(c.id);
-      const equipped = (c.type==='trail'&&myProfile.equippedTrail===c.id)
-                    || (c.type==='title'&&myProfile.equippedTitle===c.text)
-                    || (c.type==='badge'&&myProfile.equippedBadge===c.emoji)
-                    || (c.type==='owner'&&(myProfile.equippedTrail===c.id||myProfile.equippedTitle===c.text));
-      const ownerOnly = !!c.ownerOnly;
-      const totalCoins = myProfile.coins + sessionCoinsDisplay;
-
-      let cls = 'cosmetic-card' + (equipped?' equipped':owned?' owned':ownerOnly?' owner-only locked-shop':' locked-shop');
-      let btn = '';
-      if (equipped)   btn = `<button onclick="doUnequip('${c.type}')" style="margin-top:5px;width:100%;padding:3px;background:rgba(255,34,68,.12);border:1px solid rgba(255,34,68,.28);border-radius:2px;color:#ff4466;font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">UNEQUIP</button>`;
-      else if (owned) btn = `<button onclick="doEquip('${c.id}')" style="margin-top:5px;width:100%;padding:3px;background:rgba(0,255,140,.07);border:1px solid rgba(0,255,140,.25);border-radius:2px;color:var(--glow);font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">EQUIP</button>`;
-      else if (ownerOnly) btn = `<div style="margin-top:5px;font-size:8px;color:rgba(255,215,0,.4);text-align:center;">OWNER ONLY</div>`;
-      else {
-        const afford = totalCoins >= c.price;
-        btn = `<button onclick="doBuy('${c.id}')" style="margin-top:5px;width:100%;padding:3px;background:${afford?'rgba(255,215,0,.1)':'rgba(255,255,255,.03)'};border:1px solid ${afford?'rgba(255,215,0,.3)':'rgba(255,255,255,.1)'};border-radius:2px;color:${afford?'var(--gold)':'rgba(255,255,255,.2)'};font-size:8px;cursor:${afford?'pointer':'not-allowed'};font-family:Orbitron,monospace;">${c.price} 💰</button>`;
+function renderCosmeticsShop(){
+  const cont=hel('cosmeticsShopContent'); if(!cont)return;
+  const total=myProfile.coins+sessionCoins;
+  const all=Object.values(cosmeticsCatalog);
+  const pub=all.filter(c=>!c.ownerOnly), own=all.filter(c=>c.ownerOnly);
+  const secs=[
+    {k:'trail',label:'🔥 TRAILS',        items:pub.filter(c=>c.type==='trail')},
+    {k:'title',label:'📛 TITLES',         items:pub.filter(c=>c.type==='title')},
+    {k:'badge',label:'🏅 BADGES',         items:pub.filter(c=>c.type==='badge')},
+    {k:'otr',  label:'👑 OWNER TRAILS',   items:own.filter(c=>c.type==='trail')},
+    {k:'oti',  label:'👑 OWNER TITLES',   items:own.filter(c=>c.type==='title')},
+    {k:'oba',  label:'👑 OWNER BADGES',   items:own.filter(c=>c.type==='badge')},
+  ];
+  let h='';
+  for(const sec of secs){
+    if(!sec.items.length)continue;
+    if(sec.k.startsWith('o')&&!isOwner)continue;
+    h+='<div class="cosmetic-section-label">'+sec.label+'</div><div class="cosmetic-grid">';
+    for(const c of sec.items){
+      const owned=isOwner||(Array.isArray(myProfile.unlockedCosmetics)&&myProfile.unlockedCosmetics.includes(c.id));
+      const equipped=(c.type==='trail'&&myProfile.equippedTrail===c.id)
+                    ||(c.type==='title'&&(myProfile.equippedTitle===c.id||myProfile.equippedTitle===c.text))
+                    ||(c.type==='badge'&&(myProfile.equippedBadge===c.id||myProfile.equippedBadge===c.emoji));
+      const ownerOnly=!!c.ownerOnly;
+      const rcls=c.rarity?' '+(RARITY_CLS[c.rarity]||''):'';
+      const cls='cosmetic-card'+rcls+(equipped?' equipped':owned?' owned':ownerOnly?' owner-only locked-shop':' locked-shop');
+      let btn='';
+      if(equipped){
+        btn='<button onclick="doUnequip(\''+c.type+'\')" style="margin-top:4px;width:100%;padding:3px;background:rgba(255,34,68,.12);border:1px solid rgba(255,34,68,.28);border-radius:2px;color:#ff4466;font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">UNEQUIP</button>';
+      }else if(owned){
+        btn='<button onclick="doEquip(\''+c.id+'\')" style="margin-top:4px;width:100%;padding:3px;background:rgba(0,255,140,.07);border:1px solid rgba(0,255,140,.25);border-radius:2px;color:var(--glow);font-size:8px;cursor:pointer;font-family:Orbitron,monospace;">EQUIP</button>';
+      }else if(ownerOnly){
+        btn='<div style="margin-top:4px;font-size:7px;color:rgba(255,215,0,.4);text-align:center;font-family:Orbitron,monospace;">OWNER ONLY</div>';
+      }else{
+        const aff=total>=(c.price||0);
+        btn='<button onclick="doBuy(\''+c.id+'\')" '+(aff?'':'disabled')+' style="margin-top:4px;width:100%;padding:3px;background:'+(aff?'rgba(255,215,0,.1)':'rgba(255,255,255,.02)')+';border:1px solid '+(aff?'rgba(255,215,0,.3)':'rgba(255,255,255,.07)')+';border-radius:2px;color:'+(aff?'var(--gold)':'rgba(255,255,255,.18)')+';font-size:8px;cursor:'+(aff?'pointer':'not-allowed')+';font-family:Orbitron,monospace;">'+(c.price||0)+' 💰</button>';
       }
-
-      html += `<div class="${cls}">${equipped?'<div class="equipped-label">✓</div>':''}${ownerOnly?'<div class="cosmetic-badge">👑</div>':''}
-        <span class="cosmetic-icon">${c.emoji}</span>
-        <div class="cosmetic-name">${c.name}</div>${btn}</div>`;
+      const rt=c.rarity?'<div class="rarity-tag">'+(RARITY_LBL[c.rarity]||'')+'</div>':'';
+      h+='<div class="'+cls+'">'+(equipped?'<div class="equipped-label">✓</div>':'')+(ownerOnly?'<div class="cosmetic-badge">👑</div>':'')+'<span class="cosmetic-icon">'+c.emoji+'</span><div class="cosmetic-name">'+c.name+'</div>'+btn+rt+'</div>';
     }
-    html += '</div>';
+    h+='</div>';
   }
-  cont.innerHTML = html;
+  cont.innerHTML=h||'<p style="color:var(--dim);text-align:center;padding:20px;">No cosmetics available.</p>';
 }
+function doBuy(id){if(socket)socket.emit('buyCosmetic',{cosmeticId:id});}
+function doEquip(id){if(socket)socket.emit('equipCosmetic',{cosmeticId:id});}
+function doUnequip(s){if(socket)socket.emit('unequipCosmetic',{slot:s});}
 
-function doBuy(id)    { if(socket) socket.emit('buyCosmetic',{cosmeticId:id}); }
-function doEquip(id)  { if(socket) socket.emit('equipCosmetic',{cosmeticId:id}); }
-function doUnequip(s) { if(socket) socket.emit('unequipCosmetic',{slot:s}); }
-
-// ================================================================
-//  OWNER PANEL
-// ================================================================
-document.getElementById('closeOwnerPanel').onclick = () => document.getElementById('ownerPanel').classList.add('hidden');
-document.querySelectorAll('.owner-nav-btn').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.owner-nav-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.owner-tab').forEach(t => t.classList.remove('active'));
+// ── OWNER PANEL ───────────────────────────────────────────────────
+hel('closeOwnerPanel').onclick=()=>hel('ownerPanel').classList.add('hidden');
+document.querySelectorAll('.owner-nav-btn').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.owner-nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.owner-tab').forEach(t=>t.classList.remove('active'));
     btn.classList.add('active');
-    const tab = document.getElementById('tab-' + btn.dataset.tab);
-    if (tab) tab.classList.add('active');
-    if (['players','actions','skins','ownercosmetics'].includes(btn.dataset.tab)) refreshPlayers();
+    const tab=document.getElementById('tab-'+btn.dataset.tab);if(tab)tab.classList.add('active');
+    if(['players','actions','skins','ownercosmetics'].includes(btn.dataset.tab))refreshPlayers();
     updateOwnerStats();
   };
 });
-
-function openOwnerPanel() {
-  document.getElementById('ownerPanel').classList.remove('hidden');
-  updateOwnerStats(); refreshPlayers();
-}
-document.getElementById('owner-tag-hud').onclick = openOwnerPanel;
-
-document.getElementById('ownerToggleBtn').addEventListener('dblclick', () => {
-  const p = document.getElementById('ownerPass').value;
-  if (p === 'Z3N0ISKING') { isOwner=true; buildSkinSelector(); openOwnerPanel(); }
-});
-
-function updateOwnerStats() {
-  fetch('/api/stats').then(r=>r.json()).then(d => {
-    document.getElementById('os-players').textContent = d.players;
-    document.getElementById('os-orbs').textContent    = d.orbs;
-    document.getElementById('os-event').textContent   = d.activeEvent || 'NONE';
+function openOwnerPanel(){hel('ownerPanel').classList.remove('hidden');updateOwnerStats();refreshPlayers();}
+hel('owner-tag-hud').onclick=openOwnerPanel;
+function updateOwnerStats(){
+  fetch('/api/stats').then(r=>r.json()).then(d=>{
+    const s=(id,v)=>{const e=hel(id);if(e)e.textContent=v;};
+    s('os-players',d.players);s('os-orbs',d.orbs);s('os-event',d.activeEvent||'NONE');
   }).catch(()=>{});
 }
-function refreshPlayers() {
-  if (!socket) return;
-  socket.emit('ownerAction', { action:'getPlayers', password: ownerPass || 'Z3N0ISKING' });
-}
-function renderPlayerTable(list) {
-  const tb = document.getElementById('playerTableBody');
-  if (!list.length) { tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:rgba(255,215,0,.3);padding:20px;">No players</td></tr>'; return; }
-  tb.innerHTML = list.map(p => `<tr>
-    <td><span style="color:${p.isOwner?'#ffd700':'rgba(255,215,0,.8)'}">${p.isOwner?'👑 ':''}${p.name}${p.isBot?' 🤖':''}</span></td>
+function refreshPlayers(){if(!socket)return;socket.emit('ownerAction',{action:'getPlayers',password:ownerPass||''});}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');}
+function renderPlayerTable(list){
+  const tb=hel('playerTableBody'); if(!tb)return;
+  if(!list.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:rgba(255,215,0,.3);padding:20px;">No players</td></tr>';return;}
+  tb.innerHTML=list.map(p=>`<tr>
+    <td><span style="color:${p.isOwner?'#ffd700':'rgba(255,215,0,.8)'}">${p.isOwner?'👑 ':''}${esc(p.name)}${p.isBot?' 🤖':''}</span></td>
     <td style="font-family:Space Mono;font-size:11px;color:rgba(255,215,0,.55);">${p.length}</td>
     <td style="font-family:Space Mono;font-size:11px;color:rgba(255,215,0,.55);">${p.score}</td>
     <td style="font-family:Space Mono;font-size:11px;color:var(--gold);">💰${p.coins||0}</td>
@@ -1720,74 +2259,202 @@ function renderPlayerTable(list) {
       ${!p.isBot?`<button class="btn btn-sm" style="border:1px solid rgba(255,34,68,.3);color:rgba(255,34,68,.6);padding:5px 7px;font-size:8px;" onclick="quickKick('${p.id}','${esc(p.name)}')">🚫</button>`:''}
       <button class="btn btn-gold btn-sm" onclick="quickSize('${p.id}','${esc(p.name)}')">📏</button>
       ${!p.isBot?`<button class="btn btn-gold btn-sm" onclick="quickCoins('${p.id}','${esc(p.name)}')">💰</button>`:''}
-    </div></td>
-  </tr>`).join('');
+    </div></td></tr>`).join('');
 }
-function esc(s) { return s.replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
-function populateSelects(list) {
-  ['sizeTarget','coinsTarget','swapP1','swapP2','kickTarget','killTarget','skinTarget','ownerCosmeticTarget'].forEach(id => {
-    const el = document.getElementById(id); if (!el) return;
-    el.innerHTML = list.map(p => `<option value="${p.id}">${p.isOwner?'👑 ':''}${p.name} (${p.length})</option>`).join('');
+function populateSelects(list){
+  ['sizeTarget','coinsTarget','swapP1','swapP2','kickTarget','killTarget','skinTarget','ownerCosmeticTarget','freezeTarget','setSizeTarget'].forEach(id=>{
+    const el=hel(id); if(!el)return;
+    el.innerHTML=list.map(p=>'<option value="'+p.id+'">'+(p.isOwner?'👑 ':'')+esc(p.name)+' ('+p.length+')</option>').join('');
   });
 }
-function showOwnerAlert(msg, type) {
-  const el = document.getElementById('ownerAlert');
-  el.textContent = msg; el.className = 'o-alert ' + type; el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 4000);
+function showOwnerAlert(msg,type){
+  const el=hel('ownerAlert'); if(!el)return;
+  el.textContent=msg;el.className='o-alert '+type;el.style.display='block';
+  setTimeout(()=>el.style.display='none',4000);
 }
-function ownerAction(action, value, targetId) {
-  if (!socket) { showToast('Not connected','error'); return; }
-  socket.emit('ownerAction', { action, value, targetId, password: ownerPass || 'Z3N0ISKING' });
+function ownerAction(action,value,targetId){
+  if(!socket||!socket.connected){showToast('Not connected — join the game first.','error');return;}
+  socket.emit('ownerAction',{action,value,targetId,password:ownerPass||''});
 }
-function doGiveSize()    { ownerAction('giveSize',    document.getElementById('sizeAmount').value,   document.getElementById('sizeTarget').value); }
-function doGiveCoins()   { ownerAction('giveCoins',   document.getElementById('coinsAmount').value,  document.getElementById('coinsTarget').value); }
-function doSwapSize()    { ownerAction('swapSize',     document.getElementById('swapP2').value,       document.getElementById('swapP1').value); }
-function doKick()        { ownerAction('kick',         document.getElementById('kickReason').value||'Kicked by owner.', document.getElementById('kickTarget').value); }
-function doInstaKill()   { ownerAction('instaKill',    null,                                           document.getElementById('killTarget').value); }
-function doGiveSkin()    { ownerAction('giveSkin',     document.getElementById('skinToGive').value,   document.getElementById('skinTarget').value); }
-function doGiveCosmetic(){ ownerAction('giveCosmetic', document.getElementById('ownerCosmeticToGive').value, document.getElementById('ownerCosmeticTarget').value); }
-function doBroadcast()   { const m=document.getElementById('broadcastMsg').value.trim(); if(!m)return; ownerAction('broadcast',m); document.getElementById('broadcastMsg').value=''; }
+function doGiveSize(){ownerAction('giveSize',hel('sizeAmount').value,hel('sizeTarget').value);}
+function doGiveCoins(){ownerAction('giveCoins',hel('coinsAmount').value,hel('coinsTarget').value);}
+function doSwapSize(){ownerAction('swapSize',hel('swapP2').value,hel('swapP1').value);}
+function doKick(){ownerAction('kick',hel('kickReason').value||'Kicked by owner.',hel('kickTarget').value);}
+function doInstaKill(){ownerAction('instaKill',null,hel('killTarget').value);}
+function doGiveSkin(){ownerAction('giveSkin',hel('skinToGive').value,hel('skinTarget').value);}
+function doGiveCosmetic(){ownerAction('giveCosmetic',hel('ownerCosmeticToGive').value,hel('ownerCosmeticTarget').value);}
+function doBroadcast(){const m=hel('broadcastMsg').value.trim();if(!m)return;ownerAction('broadcast',m);hel('broadcastMsg').value='';}
+function quickKill(id,n){if(!confirm('Kill '+n+'?'))return;ownerAction('instaKill',null,id);}
+function quickKick(id,n){const r=prompt('Kick reason for '+n+':','Kicked by Z3N0');if(r===null)return;ownerAction('kick',r,id);}
+function quickSize(id,n){const a=prompt('Give size to '+n+':','50');if(!a)return;ownerAction('giveSize',a,id);}
+function quickCoins(id,n){const a=prompt('Give coins to '+n+':','500');if(!a)return;ownerAction('giveCoins',a,id);}
+function doFreeze(){ownerAction('freeze',hel('freezeDuration').value||'3000',hel('freezeTarget').value);}
+function doSetSize(){ownerAction('setSize',hel('setSizeAmount').value,hel('setSizeTarget').value);}
 
-function quickKill (id,n) { if(!confirm(`Kill ${n}?`))return;    ownerAction('instaKill',null,id); }
-function quickKick (id,n) { const r=prompt(`Kick reason for ${n}:`,'Kicked by Z3N0'); if(r===null)return; ownerAction('kick',r,id); }
-function quickSize (id,n) { const a=prompt(`Give size to ${n}:`,'50'); if(!a)return; ownerAction('giveSize',a,id); }
-function quickCoins(id,n) { const a=prompt(`Give coins to ${n}:`,'500'); if(!a)return; ownerAction('giveCoins',a,id); }
+// ── PLAYFAB CATALOG & CLOUDSCRIPT GENERATORS ─────────────────────
+function generateCatalogJSON(){
+  const all=Object.values(cosmeticsCatalog);
+  const items=all.map(c=>({
+    ItemId:c.id,
+    DisplayName:c.name,
+    Description:(c.emoji||'')+' '+c.name+' — '+(c.rarity||'common').toUpperCase()+' '+c.type,
+    VirtualCurrencyPrices:{GC:c.ownerOnly?0:(c.price||0)},
+    Tags:[c.type,(c.rarity||'common'),'cosmetic',c.ownerOnly?'owner-only':'purchasable'],
+    CustomData:JSON.stringify({type:c.type,rarity:c.rarity,emoji:c.emoji||'',glow:c.glow||null,text:c.text||null,ownerOnly:!!c.ownerOnly})
+  }));
+  const out=JSON.stringify({CatalogVersion:'Z3N0_v1',Catalog:items},null,2);
+  const el=hel('catalogJsonOutput');if(el)el.value=out;
+  showOwnerAlert('Catalog generated! '+items.length+' items ('+all.filter(c=>c.ownerOnly).length+' owner-only).','success');
+}
+function copyCatalogJSON(){
+  const el=hel('catalogJsonOutput');
+  if(!el||!el.value){showOwnerAlert('Generate catalog first!','error');return;}
+  navigator.clipboard.writeText(el.value).then(()=>showOwnerAlert('Copied!','success')).catch(()=>showOwnerAlert('Select all text then Ctrl+C.','error'));
+}
+function generateCloudScript(){
+  const lines=[
+    "// Z3N0 SNAKE REALM — PlayFab CloudScript v2.0",
+    "// Paste into: PlayFab > Automation > CloudScript",
+    "'use strict';",
+    "const COIN_CURRENCY='GC';",
+    "const CATALOG_VERSION='Z3N0_v1';",
+    "",
+    "handlers.grantCoins=function(args,context){",
+    "  var amount=Math.max(0,Math.min(args.amount||1,10000));",
+    "  try{",
+    "    server.AddUserVirtualCurrency({PlayFabId:args.playerId,VirtualCurrency:COIN_CURRENCY,Amount:amount});",
+    "    var bal=server.GetUserInventory({PlayFabId:args.playerId});",
+    "    return{success:true,newBalance:bal.VirtualCurrency[COIN_CURRENCY]||0};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.purchaseCosmetic=function(args,context){",
+    "  var playerId=args.playerId,cosmeticId=args.cosmeticId;",
+    "  if(!cosmeticId)return{success:false,error:'No cosmeticId'};",
+    "  try{",
+    "    var inv=server.GetUserInventory({PlayFabId:playerId});",
+    "    var already=inv.Inventory.filter(function(i){return i.ItemId===cosmeticId;});",
+    "    if(already.length)return{success:false,error:'Already owned'};",
+    "    var catalog=server.GetCatalogItems({CatalogVersion:CATALOG_VERSION});",
+    "    var item=catalog.Catalog.filter(function(i){return i.ItemId===cosmeticId;})[0];",
+    "    if(!item)return{success:false,error:'Item not found'};",
+    "    var cd=JSON.parse(item.CustomData||'{}');",
+    "    if(cd.ownerOnly)return{success:false,error:'Owner only item'};",
+    "    var price=item.VirtualCurrencyPrices[COIN_CURRENCY]||0;",
+    "    if((inv.VirtualCurrency[COIN_CURRENCY]||0)<price)return{success:false,error:'Insufficient coins'};",
+    "    server.SubtractUserVirtualCurrency({PlayFabId:playerId,VirtualCurrency:COIN_CURRENCY,Amount:price});",
+    "    server.GrantItemsToUser({PlayFabId:playerId,CatalogVersion:CATALOG_VERSION,ItemIds:[cosmeticId]});",
+    "    var newInv=server.GetUserInventory({PlayFabId:playerId});",
+    "    return{success:true,newBalance:newInv.VirtualCurrency[COIN_CURRENCY]||0,",
+    "      unlockedCosmetics:newInv.Inventory.map(function(i){return i.ItemId;})};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.ownerGrantCosmetic=function(args,context){",
+    "  var td=server.GetTitleData({});",
+    "  if(args.ownerPassword!==td.Data['OwnerPassword'])return{success:false,error:'Unauthorized'};",
+    "  try{",
+    "    var inv=server.GetUserInventory({PlayFabId:args.targetId});",
+    "    var has=inv.Inventory.filter(function(i){return i.ItemId===args.cosmeticId;});",
+    "    if(!has.length)server.GrantItemsToUser({PlayFabId:args.targetId,CatalogVersion:CATALOG_VERSION,ItemIds:[args.cosmeticId]});",
+    "    var newInv=server.GetUserInventory({PlayFabId:args.targetId});",
+    "    return{success:true,unlockedCosmetics:newInv.Inventory.map(function(i){return i.ItemId;})};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.ownerGrantCoins=function(args,context){",
+    "  var td=server.GetTitleData({});",
+    "  if(args.ownerPassword!==td.Data['OwnerPassword'])return{success:false,error:'Unauthorized'};",
+    "  server.AddUserVirtualCurrency({PlayFabId:args.targetId,VirtualCurrency:COIN_CURRENCY,Amount:args.amount});",
+    "  var bal=server.GetUserInventory({PlayFabId:args.targetId});",
+    "  return{success:true,newBalance:bal.VirtualCurrency[COIN_CURRENCY]};",
+    "};",
+    "",
+    "handlers.equipCosmetic=function(args,context){",
+    "  var playerId=args.playerId,cosmeticId=args.cosmeticId;",
+    "  try{",
+    "    var inv=server.GetUserInventory({PlayFabId:playerId});",
+    "    var has=inv.Inventory.filter(function(i){return i.ItemId===cosmeticId;});",
+    "    if(!has.length)return{success:false,error:'Not owned'};",
+    "    var catalog=server.GetCatalogItems({CatalogVersion:CATALOG_VERSION});",
+    "    var item=catalog.Catalog.filter(function(i){return i.ItemId===cosmeticId;})[0];",
+    "    if(!item)return{success:false,error:'Not in catalog'};",
+    "    var cd=JSON.parse(item.CustomData||'{}');",
+    "    var ud=server.GetUserData({PlayFabId:playerId,Keys:['equippedCosmetics']});",
+    "    var eq={};try{eq=JSON.parse((ud.Data.equippedCosmetics&&ud.Data.equippedCosmetics.Value)||'{}');}catch(e2){}",
+    "    eq[cd.type]=cosmeticId;",
+    "    server.UpdateUserData({PlayFabId:playerId,Data:{equippedCosmetics:JSON.stringify(eq)}});",
+    "    return{success:true,equipped:eq};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.unequipCosmetic=function(args,context){",
+    "  try{",
+    "    var ud=server.GetUserData({PlayFabId:args.playerId,Keys:['equippedCosmetics']});",
+    "    var eq={};try{eq=JSON.parse((ud.Data.equippedCosmetics&&ud.Data.equippedCosmetics.Value)||'{}');}catch(e2){}",
+    "    delete eq[args.slot];",
+    "    server.UpdateUserData({PlayFabId:args.playerId,Data:{equippedCosmetics:JSON.stringify(eq)}});",
+    "    return{success:true,equipped:eq};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.getPlayerProfile=function(args,context){",
+    "  var playerId=args.playerId||context.playerId;",
+    "  try{",
+    "    var inv=server.GetUserInventory({PlayFabId:playerId});",
+    "    var ud=server.GetUserData({PlayFabId:playerId,Keys:['equippedCosmetics']});",
+    "    var eq={};try{eq=JSON.parse((ud.Data.equippedCosmetics&&ud.Data.equippedCosmetics.Value)||'{}');}catch(e2){}",
+    "    return{success:true,coins:inv.VirtualCurrency[COIN_CURRENCY]||0,",
+    "      unlockedCosmetics:inv.Inventory.map(function(i){return i.ItemId;}),",
+    "      equippedTrail:eq.trail||null,equippedTitle:eq.title||null,equippedBadge:eq.badge||null};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};",
+    "",
+    "handlers.saveHighScore=function(args,context){",
+    "  try{",
+    "    server.UpdatePlayerStatistics({PlayFabId:args.playerId||context.playerId,",
+    "      Statistics:[{StatisticName:'HighScore',Value:args.score||0}]});",
+    "    return{success:true};",
+    "  }catch(e){return{success:false,error:e.toString()};}",
+    "};"
+  ];
+  const el=hel('cloudScriptOutput');if(el)el.value=lines.join('\n');
+  showOwnerAlert('CloudScript generated! Copy into PlayFab Automation.','success');
+}
+function copyCloudScript(){
+  const el=hel('cloudScriptOutput');
+  if(!el||!el.value){showOwnerAlert('Generate CloudScript first!','error');return;}
+  navigator.clipboard.writeText(el.value).then(()=>showOwnerAlert('CloudScript copied!','success')).catch(()=>showOwnerAlert('Select all text then Ctrl+C.','error'));
+}
 
-// ================================================================
-//  MENU STATS + HOW TO
-// ================================================================
-setInterval(() => {
-  fetch('/api/stats').then(r=>r.json()).then(d => {
-    document.getElementById('statPlayers').textContent = d.players;
-    document.getElementById('statBots').textContent    = d.bots || 0;
-    document.getElementById('statOrbs').textContent    = d.orbs;
-    document.getElementById('statEvent').style.display = d.activeEvent ? 'inline' : 'none';
+// ── MENU STATS + HOW TO ───────────────────────────────────────────
+setInterval(()=>{
+  fetch('/api/stats').then(r=>r.json()).then(d=>{
+    const s=(id,v)=>{const e=hel(id);if(e)e.textContent=v;};
+    s('statPlayers',d.players);s('statBots',d.bots||0);s('statOrbs',d.orbs);
+    const ev=hel('statEvent');if(ev)ev.style.display=d.activeEvent?'inline':'none';
   }).catch(()=>{});
-}, 3000);
+},5000);
 
-document.getElementById('howToBtn').onclick = () => {
-  const bk = boostKey==='shift'?'Shift':boostKey==='space'?'Space':'Shift/Space';
-  alert(`🐍 Z3N0 SNAKE REALM — HOW TO PLAY\n\nControls: ${controlScheme.toUpperCase()}\n${controlScheme==='mouse'?'Move mouse to steer':'Use '+controlScheme.toUpperCase()+' keys to steer'}\nHold Click or ${bk} to BOOST\n\n• Eat glowing orbs to grow & earn coins\n• Kill others by making them hit your body\n• Avoid the red border — instant death\n• Boosting sheds orbs & shrinks you slightly\n\n💰 COINS: Buy trails, titles & badges in Cosmetics\n👑 Owner panel: F1 key`);
+hel('howToBtn').onclick=()=>{
+  const bk=boostKey==='shift'?'Shift':boostKey==='space'?'Space':'Shift/Space';
+  alert(`🐍 Z3N0 SNAKE REALM\n\nControls: ${controlScheme.toUpperCase()}\n${controlScheme==='mouse'?'Move mouse to steer':'Use '+controlScheme+' keys to steer'}\nHold click or ${bk} to BOOST\n\n📖 TIPS:\n• Eat glowing orbs to grow & earn coins\n• Make enemies crash INTO your body\n• Encircle smaller snakes to trap them\n• Avoid the flashing red border\n• Boosting costs size but gives speed\n• Press [T] to chat\n• Press [F1] for Owner Panel (owners only)\n\n💰 Buy cosmetics in the shop!\n🏆 Your best score: ${highScore}`);
 };
 
-// ================================================================
-//  MENU PARTICLES
-// ================================================================
-(function spawnParticles() {
-  const c = document.getElementById('bgParticles');
-  for (let i = 0; i < 25; i++) {
-    const p = document.createElement('div');
-    p.className = 'mp';
-    p.style.cssText = `left:${Math.random()*100}%;animation-duration:${4+Math.random()*10}s;animation-delay:${Math.random()*8}s;width:${Math.random()<0.3?3:2}px;height:${Math.random()<0.3?3:2}px;opacity:${0.3+Math.random()*0.5};`;
+// ── MENU PARTICLES ────────────────────────────────────────────────
+(function(){
+  const c=hel('bgParticles'); if(!c)return;
+  for(let i=0;i<28;i++){
+    const p=document.createElement('div'); p.className='mp';
+    p.style.cssText='left:'+Math.random()*100+'%;animation-duration:'+(4+Math.random()*10)+'s;animation-delay:'+Math.random()*8+'s;width:'+(Math.random()<0.3?3:2)+'px;height:'+(Math.random()<0.3?3:2)+'px;';
     c.appendChild(p);
   }
 })();
 
-// ================================================================
-//  INIT
-// ================================================================
+// ── INIT ──────────────────────────────────────────────────────────
+setupCanvas();
 updateBoostLabel();
-document.getElementById('nameInput').focus();
+hel('nameInput').focus();
 </script>
 </body>
 </html>
