@@ -1478,6 +1478,9 @@ function startGame(){
   gameActive=true; killStreak=0; particles=[];
   _lastSc=-1;_lastLen=-1;_lastCoins=-1;_lastBoost=-1;
   camScale=1; camScaleTarget=1;
+  // Pre-center camera to map center so world is visible before first player data arrives
+  camX=camTX=MAP_SIZE/2-(window.innerWidth/2);
+  camY=camTY=MAP_SIZE/2-(window.innerHeight/2);
   showScreen('game');
   hel('gameCanvas').style.display='block';
   hel('hud').style.display='block';
