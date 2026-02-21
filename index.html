@@ -372,10 +372,10 @@ body::before{
     <div class="menu-panel">
       <!-- Menu tab buttons -->
       <div class="menu-tabs">
-        <button class="menu-tab-btn active" data-mtab="play">▶ PLAY</button>
-        <button class="menu-tab-btn" data-mtab="cosmetics">🎨 COSMETICS</button>
-        <button class="menu-tab-btn" data-mtab="account">💎 ACCOUNT</button>
-        <button class="menu-tab-btn" data-mtab="settings">⚙️ SETTINGS</button>
+        <button class="menu-tab-btn active" data-mtab="play">PLAY</button>
+        <button class="menu-tab-btn" data-mtab="cosmetics">COSMETICS</button>
+        <button class="menu-tab-btn" data-mtab="account">ACCOUNT</button>
+        <button class="menu-tab-btn" data-mtab="settings">SETTINGS</button>
       </div>
 
       <!-- PLAY TAB -->
@@ -385,16 +385,20 @@ body::before{
           <input class="game-input" id="nameInput" type="text" placeholder="Enter your name..." maxlength="20" autocomplete="off">
         </div>
         <div class="input-group">
+          <span class="input-label">Clan Tag <span style="color:var(--dim);font-size:9px;">(optional, max 8 chars)</span></span>
+          <input class="game-input" id="tagInput" type="text" placeholder="e.g. GOON!" maxlength="8" autocomplete="off" style="text-transform:uppercase;">
+        </div>
+        <div class="input-group">
           <span class="input-label">Choose Skin</span>
           <div class="skin-selector" id="skinSelector"></div>
         </div>
         <div class="input-group" id="ownerPassGroup" style="display:none;">
-          <span class="input-label">🔐 Owner Code</span>
+          <span class="input-label">Owner Code</span>
           <input class="game-input" id="ownerPass" type="password" placeholder="Enter owner password..." autocomplete="off">
         </div>
-        <button class="btn btn-primary" id="playBtn" style="margin-bottom:8px;">▶ PLAY</button>
+        <button class="btn btn-primary" id="playBtn" style="margin-bottom:8px;">PLAY</button>
         <div class="btn-row">
-          <button class="btn btn-gold btn-sm" id="ownerToggleBtn">👑 OWNER</button>
+          <button class="btn btn-gold btn-sm" id="ownerToggleBtn">OWNER</button>
           <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);" id="howToBtn">? HOW TO PLAY</button>
         </div>
       </div>
@@ -409,7 +413,7 @@ body::before{
           </div>
         </div>
         <p style="font-size:12px;color:var(--dim);margin-bottom:12px;">Join the game to buy & equip cosmetics. Earn coins by eating orbs and killing players.</p>
-        <div class="cosmetic-section-label">🔥 TRAILS</div>
+        <div class="cosmetic-section-label">TRAILS</div>
         <div id="menuCosmeticPreview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
           <!-- populated after join -->
           <div style="grid-column:1/-1;text-align:center;font-size:12px;color:var(--dim);padding:16px;">Enter the game to access your cosmetics</div>
@@ -507,7 +511,7 @@ body::before{
 
     <!-- Z3N0 footer -->
     <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:4px;color:rgba(255,215,0,0.3);">
-      👑 Z3N0'S SNAKE GAME — ALL RIGHTS RESERVED
+       Z3N0'S SNAKE GAME — ALL RIGHTS RESERVED
     </div>
   </div>
 </div>
@@ -524,7 +528,7 @@ body::before{
   <div id="hud-coins">💰 <span id="hudCoins">0</span> coins</div>
   <div id="killfeed"></div>
   <div id="leaderboard">
-    <h3>👑 LEADERBOARD</h3>
+    <h3>LEADERBOARD</h3>
     <div id="lbList"></div>
   </div>
   <div id="minimap"><canvas id="minimapCanvas" width="160" height="160"></canvas></div>
@@ -532,13 +536,21 @@ body::before{
     <div class="boost-label" id="boostLabel">BOOST [HOLD CLICK]</div>
     <div class="boost-track"><div class="boost-fill" id="boostFill"></div></div>
   </div>
-  <div id="owner-tag-hud">👑 Z3N0 · SUPREME OWNER · CREATOR OF THIS GAME</div>
+  <div id="owner-tag-hud"> Z3N0 · Gooner  OWNER · CREATOR OF THIS GAME</div>
   <div id="eventBanner"><div class="event-title" id="eventTitle">EVENT ACTIVE</div></div>
   <div id="sysmsg"></div>
   <div id="z3n0-watermark-game">Z3N0</div>
 
   <!-- In-game cosmetics button -->
-  <div id="inGameCosmeticsBtn" style="position:absolute;top:20px;left:320px;pointer-events:auto;display:none;">
+  <button id="upgradeBtn" onclick="toggleUpgradePanel()" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:200;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:2px;padding:6px 16px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.4);color:#ffd700;cursor:pointer;border-radius:2px;display:none;">⬆ UPGRADES</button>
+
+<div id="upgradePanel" style="position:fixed;bottom:80px;left:20px;z-index:300;background:rgba(0,0,8,0.95);border:1px solid rgba(255,215,0,0.3);border-radius:4px;padding:16px;width:260px;display:none;backdrop-filter:blur(10px);">
+  <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;color:#ffd700;margin-bottom:12px;border-bottom:1px solid rgba(255,215,0,0.2);padding-bottom:8px;">⬆ UPGRADES</div>
+  <div style="font-size:11px;color:rgba(200,255,212,0.5);margin-bottom:10px;">Coins: <span id="upgradeCoinDisplay" style="color:#ffd700;">0</span></div>
+  <div id="upgradeList"></div>
+</div>
+
+<div id="inGameCosmeticsBtn" style="position:absolute;top:20px;left:320px;pointer-events:auto;display:none;">
     <button class="btn btn-sm" style="border:1px solid var(--border);color:var(--dim);padding:6px 12px;font-size:9px;" onclick="openIngameCosmetics()">🎨 COSMETICS</button>
   </div>
 </div>
@@ -807,7 +819,7 @@ const SKINS = {
 // ================================================================
 //  SETTINGS STATE
 // ================================================================
-let controlScheme = localStorage.getItem('controlScheme') || 'mouse';
+let controlScheme = localStorage.getItem('controlScheme') || 'both';
 let boostKey = localStorage.getItem('boostKey') || 'shift';
 let mouseAlways = localStorage.getItem('mouseAlways') !== 'off';
 
@@ -893,6 +905,14 @@ let myName = '';
 let myProfile = { coins: 0, unlockedCosmetics: [], equippedTrail: null, equippedTitle: null, equippedBadge: null };
 let cosmeticsCatalog = {};
 let sessionCoinsDisplay = 0;
+let predictedState = null;       // our locally-predicted snake position
+let predictedAngle = 0;
+let playerMetaCache = {};        // static player data cached by id
+let lastInputSent = 0;           // for input throttling
+let myTag = '';
+let myUpgrades = { speed:0, boost:0, magnet:0, armor:0, growth:0 };
+let upgradesCatalog = {};
+let upgradePanelOpen = false;
 
 // ================================================================
 //  CURSOR
@@ -1029,19 +1049,23 @@ document.getElementById('musicToggle').onclick = () => {
 document.getElementById('playBtn').onclick = () => {
   const name = document.getElementById('nameInput').value.trim() || 'Snake';
   const pass = document.getElementById('ownerPass').value;
-  myName = name; ownerPass = pass;
-  connectAndJoin(name, selectedSkin, pass);
+  const tag  = document.getElementById('tagInput').value.trim().replace(/[^a-zA-Z0-9]/g,'').substring(0,8).toUpperCase();
+  myName = name; ownerPass = pass; myTag = tag;
+  connectAndJoin(name, selectedSkin, pass, tag);
 };
 document.getElementById('nameInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('playBtn').click(); });
 
 // ================================================================
 //  SOCKET CONNECTION
 // ================================================================
-function connectAndJoin(name, skin, password) {
+function connectAndJoin(name, skin, password, tag) {
   if (socket) socket.disconnect();
-  socket = io();
+  socket = io({ transports: ['websocket'], upgrade: false });
 
-  socket.on('connect', () => socket.emit('joinGame', { name, skin, password }));
+  socket.on('connect', () => {
+    socket.emit('joinGame', { name, skin, password });
+    if (tag) setTimeout(() => socket.emit('setTag', { tag }), 500);
+  });
 
   socket.on('joined', (data) => {
     myPlayerId = data.playerId;
@@ -1051,6 +1075,8 @@ function connectAndJoin(name, skin, password) {
     data.orbs.forEach(o => orbsLocal[o.id] = o);
     myProfile = data.profile || myProfile;
     cosmeticsCatalog = data.cosmeticsCatalog || {};
+    upgradesCatalog = data.upgradesCatalog || {};
+    myUpgrades = data.profile?.upgrades || myUpgrades;
     startGame();
     if (isOwner) {
       document.getElementById('owner-tag-hud').style.display = 'block';
@@ -1061,6 +1087,45 @@ function connectAndJoin(name, skin, password) {
     updateCoinDisplays();
   });
 
+  // New compact state format
+  socket.on('gs', (data) => {
+    // Merge compact state into gameState.players using meta cache
+    const newPlayers = {};
+    for (const pid in data.s) {
+      const d = data.s[pid];
+      const meta = playerMetaCache[pid] || {};
+      newPlayers[pid] = {
+        segments: d.s,
+        a: d.a,        // angle
+        angle: d.a,
+        w: d.w,        // width
+        width: d.w,
+        b: d.b,        // boosting
+        boosting: d.b,
+        sessionCoins: d.sc,
+        upgrades: d.up,
+        // Static fields from meta cache
+        skin: meta.skin || 'classic',
+        name: meta.name || '?',
+        isOwner: meta.isOwner || false,
+        grantedSkin: meta.grantedSkin || null,
+        effect: meta.effect || null,
+        equippedTrail: meta.equippedTrail || null,
+        equippedTitle: meta.equippedTitle || null,
+        equippedBadge: meta.equippedBadge || null,
+        tag: meta.tag || null,
+        isBot: meta.isBot || false,
+      };
+    }
+    gameState = { players: newPlayers, leaderboard: data.lb || [], activeEvent: data.ev || null };
+  });
+
+  // Cache static player metadata
+  socket.on('playerMeta', ({ pid, meta }) => {
+    playerMetaCache[pid] = meta;
+  });
+
+  // Legacy format fallback (in case server sends old format during transition)
   socket.on('gameState', (data) => { gameState = data; });
 
   socket.on('orbEaten', ({ oid, newOrb }) => { delete orbsLocal[oid]; orbsLocal[newOrb.id] = newOrb; });
@@ -1152,6 +1217,17 @@ function connectAndJoin(name, skin, password) {
 
   socket.on('cosmeticError', (msg) => showToast(msg, 'error'));
 
+  socket.on('upgradeBought', ({ upgradeId, newLevel, upgrades, sessionCoins, profileCoins }) => {
+    myUpgrades = upgrades;
+    sessionCoinsDisplay = sessionCoins;
+    myProfile.coins = profileCoins;
+    updateCoinDisplays();
+    renderUpgradePanel();
+  });
+
+  socket.on('upgradeError', (msg) => showToast(msg, 'error'));
+  socket.on('tagSet', ({ tag }) => { myTag = tag; });
+
   socket.on('disconnect', () => { if (gameActive) showToast('Disconnected from server','error'); });
 }
 
@@ -1166,12 +1242,15 @@ function startGame() {
   document.getElementById('musicControls').style.display = 'flex';
   document.getElementById('deathScreen').classList.add('hidden');
   document.getElementById('inGameCosmeticsBtn').style.display = 'block';
+  document.getElementById('upgradeBtn').style.display = 'block';
+  renderUpgradePanel();
   setupCanvas();
   requestAnimationFrame(gameLoop);
 }
 
 function handleDeath(killerName, coinsEarned) {
   gameActive = false;
+  predictedState = null;
   const myP = gameState.players[myPlayerId];
   myDeathScore = myP ? myP.score||0 : 0;
   myDeathLength = myP ? (myP.segments||[]).length : 0;
@@ -1195,6 +1274,8 @@ document.getElementById('menuBtn').onclick = () => {
   document.getElementById('gameCanvas').style.display = 'none';
   document.getElementById('musicControls').style.display = 'none';
   document.getElementById('inGameCosmeticsBtn').style.display = 'none';
+  document.getElementById('upgradeBtn').style.display = 'none';
+  document.getElementById('upgradePanel').style.display = 'none';
   showScreen('menuScreen');
   if (socket) socket.disconnect();
   gameActive = false;
@@ -1213,14 +1294,19 @@ window.addEventListener('resize', setupCanvas);
 // ================================================================
 canvas.addEventListener('mousemove', (e) => {
   if (!gameActive || !myPlayerId) return;
-  // Only steer with mouse if scheme is mouse, or mouseAlways is on
   const scheme = controlScheme;
   if (scheme !== 'mouse' && !mouseAlways) return;
-  const me = gameState.players[myPlayerId];
+  // Use predicted position for angle calc so it feels instant
+  const me = (predictedState && predictedState.segments.length) ? predictedState : gameState.players[myPlayerId];
   if (!me || !me.segments || !me.segments.length) return;
   const head = me.segments[0];
   myAngle = Math.atan2(e.clientY - (head.y - cameraY), e.clientX - (head.x - cameraX));
-  socket.emit('input', { angle: myAngle, boosting });
+  // Throttle: send input at most 20x/sec
+  const now = performance.now();
+  if (now - lastInputSent > 50) {
+    lastInputSent = now;
+    socket.emit('input', { angle: myAngle, boosting });
+  }
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -1306,6 +1392,68 @@ function handleKeyboardSteering() {
 // ================================================================
 //  RENDER — performance: use offscreen path batching
 // ================================================================
+// ================================================================
+//  CLIENT-SIDE PREDICTION
+// ================================================================
+const CLIENT_SPEED = 2.8;       // mirrors server SNAKE_SPEED
+const CLIENT_BOOST_SPEED = 5.2; // mirrors server BOOST_SPEED
+const CLIENT_SEG_DIST = 12;     // mirrors SEGMENT_DISTANCE
+
+function clientPredict(dt) {
+  if (!myPlayerId || !gameActive) return;
+
+  const serverMe = gameState.players[myPlayerId];
+  if (!serverMe || !serverMe.segments || !serverMe.segments.length) {
+    predictedState = null;
+    return;
+  }
+
+  // Start from server state if we don't have a prediction yet
+  if (!predictedState) {
+    predictedState = {
+      segments: serverMe.segments.map(s => ({x:s.x, y:s.y})),
+      angle: serverMe.a || myAngle,
+      width: serverMe.w || 8,
+      boosting: serverMe.b || false
+    };
+  }
+
+  // Reconcile: if server head is far from our prediction, snap back
+  const serverHead = serverMe.segments[0];
+  const predHead = predictedState.segments[0];
+  const snapDist = Math.hypot(serverHead.x - predHead.x, serverHead.y - predHead.y);
+  if (snapDist > 60) {
+    // Server correction — lerp back quickly
+    predictedState.segments = serverMe.segments.map(s => ({x:s.x, y:s.y}));
+  } else if (snapDist > 8) {
+    // Gentle correction
+    predictedState.segments[0].x += (serverHead.x - predHead.x) * 0.3;
+    predictedState.segments[0].y += (serverHead.y - predHead.y) * 0.3;
+  }
+
+  // Advance prediction by dt
+  predictedState.angle = myAngle;
+  predictedState.boosting = boosting;
+  predictedState.width = serverMe.w || 8;
+
+  const speedMult = boosting ? CLIENT_BOOST_SPEED : CLIENT_SPEED;
+  const stepsF = speedMult * dt * 60; // how many server ticks worth of movement
+  const steps = Math.max(1, Math.round(stepsF));
+
+  for (let s = 0; s < steps; s++) {
+    const head = predictedState.segments[0];
+    const newHead = {
+      x: head.x + Math.cos(myAngle) * speedMult / steps,
+      y: head.y + Math.sin(myAngle) * speedMult / steps
+    };
+    predictedState.segments.unshift(newHead);
+    // Keep same length as server
+    while (predictedState.segments.length > serverMe.segments.length + 2) {
+      predictedState.segments.pop();
+    }
+  }
+}
+
 let frameCount = 0;
 let lastFrameTime = 0;
 
@@ -1313,29 +1461,37 @@ function gameLoop(timestamp) {
   if (!gameActive) return;
   requestAnimationFrame(gameLoop);
 
-  // Frame rate cap at 60fps
-  if (timestamp - lastFrameTime < 14) return;
+  const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.05); // delta time in seconds, capped
   lastFrameTime = timestamp;
-
   frameCount++;
-  rainbowT += 0.02;
+
+  rainbowT += dt * 1.2;
   handleKeyboardSteering();
 
-  const me = gameState.players[myPlayerId];
+  // Client-side prediction: move our own snake locally so it feels instant
+  clientPredict(dt);
+
+  const me = predictedState || gameState.players[myPlayerId];
   if (me && me.segments && me.segments.length) {
     const head = me.segments[0];
-    // Smooth camera interpolation
     const targetX = head.x - canvas.width/2;
     const targetY = head.y - canvas.height/2;
-    cameraX += (targetX - cameraX) * 0.15;
-    cameraY += (targetY - cameraY) * 0.15;
+    // Faster camera follow = less perceived lag
+    const camLerp = Math.min(1, dt * 14);
+    cameraX += (targetX - cameraX) * camLerp;
+    cameraY += (targetY - cameraY) * camLerp;
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
   drawGrid();
   drawOrbs();
-  for (const pid in gameState.players) drawSnake(gameState.players[pid], pid===myPlayerId);
+  for (const pid in gameState.players) {
+    const playerData = (pid === myPlayerId && predictedState)
+      ? { ...gameState.players[pid], segments: predictedState.segments, angle: myAngle, width: predictedState.width, boosting }
+      : gameState.players[pid];
+    drawSnake(playerData, pid === myPlayerId);
+  }
   drawBorder();
   updateHUD();
 }
@@ -1474,7 +1630,8 @@ function drawSnake(player, isMe) {
   if (hsx>-100&&hsx<canvas.width+100&&hsy>-100&&hsy<canvas.height+100) {
     const badge = player.equippedBadge || '';
     const title = player.equippedTitle ? player.equippedTitle+' ' : '';
-    const nameText = badge + (player.isOwner?'👑 ':'') + (player.name||'Snake');
+    const tagPrefix = player.tag ? `[${player.tag}] ` : '';
+    const nameText = badge + (player.isOwner?'👑 ':'') + (player.isBot?'🤖 ':'') + tagPrefix + (player.name||'Snake');
     const titleText = title;
 
     ctx.font = `bold ${Math.max(10,w+4)}px Rajdhani,sans-serif`;
@@ -1516,7 +1673,8 @@ function drawBorder() {
 //  HUD
 // ================================================================
 function updateHUD() {
-  const me = gameState.players[myPlayerId];
+  const meServer = gameState.players[myPlayerId];
+  const me = meServer;
   if (me) {
     document.getElementById('scoreVal').textContent = me.score||0;
     document.getElementById('lengthVal').textContent = (me.segments||[]).length;
@@ -1540,6 +1698,8 @@ function updateHUD() {
   }).join('');
 
   drawMinimap();
+  // Refresh upgrade panel periodically
+  if (upgradePanelOpen && frameCount % 30 === 0) renderUpgradePanel();
 }
 
 function drawMinimap() {
@@ -1796,6 +1956,56 @@ function quickKill(id,name)  { if(!confirm(`Insta-kill ${name}?`)) return; owner
 function quickKick(id,name)  { const r=prompt(`Kick reason for ${name}:`,'Kicked by Z3N0'); if(r===null) return; ownerAction('kick',r,id); }
 function quickSize(id,name)  { const a=prompt(`Give size to ${name}:`,'50'); if(!a) return; ownerAction('giveSize',a,id); }
 function quickCoins(id,name) { const a=prompt(`Give coins to ${name}:`,'500'); if(!a) return; ownerAction('giveCoins',a,id); }
+
+
+// ================================================================
+//  UPGRADES PANEL
+// ================================================================
+function toggleUpgradePanel() {
+  const panel = document.getElementById('upgradePanel');
+  upgradePanelOpen = !upgradePanelOpen;
+  panel.style.display = upgradePanelOpen ? 'block' : 'none';
+  if (upgradePanelOpen) renderUpgradePanel();
+}
+
+function renderUpgradePanel() {
+  const me = gameState.players[myPlayerId];
+  const totalCoins = (myProfile.coins || 0) + (me ? me.sessionCoins || 0 : 0);
+  document.getElementById('upgradeCoinDisplay').textContent = totalCoins;
+
+  const list = document.getElementById('upgradeList');
+  if (!list) return;
+  const upgrades = me?.upgrades || myUpgrades;
+  const upgradeOrder = ['speed','boost','magnet','growth','armor'];
+  const upgradeEmojis = { speed:'⚡', boost:'🚀', magnet:'🧲', growth:'🌱', armor:'🛡️' };
+
+  list.innerHTML = upgradeOrder.map(id => {
+    const u = upgradesCatalog[id];
+    if (!u) return '';
+    const level = upgrades[id] || 0;
+    const maxLevel = u.maxLevel;
+    const cost = level < maxLevel ? Math.floor(u.baseCost * Math.pow(u.costMult, level)) : 0;
+    const canAfford = totalCoins >= cost;
+    const maxed = level >= maxLevel;
+    const bars = Array.from({length: maxLevel}, (_,i) =>
+      `<div style="width:12px;height:6px;border-radius:1px;background:${i<level?'#ffd700':'rgba(255,255,255,0.1)'};display:inline-block;margin:0 1px;"></div>`
+    ).join('');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:6px 8px;background:rgba(255,215,0,0.03);border:1px solid rgba(255,215,0,${maxed?'0.3':'0.1'});border-radius:2px;">
+      <div>
+        <div style="font-size:12px;color:${maxed?'#ffd700':'var(--text)'};">${upgradeEmojis[id]} ${u.name}</div>
+        <div style="margin-top:2px;">${bars}</div>
+      </div>
+      ${maxed
+        ? '<span style="font-size:10px;color:#ffd700;letter-spacing:1px;">MAX</span>'
+        : `<button onclick="buyUpgrade('${id}')" style="font-family:'Orbitron',monospace;font-size:9px;padding:4px 8px;background:${canAfford?'rgba(255,215,0,0.15)':'rgba(255,255,255,0.05)'};border:1px solid ${canAfford?'rgba(255,215,0,0.5)':'rgba(255,255,255,0.1)'};color:${canAfford?'#ffd700':'var(--dim)'};cursor:${canAfford?'pointer':'default'};border-radius:2px;">💰${cost}</button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function buyUpgrade(upgradeId) {
+  if (socket) socket.emit('buyUpgrade', { upgradeId });
+}
 
 // ================================================================
 //  PLAYFAB ACCOUNT LINKING
