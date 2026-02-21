@@ -282,10 +282,10 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:1000;b
       <p class="ml-sub">Real multiplayer. Real chaos. Power-ups, portals, kill streaks, events, full cosmetics. Built different.</p>
       <div class="ml-badges">
         <div class="ml-badge"><div class="ml-badge-dot g"></div><span class="live-dot"></span>Real Multiplayer — Socket.IO</div>
-        <div class="ml-badge"><div class="ml-badge-dot r"></div>Power-ups: Speed, Shield, Ghost, Bomb, Star + more</div>
-        <div class="ml-badge"><div class="ml-badge-dot y"></div>Portal pairs — teleport across the map</div>
-        <div class="ml-badge"><div class="ml-badge-dot p"></div>Live events: Gold Rush, Orb Overload, Frenzy</div>
-        <div class="ml-badge"><div class="ml-badge-dot b"></div>Kill streaks, kill feed, combo system</div>
+        <div class="ml-badge"><div class="ml-badge-dot r"></div>10 Power-ups: Rage 🔥, Shrink ✂️, Shield, Ghost, Bomb + more</div>
+        <div class="ml-badge"><div class="ml-badge-dot y"></div>Mega orbs 💎, golden orbs ⭐, portal pairs, kill streaks</div>
+        <div class="ml-badge"><div class="ml-badge-dot p"></div>Spawn protection · Head-on collision skill · Boost costs size</div>
+        <div class="ml-badge"><div class="ml-badge-dot b"></div>5 unique bot personalities that actively hunt you</div>
       </div>
       <div id="srv-stats" style="margin-top:22px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.08em"></div>
       <div class="ml-deco">ZU</div>
@@ -657,8 +657,8 @@ socket.on('connect_error',err=>toast('Connection error: '+err.message,'red'));
 socket.on('disconnect',()=>toast('Disconnected','red'));
 socket.on('serverFull',({message})=>{toast(message,'red');showSysMsg(message);});
 
-socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,profile,cosmeticsCatalog:cat})=>{
-  myId=playerId; mapSz=mapSize||6000;
+socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,profile,cosmeticsCatalog:cat,graceMs})=>{
+  myId=playerId; mapSz=mapSize||5000;
   serverOrbs={}; (orbs||[]).forEach(o=>serverOrbs[o.id]=o);
   serverPowerUps={}; (powerUps||[]).forEach(p=>serverPowerUps[p.id]=p);
   serverPortals={}; (portals||[]).forEach(p=>serverPortals[p.id]=p);
@@ -687,6 +687,8 @@ socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,
   kfEl.innerHTML='';
   killFeed.forEach(k=>addKF(k.victim,k.killer,k.isBot));
   renderShop();
+  if(graceMs) setTimeout(()=>toast('⚔️ Spawn protection ended!','blue'), graceMs);
+  toast('🛡️ Spawn protection: '+Math.ceil((graceMs||3000)/1000)+'s','ok');
 });
 
 socket.on('gameState',({players,leaderboard:lb,activeEvent:ae,powerUps:pus,portals:pts,myCoins:mc})=>{
@@ -704,8 +706,8 @@ socket.on('gameState',({players,leaderboard:lb,activeEvent:ae,powerUps:pus,porta
     updateHUD(); updatePowerUpHUD();
     if(me.segments&&me.segments.length){
       const h=me.segments[0];
-      camX+=(h.x-gc.width/2-camX)*0.12;
-      camY+=(h.y-gc.height/2-camY)*0.12;
+      camX+=(h.x-gc.width/2-camX)*0.18;
+      camY+=(h.y-gc.height/2-camY)*0.18;
       camX=Math.max(-gc.width*.1,Math.min(mapSz-gc.width*.9,camX));
       camY=Math.max(-gc.height*.1,Math.min(mapSz-gc.height*.9,camY));
       const bd=Math.min(h.x,h.y,mapSz-h.x,mapSz-h.y);
@@ -719,53 +721,64 @@ socket.on('gameState',({players,leaderboard:lb,activeEvent:ae,powerUps:pus,porta
   }
 });
 
-socket.on('orbEaten',({oid,newOrb,eaterId})=>{
+socket.on('orbEaten',({oid,newOrb,eaterId,golden,mega})=>{
   delete serverOrbs[oid];
   if(newOrb) serverOrbs[newOrb.id]=newOrb;
   if(eaterId===myId){
-    sfxEat(); comboCount++;
+    sfxEat();
+    if(mega){sfxPU();doShake(4);doFlash('rgba(255,0,255,.15)');showSP('💎 MEGA ORB!','#ff00ff',gc.width/2,gc.height*.4);}
+    else if(golden){showSP('⭐ x8','#ffdd00',gc.width/2+(Math.random()-.5)*80,gc.height*.42);}
+    comboCount++;
     clearTimeout(comboTm);
     comboTm=setTimeout(()=>{comboCount=0;document.getElementById('combo').classList.remove('on');},2000);
     if(comboCount>=5){
-      document.getElementById('combo').textContent='x'+comboCount+' COMBO';
+      document.getElementById('combo').textContent='x'+comboCount+' COMBO!';
       document.getElementById('combo').classList.add('on');
     }
   }
 });
-socket.on('killConfirmed',({victimName,coinsGained,streak})=>{
+socket.on('killConfirmed',({victimName,coinsGained,streak,victimLength})=>{
   myKills++; sfxKill();
-  doFlash('rgba(255,34,51,.18)'); doShake(6);
-  showSP('+'+(coinsGained||10)+' coins','#ffcc00',gc.width/2+(Math.random()-.5)*100,gc.height*.35);
-  if(streak>=5) showStreakBanner('x'+streak+' KILLING SPREE');
-  else if(streak>=3) showStreakBanner('x'+streak+' STREAK');
-  else if(streak===2) showStreakBanner('DOUBLE KILL!');
+  doFlash('rgba(255,34,51,.22)'); doShake(7);
+  showSP('💀 '+(coinsGained||10)+' coins','#ffcc00',gc.width/2+(Math.random()-.5)*120,gc.height*.32);
+  if(victimLength>40) showSP('+'+Math.floor(victimLength*0.35)+' pts','#00ff88',gc.width/2+(Math.random()-.5)*120,gc.height*.4);
+  if(streak>=5) showStreakBanner('🔥 x'+streak+' KILLING SPREE!');
+  else if(streak>=3) showStreakBanner('⚡ x'+streak+' STREAK!');
+  else if(streak===2) showStreakBanner('💥 DOUBLE KILL!');
 });
 socket.on('killFeedUpdate',entry=>{
   killFeed.unshift(entry); killFeed=killFeed.slice(0,8);
   addKF(entry.victim,entry.killer,entry.isBot,entry.killerId===myId);
 });
-socket.on('playerDied',({id,killerName,droppedOrbs,position})=>{
+socket.on('playerDied',({id,killerName,droppedOrbs,position,length})=>{
   (droppedOrbs||[]).forEach(o=>{if(o&&o.id)serverOrbs[o.id]=o;});
-  if(particlesOn&&position) spawnFX(position.x,position.y,'#ef4444',20);
+  if(particlesOn&&position){
+    const n=Math.min(30,10+Math.floor((length||10)/5));
+    spawnFX(position.x,position.y,'#ef4444',n);
+    spawnFX(position.x,position.y,'#ffaa33',Math.floor(n/2));
+  }
 });
 socket.on('playerLeft',id=>{delete serverPlayers[id];});
 socket.on('playerJoined',({name,isOwner})=>{if(name!==myName)toast((isOwner?'👑 ':'')+esc(name)+' joined','blue');});
-socket.on('youDied',({killerName,coinsEarned,score,length})=>{
+socket.on('youDied',({killerName,coinsEarned,score,length,kills})=>{
   alive=false; dead=true;
-  sfxDie(); doFlash('rgba(255,34,51,.55)'); doShake(16);
+  sfxDie(); doFlash('rgba(255,34,51,.55)'); doShake(18);
   const survived=Math.round((Date.now()-myStartTime)/1000);
   document.getElementById('d_killer').textContent=esc(killerName);
   document.getElementById('d_sc').textContent=score||myScore;
   document.getElementById('d_ln').textContent=length||myLength;
-  document.getElementById('d_kl').textContent=myKills;
+  document.getElementById('d_kl').textContent=kills||myKills;
   document.getElementById('d_tm').textContent=survived+'s';
-  document.getElementById('d_ce').textContent=coinsEarned?'+ '+coinsEarned+' coins earned':'';
-  if((score||myScore)>highScore){
-    highScore=score||myScore;
+  document.getElementById('d_ce').textContent=coinsEarned?'💰 +'+coinsEarned+' coins earned':'';
+  const hs=score||myScore;
+  if(hs>highScore){
+    highScore=hs;
     localStorage.setItem(highScoreKey,highScore);
-    document.getElementById('d_hs').textContent='🏆 New best: '+highScore;
+    document.getElementById('d_hs').textContent='🏆 NEW PERSONAL BEST: '+highScore;
+    document.getElementById('d_hs').style.color='var(--gold)';
   }else if(highScore>0){
     document.getElementById('d_hs').textContent='Personal best: '+highScore;
+    document.getElementById('d_hs').style.color='';
   }else{document.getElementById('d_hs').textContent='';}
   setTimeout(()=>{
     document.getElementById('hud').style.display='none';
@@ -781,10 +794,14 @@ socket.on('powerUpCollected',({puId,playerId,type})=>{
   if(playerId===myId){sfxPU();toast(getPUEmoji(type)+' '+type.toUpperCase()+'!','gold');}
 });
 socket.on('powerUpActivated',({type,duration,emoji})=>{
-  toast(emoji+' '+type+' activated!','purple');
+  const col=getPUColor(type);
+  toast(emoji+' '+type.toUpperCase()+' activated!','purple');
   activePowerUps[type]={start:Date.now(),end:Date.now()+duration};
   updatePowerUpHUD();
-  if(type==='bomb'){doFlash('rgba(255,68,0,.3)');doShake(10);}
+  if(type==='bomb'){doFlash('rgba(255,68,0,.3)');doShake(12);}
+  if(type==='rage'){doFlash('rgba(255,0,85,.28)');doShake(8);sfxRage();}
+  if(type==='freeze'){doFlash('rgba(6,182,212,.2)');}
+  if(type==='shrink'){doFlash('rgba(255,136,204,.2)');sfxShrink();}
 });
 socket.on('shieldPopped',()=>{doFlash('rgba(0,170,255,.35)');toast('Shield absorbed the hit!','blue');});
 socket.on('bombExploded',({x,y,killed})=>{
@@ -797,7 +814,7 @@ socket.on('portalsSpawned',ports=>{if(ports)ports.forEach(p=>{if(p&&p.id)serverP
 socket.on('portalsRemoved',ids=>{if(ids)ids.forEach(id=>delete serverPortals[id]);});
 socket.on('portalUsed',({playerId})=>{if(playerId===myId){sfxPortal();showPortalNotif('Teleported!');doFlash('rgba(168,85,247,.3)');}});
 socket.on('teleported',()=>{sfxPortal();showPortalNotif('Teleported via portal!');});
-socket.on('liveEvent',ev=>{activeEvent=ev;showEventNotif(ev.name);toast(ev.name+' started!','purple');});
+socket.on('liveEvent',ev=>{activeEvent=ev;showEventNotif(ev.name);toast('🎉 '+ev.name+' started!','purple');doFlash('rgba(155,93,229,.2)');});
 socket.on('eventEnded',()=>{activeEvent=null;hideEventNotif();toast('Event ended','blue');});
 socket.on('ownerBroadcast',({message})=>{showSysMsg('Z3N0: '+message);toast('Z3N0: '+message,'gold');});
 socket.on('systemMessage',msg=>{showSysMsg(msg);toast(msg,'blue');});
@@ -820,7 +837,7 @@ socket.on('cosmeticEquipped',({equippedTrail:et,equippedTitle:ett,equippedBadge:
   renderShop();
 });
 socket.on('cosmeticError',msg=>toast(msg,'red'));
-socket.on('killStreakBonus',({streak,bonusCoins})=>toast('x'+streak+' streak! +'+bonusCoins+' bonus coins','gold'));
+socket.on('killStreakBonus',({streak,bonusCoins})=>{toast('🔥 x'+streak+' streak! +'+bonusCoins+' bonus coins','gold');});
 socket.on('botTaunt',({name,message})=>showTaunt(name+': '+message));
 socket.on('kicked',({reason})=>{toast('Kicked: '+reason,'red');showSysMsg('You were kicked: '+reason);});
 socket.on('orbFrenzy',allOrbs=>{serverOrbs={};if(allOrbs)allOrbs.forEach(o=>{if(o&&o.id)serverOrbs[o.id]=o;});});
@@ -910,6 +927,8 @@ setInterval(sendInput,16);
 // ── PARTICLES ────────────────────────────────────────────────
 function spawnFX(wx,wy,col,n){
   if(!particlesOn) return;
+  // Cap total particles to prevent lag
+  if(parts.length>300) return;
   for(let i=0;i<n;i++){
     const a=Math.random()*TAU,sp=60+Math.random()*220;
     parts.push({x:wx,y:wy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,col,r:2+Math.random()*3.5});
@@ -937,14 +956,16 @@ function updateShake(dt){
 
 // ── BACKGROUND ───────────────────────────────────────────────
 const STARS=[];
-for(let i=0;i<200;i++) STARS.push({x:Math.random()*14000-2000,y:Math.random()*14000-2000,r:.2+Math.random()*1.2,b:Math.random()});
+for(let i=0;i<120;i++) STARS.push({x:Math.random()*14000-2000,y:Math.random()*14000-2000,r:.2+Math.random()*1.1,b:Math.random()});
 
 function drawBG(t){
   ctx.fillStyle='#060610'; ctx.fillRect(0,0,gc.width,gc.height);
-  const mx=mapSz/2-camX,my2=mapSz/2-camY;
-  const g=ctx.createRadialGradient(mx,my2,0,mx,my2,mapSz*.6);
-  g.addColorStop(0,'rgba(0,60,30,.08)'); g.addColorStop(.4,'rgba(0,15,50,.05)'); g.addColorStop(1,'rgba(0,0,0,0)');
-  ctx.fillStyle=g; ctx.fillRect(0,0,gc.width,gc.height);
+  if(quality==='high'){
+    const mx=mapSz/2-camX,my2=mapSz/2-camY;
+    const g=ctx.createRadialGradient(mx,my2,0,mx,my2,mapSz*.6);
+    g.addColorStop(0,'rgba(0,60,30,.08)'); g.addColorStop(.4,'rgba(0,15,50,.05)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,gc.width,gc.height);
+  }
   ctx.fillStyle='rgba(200,220,255,.4)'; ctx.beginPath();
   for(const s of STARS){
     const px=((s.x-camX*.08)%gc.width+gc.width)%gc.width;
@@ -958,14 +979,17 @@ function drawBG(t){
 function drawGrid(){
   const gs=88;
   const ox=((-camX%gs)+gs)%gs|0, oy=((-camY%gs)+gs)%gs|0;
-  ctx.fillStyle='rgba(0,255,136,.028)'; ctx.beginPath();
-  for(let x=ox;x<gc.width;x+=gs) for(let y=oy;y<gc.height;y+=gs){ctx.moveTo(x+1,y);ctx.arc(x,y,1,0,TAU);}
-  ctx.fill();
   if(quality==='high'){
-    ctx.strokeStyle='rgba(0,255,136,.009)'; ctx.lineWidth=1; ctx.beginPath();
+    ctx.strokeStyle='rgba(0,255,136,.007)'; ctx.lineWidth=1; ctx.beginPath();
     for(let x=ox;x<gc.width;x+=gs){ctx.moveTo(x,0);ctx.lineTo(x,gc.height);}
     for(let y=oy;y<gc.height;y+=gs){ctx.moveTo(0,y);ctx.lineTo(gc.width,y);}
     ctx.stroke();
+  }
+  // Only draw dots in high quality
+  if(quality==='high'){
+    ctx.fillStyle='rgba(0,255,136,.022)'; ctx.beginPath();
+    for(let x=ox;x<gc.width;x+=gs) for(let y=oy;y<gc.height;y+=gs){ctx.moveTo(x+1,y);ctx.arc(x,y,1,0,TAU);}
+    ctx.fill();
   }
 }
 
@@ -984,19 +1008,42 @@ function drawOrbs(t){
   for(const oid in serverOrbs){
     const o=serverOrbs[oid]; if(!o) continue;
     const sx=o.x-camX,sy=o.y-camY;
-    if(sx<-30||sx>W+30||sy<-30||sy>H+30) continue;
-    o._ph=(o._ph||Math.random()*TAU)+(o.golden?.08:.05);
+    if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
+    o._ph=(o._ph||Math.random()*TAU)+(o.mega?.12:o.golden?.08:.05);
     const r=o.size*(.84+Math.sin(o._ph)*.16);
-    if(hl){
-      ctx.shadowColor=o.color; ctx.shadowBlur=o.golden?22:10;
-      ctx.fillStyle=o.color; ctx.globalAlpha=o.golden?.28:.14;
-      ctx.beginPath(); ctx.arc(sx,sy,r*(o.golden?3.5:2.8),0,TAU); ctx.fill();
+    if(o.mega){
+      // Mega orb — big pulsing purple
+      if(hl){
+        ctx.shadowColor='#ff00ff'; ctx.shadowBlur=35+Math.sin(o._ph)*10;
+        ctx.fillStyle='rgba(255,0,255,.18)'; ctx.globalAlpha=1;
+        ctx.beginPath(); ctx.arc(sx,sy,r*4.5,0,TAU); ctx.fill();
+        ctx.shadowBlur=0;
+      }
+      ctx.globalAlpha=.4+Math.sin(o._ph)*.2; ctx.fillStyle='rgba(255,100,255,.35)';
+      ctx.beginPath(); ctx.arc(sx,sy,r*3,0,TAU); ctx.fill();
+      // Rotating ring
+      ctx.globalAlpha=.7; ctx.strokeStyle='rgba(255,0,255,.8)'; ctx.lineWidth=2;
+      ctx.setLineDash([6,4]); ctx.lineDashOffset=frame*2;
+      ctx.beginPath(); ctx.arc(sx,sy,r*2.5,0,TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha=1; ctx.fillStyle='#ff00ff';
+      if(hl){ctx.shadowColor='#ff00ff';ctx.shadowBlur=20;}
+      ctx.beginPath(); ctx.arc(sx,sy,Math.max(.5,r),0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(sx-r*.28,sy-r*.3,Math.max(.2,r*.35),0,TAU); ctx.fill();
       ctx.shadowBlur=0;
+      // MEGA label
+      if(hl){ctx.font='bold 8px "JetBrains Mono",monospace';ctx.textAlign='center';ctx.fillStyle='rgba(255,200,255,.9)';ctx.fillText('MEGA',sx,sy+r+10);}
+    } else {
+      if(hl){
+        ctx.shadowColor=o.color; ctx.shadowBlur=o.golden?22:10;
+        ctx.fillStyle=o.color; ctx.globalAlpha=o.golden?.28:.14;
+        ctx.beginPath(); ctx.arc(sx,sy,r*(o.golden?3.5:2.8),0,TAU); ctx.fill();
+        ctx.shadowBlur=0;
+      }
+      ctx.globalAlpha=1; ctx.fillStyle=o.color; ctx.beginPath(); ctx.arc(sx,sy,Math.max(.5,r),0,TAU); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(sx-r*.28,sy-r*.3,Math.max(.2,r*.28),0,TAU); ctx.fill();
     }
-    ctx.globalAlpha=1; ctx.fillStyle=o.color; ctx.beginPath(); ctx.arc(sx,sy,Math.max(.5,r),0,TAU); ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(sx-r*.28,sy-r*.3,Math.max(.2,r*.28),0,TAU); ctx.fill();
   }
-  ctx.globalAlpha=1; ctx.shadowBlur=0;
+  ctx.globalAlpha=1; ctx.shadowBlur=0; ctx.textAlign='left';
 }
 
 function drawPowerUps(){
@@ -1089,16 +1136,22 @@ function drawSnake(player,isMe){
   const pts=player.segments;
   if(!pts||pts.length<2) return;
   const W=gc.width,H=gc.height,hl=quality==='high';
+  // Early cull: skip if head is far off screen
+  const hx0=pts[0].x-camX, hy0=pts[0].y-camY;
+  if(hx0<-200||hx0>W+200||hy0<-200||hy0>H+200) return;
   const len=pts.length;
   const isGhost=player.ghostUntil&&Date.now()<player.ghostUntil;
   const hasStar=player.activePowerUps&&player.activePowerUps.star&&Date.now()<(player.activePowerUps.star.end||player.activePowerUps.star.until||0);
   const hasShield=player.shieldActive;
+  const isRaging=player.raging||!!(player.activePowerUps?.rage&&Date.now()<(player.activePowerUps.rage?.until||0));
+  const inGrace=player.inGrace;
   const trailCfg=getTrailCfg(player,isMe);
   const baseCol=getSnakeColor(player);
   const isRainbow=trailCfg&&(trailCfg.glow==='rainbow'||trailCfg.prismatic);
   const isMythic=trailCfg&&trailCfg.mythic;
   const hasSpecial=trailCfg&&(trailCfg.aurora||trailCfg.galaxy||trailCfg.matrix||trailCfg.singularity||isMythic);
 
+  if(isRaging&&hl){ctx.shadowColor='#ff0055';ctx.shadowBlur=32+Math.sin(frame*.15)*10;}
   if(isGhost) ctx.globalAlpha=.4;
   if(hasStar&&hl){ctx.shadowColor='#fbbf24';ctx.shadowBlur=22;}
   ctx.lineCap='round'; ctx.lineJoin='round';
@@ -1110,7 +1163,8 @@ function drawSnake(player,isMe){
     const tv=1-i/len;
     const w=Math.max(2.5,(player.width||8)*(0.3+tv*0.7));
     let segCol=baseCol;
-    if(isRainbow) segCol=`hsl(${(frame*2+i*4)%360},70%,58%)`;
+    if(isRaging) segCol=`hsl(${(frame*4+i*2)%30},100%,${50+Math.sin(frame*.1+i*.05)*15}%)`;
+    else if(isRainbow) segCol=`hsl(${(frame*2+i*4)%360},70%,58%)`;
     else if(hasSpecial) segCol=getMythicColor(trailCfg,frame,i);
     else if(trailCfg&&trailCfg.colors) segCol=trailCfg.colors[i%trailCfg.colors.length];
     else if(hasStar) segCol=`hsl(${(frame*3+i*2)%60+40},90%,65%)`;
@@ -1138,7 +1192,7 @@ function drawSnake(player,isMe){
 
   // Head
   const h=pts[0]; const hx=h.x-camX,hy=h.y-camY;
-  let hcol=isRainbow?`hsl(${frame*2%360},70%,58%)`:hasStar?`hsl(${(frame*3)%60+40},90%,65%)`:(isMythic?getMythicColor(trailCfg,frame,0):baseCol);
+  let hcol=isRaging?`hsl(${(frame*5)%30},100%,55%)`:isRainbow?`hsl(${frame*2%360},70%,58%)`:hasStar?`hsl(${(frame*3)%60+40},90%,65%)`:(isMythic?getMythicColor(trailCfg,frame,0):baseCol);
   if(isGhost) ctx.globalAlpha=.5;
   if(hl){ctx.shadowColor=hcol;ctx.shadowBlur=20;}
   ctx.fillStyle=hcol; ctx.beginPath(); ctx.arc(hx,hy,player.width||8,0,TAU); ctx.fill();
@@ -1147,6 +1201,23 @@ function drawSnake(player,isMe){
   if(hasShield){
     ctx.strokeStyle='rgba(0,170,255,.7)'; ctx.lineWidth=2.5; ctx.globalAlpha=.5+Math.sin(frame*.12)*.3;
     ctx.beginPath(); ctx.arc(hx,hy,(player.width||8)+7,0,TAU); ctx.stroke(); ctx.globalAlpha=1;
+  }
+  if(isRaging){
+    // Pulsing red fire aura
+    ctx.strokeStyle=`rgba(255,0,85,${0.5+Math.sin(frame*.2)*.3})`; ctx.lineWidth=3; ctx.globalAlpha=0.7;
+    if(hl){ctx.shadowColor='#ff0055';ctx.shadowBlur=15;}
+    ctx.beginPath(); ctx.arc(hx,hy,(player.width||8)+10+Math.sin(frame*.15)*3,0,TAU); ctx.stroke();
+    ctx.globalAlpha=0.3; ctx.strokeStyle='rgba(255,100,0,.6)'; ctx.lineWidth=6;
+    ctx.beginPath(); ctx.arc(hx,hy,(player.width||8)+16,0,TAU); ctx.stroke();
+    ctx.shadowBlur=0; ctx.globalAlpha=1;
+  }
+  if(inGrace){
+    // Spawning grace ring — shows they're protected
+    const pct=(frame%60)/60;
+    ctx.strokeStyle='rgba(0,255,136,.6)'; ctx.lineWidth=2; ctx.globalAlpha=0.6+Math.sin(frame*.18)*.3;
+    ctx.setLineDash([8,6]); ctx.lineDashOffset=-frame;
+    ctx.beginPath(); ctx.arc(hx,hy,(player.width||8)+14,0,TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
   }
   if(isGhost){
     ctx.strokeStyle='rgba(148,163,184,.5)'; ctx.lineWidth=2; ctx.globalAlpha=.4+Math.sin(frame*.1)*.2;
@@ -1489,8 +1560,8 @@ function bumpScore(){
   e.classList.remove('bump'); void e.offsetWidth; e.classList.add('bump');
   setTimeout(()=>e.classList.remove('bump'),220);
 }
-function getPUColor(type){return{speed:'#ffcc00',shield:'#00aaff',ghost:'#94a3b8',magnet:'#c084fc',bomb:'#ff4400',freeze:'#06b6d4',grow:'#00ff88',star:'#fbbf24'}[type]||'#ffffff';}
-function getPUEmoji(type){return{speed:'⚡',shield:'🛡️',ghost:'👻',magnet:'🧲',bomb:'💥',freeze:'🌀',grow:'🍄',star:'⭐'}[type]||'?';}
+function getPUColor(type){return{speed:'#ffcc00',shield:'#00aaff',ghost:'#94a3b8',magnet:'#c084fc',bomb:'#ff4400',freeze:'#06b6d4',grow:'#00ff88',star:'#fbbf24',rage:'#ff0055',shrink:'#ff88cc'}[type]||'#ffffff';}
+function getPUEmoji(type){return{speed:'⚡',shield:'🛡️',ghost:'👻',magnet:'🧲',bomb:'💥',freeze:'❄️',grow:'🍄',star:'⭐',rage:'🔥',shrink:'✂️'}[type]||'?';}
 
 // ── UI HELPERS ────────────────────────────────────────────────
 function showSP(txt,col,sx,sy){
@@ -1540,8 +1611,9 @@ function showTaunt(msg){
   const e=document.getElementById('taunt-bubble'); e.textContent=msg; e.classList.add('on');
   clearTimeout(tauntTm); tauntTm=setTimeout(()=>e.classList.remove('on'),3000);
 }
-let fpsD=document.getElementById('fps');
+let fpsD=null;
 function calcFPS(ts){
+  if(!fpsD) fpsD=document.getElementById('fps');
   fpsArr.push(ts); fpsArr=fpsArr.filter(t=>ts-t<1000);
   if(showFPS&&ts-fpsLast>600){if(fpsD)fpsD.textContent=fpsArr.length+' fps';fpsLast=ts;}
 }
@@ -1606,21 +1678,32 @@ function setShopMainTab(tab){
 function renderOwnedTab(){
   const grid=document.getElementById('owned_grid'); if(!grid) return;
   const cat=getActiveCatalog();
+  // Include all items in ownedCosmetics array, including owner items
   const owned=Object.values(cat).filter(i=>ownedCosmetics.includes(i.id)||i.price===0);
   if(!owned.length){
     grid.innerHTML=`<div style="grid-column:1/-1;padding:28px;text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em">you don't own any cosmetics yet 😔<br><br><span style="font-size:10px">head to the Store tab to grab some!</span></div>`;
     return;
   }
+  // Sort: equipped first, then by type, then by rarity
+  const RARITY_ORDER = {mythic:0,legendary:1,epic:2,rare:3,common:4};
+  owned.sort((a,b)=>{
+    const ae=(a.type==='trail'&&equippedTrail===a.id)||(a.type==='badge'&&equippedBadge===a.emoji)||(a.type==='title'&&equippedTitle===a.text);
+    const be=(b.type==='trail'&&equippedTrail===b.id)||(b.type==='badge'&&equippedBadge===b.emoji)||(b.type==='title'&&equippedTitle===b.text);
+    if(ae&&!be)return -1; if(be&&!ae)return 1;
+    return (RARITY_ORDER[a.rarity]||4)-(RARITY_ORDER[b.rarity]||4);
+  });
   grid.innerHTML=owned.map(i=>{
     const equipped=(i.type==='trail'&&equippedTrail===i.id)||(i.type==='badge'&&equippedBadge===i.emoji)||(i.type==='title'&&equippedTitle===i.text);
     const rc=RARITY_COLORS[i.rarity]||'#94a3b8';
+    const ownerTag=i.ownerOnly?'<span style="font-size:7px;color:#ff88ff"> 👑</span>':'';
     let btn=equipped
       ?`<button class="shop-equip-btn" style="background:rgba(0,255,136,.12);border-color:rgba(0,255,136,.5)" onclick="unequipItem('${i.id}','${i.type}')">✓ Equipped</button>`
       :`<button class="shop-equip-btn" onclick="equipItem('${i.id}')">Equip</button>`;
-    let cls='shop-item'; if(equipped)cls+=' equipped';
-    return `<div class="${cls}">
-      <div style="font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:${rc};letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">${i.rarity||'common'}</div>
-      <div class="shop-item-icon">${i.emoji}</div>
+    let cls='shop-item'; if(equipped)cls+=' equipped'; else cls+=' owned';
+    const bs=i.ownerOnly?'border-color:rgba(255,68,255,.35);background:rgba(255,68,255,.04)':'';
+    return `<div class="${cls}" style="${bs}">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:${rc};letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">${i.rarity||'common'}${i.ownerOnly?' · OWNER':''}</div>
+      <div class="shop-item-icon">${i.emoji}${ownerTag}</div>
       <div class="shop-item-name">${(i.name||'').replace(/\s*\[OWNER\]|\s*\[MYTHIC OWNER\]/g,'')}</div>
       ${btn}
     </div>`;
@@ -1869,18 +1952,24 @@ function beep(freq,dur,vol){
     g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+dur);
   }catch{}
 }
-function sfxEat(){beep(880,.06,.05);}
-function sfxKill(){beep(220,.18,.08);setTimeout(()=>beep(330,.12,.05),80);}
-function sfxDie(){beep(110,.4,.1);}
-function sfxPU(){beep(660,.12,.07);setTimeout(()=>beep(880,.1,.05),100);}
-function sfxPortal(){beep(440,.15,.06);setTimeout(()=>beep(660,.1,.04),120);}
+function sfxEat(){beep(880,.06,.04);beep(1100,.04,.025);}
+function sfxKill(){
+  beep(220,.12,.08);setTimeout(()=>beep(330,.1,.06),70);setTimeout(()=>beep(440,.1,.05),150);
+  setTimeout(()=>beep(660,.15,.06),220);
+}
+function sfxDie(){beep(220,.08,.1);setTimeout(()=>beep(160,.15,.08),100);setTimeout(()=>beep(110,.5,.07),220);}
+function sfxPU(){beep(660,.1,.06);setTimeout(()=>beep(880,.08,.05),90);setTimeout(()=>beep(1100,.1,.04),170);}
+function sfxPortal(){beep(440,.1,.05);setTimeout(()=>beep(660,.08,.04),100);setTimeout(()=>beep(880,.08,.04),180);}
+function sfxRage(){beep(110,.05,.08);setTimeout(()=>beep(165,.05,.07),60);setTimeout(()=>beep(220,.12,.09),110);}
+function sfxShrink(){beep(880,.04,.05);setTimeout(()=>beep(440,.1,.06),50);}
+function sfxStreak(){beep(660,.06,.06);setTimeout(()=>beep(880,.06,.05),80);setTimeout(()=>beep(1100,.1,.07),150);}
 
 
 // ── MAIN LOOP ─────────────────────────────────────────────────
 function loop(ts){
   if(!alive&&!dead){rafId=null;return;}
   rafId=requestAnimationFrame(loop);
-  const dt=Math.min((ts-(lastTs||ts))/1000,.1);
+  const dt=Math.min((ts-(lastTs||ts))/1000,.05); // Cap dt at 50ms not 100ms for smoother physics
   lastTs=ts; frame++;
   calcFPS(ts);
   if(particlesOn) updateParts(dt);
@@ -1904,8 +1993,8 @@ function loop(ts){
   if(me) drawSnake(me,true);
   if(particlesOn) drawParts();
   ctx.restore();
-  if(frame%7===0) drawMM();
-  if(frame%5===0) updatePowerUpHUD();
+  if(frame%8===0) drawMM();
+  if(frame%6===0) updatePowerUpHUD();
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
