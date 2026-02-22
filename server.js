@@ -4,14 +4,13 @@ const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*' },
-  pingInterval: 10000,
-  pingTimeout: 5000,
+  pingInterval: 25000,
+  pingTimeout: 20000,
   transports: ['websocket', 'polling'],
 });
 
@@ -43,81 +42,194 @@ const OWNER_SKINS = new Set([
 ]);
 
 // ============================================================
-//  ACCOUNT DB  (persisted to disk as JSON)
+//  PLAYFAB CONFIG
 // ============================================================
-const accountDB = {};
-const playerDB  = {};
-const DATA_DIR = __dirname;
-const ACCOUNTS_FILE = path.join(DATA_DIR, 'z3n0_accounts.json');
-const PLAYERS_FILE  = path.join(DATA_DIR, 'z3n0_players.json');
-
-function loadDB() {
-  try { Object.assign(accountDB, JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'))); console.log(`[DB] Loaded ${Object.keys(accountDB).length} accounts`); } catch(e) {}
-  try { Object.assign(playerDB,  JSON.parse(fs.readFileSync(PLAYERS_FILE,  'utf8'))); console.log(`[DB] Loaded ${Object.keys(playerDB).length} player profiles`); } catch(e) {}
+const PLAYFAB_TITLE_ID = process.env.PLAYFAB_TITLE_ID;
+const PLAYFAB_SECRET   = process.env.PLAYFAB_SECRET;
+if (!PLAYFAB_TITLE_ID || !PLAYFAB_SECRET) {
+  console.error('[FATAL] PLAYFAB_TITLE_ID and PLAYFAB_SECRET environment variables must be set.');
+  process.exit(1);
 }
-let _saveTm = null;
-function saveDB() {
-  clearTimeout(_saveTm);
-  _saveTm = setTimeout(() => {
-    try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accountDB)); } catch(e) { console.error('[DB] Failed to save accounts:', e.message); }
-    try { fs.writeFileSync(PLAYERS_FILE,  JSON.stringify(playerDB));  } catch(e) { console.error('[DB] Failed to save players:', e.message); }
-  }, 2000); // debounce 2s so rapid changes don't hammer disk
-}
-loadDB();
-function hashPass(p) { return crypto.createHash('sha256').update(p + 'z3n0salt_ULTRA_2024').digest('hex'); }
-function genAccountId() { return 'acc_' + uuidv4(); }
+const PF_BASE          = `https://${PLAYFAB_TITLE_ID}.playfabapi.com`;
 
-app.post('/api/account/register', (req, res) => {
+// In-memory session cache: playfabId -> profile data
+const playerDB = {};
+
+async function pfRequest(endpoint, body, useSecret = false) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (useSecret) headers['X-SecretKey'] = PLAYFAB_SECRET;
+  const r = await fetch(`${PF_BASE}${endpoint}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+
+// Register via PlayFab
+app.post('/api/account/register', async (req, res) => {
   const { username, password, displayName } = req.body;
   if (!username || !password || !displayName) return res.status(400).json({ error: 'All fields required.' });
   if (username.length < 3 || username.length > 20) return res.status(400).json({ error: 'Username 3-20 chars.' });
   if (password.length < 6) return res.status(400).json({ error: 'Password min 6 chars.' });
   if (displayName.length < 2 || displayName.length > 20) return res.status(400).json({ error: 'Display name 2-20 chars.' });
-  const key = username.toLowerCase().trim();
-  if (accountDB[key]) return res.status(409).json({ error: 'Username taken.' });
-  const accountId = genAccountId(), now = Date.now();
-  accountDB[key] = { accountId, username: username.trim(), displayName: displayName.trim(), passwordHash: hashPass(password), createdAt: now, lastLogin: now };
-  playerDB[accountId] = { id: accountId, name: displayName.trim(), coins: 750, totalScore: 0, totalKills: 0, gamesPlayed: 0, highScore: 0, unlockedCosmetics: ['title_rookie'], equippedTrail: null, equippedTitle: null, equippedBadge: null, firstSeen: now, lastSeen: now };
-  saveDB();
-  res.json({ success: true, accountId, displayName: displayName.trim(), token: hashPass(accountId + password), profile: getProfileById(accountId) });
+  try {
+    const d = await pfRequest('/Client/RegisterPlayFabUser', {
+      TitleId: PLAYFAB_TITLE_ID,
+      Username: username.trim(),
+      Password: password,
+      DisplayName: displayName.trim(),
+      RequireBothUsernameAndEmail: false,
+    });
+    if (d.code !== 200) return res.status(400).json({ error: d.errorMessage || 'Registration failed.' });
+    const playfabId = d.data.PlayFabId;
+    const sessionTicket = d.data.SessionTicket;
+    // Grant starter title cosmetic
+    await pfRequest('/Server/GrantItemsToUser', {
+      PlayFabId: playfabId,
+      ItemIds: ['title_rookie'],
+      CatalogVersion: 'Z3N0_v1',
+    }, true).catch(() => {});
+    const profile = await buildProfileFromPlayFab(playfabId, displayName.trim());
+    res.json({ success: true, playfabId, displayName: displayName.trim(), sessionTicket, profile });
+  } catch(e) { console.error('[PlayFab] Register error:', e); res.status(500).json({ error: 'Server error.' }); }
 });
 
-app.post('/api/account/login', (req, res) => {
+// Login via PlayFab
+app.post('/api/account/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required.' });
-  const key = username.toLowerCase().trim();
-  const acc = accountDB[key];
-  if (!acc) return res.status(401).json({ error: 'Account not found.' });
-  if (acc.passwordHash !== hashPass(password)) return res.status(401).json({ error: 'Wrong password.' });
-  acc.lastLogin = Date.now();
-  const pr = getProfileById(acc.accountId);
-  pr.lastSeen = Date.now();
-  saveDB();
-  res.json({ success: true, accountId: acc.accountId, displayName: acc.displayName, token: hashPass(acc.accountId + password), profile: pr });
+  try {
+    const d = await pfRequest('/Client/LoginWithPlayFab', {
+      TitleId: PLAYFAB_TITLE_ID,
+      Username: username.trim(),
+      Password: password,
+    });
+    if (d.code !== 200) return res.status(401).json({ error: d.errorMessage || 'Login failed.' });
+    const playfabId = d.data.PlayFabId;
+    const sessionTicket = d.data.SessionTicket;
+    // Get display name
+    const infoResult = await pfRequest('/Server/GetPlayerProfile', { PlayFabId: playfabId }, true);
+    const displayName = infoResult.data?.PlayerProfile?.DisplayName || username;
+    const profile = await buildProfileFromPlayFab(playfabId, displayName);
+    res.json({ success: true, playfabId, displayName, sessionTicket, profile });
+  } catch(e) { console.error('[PlayFab] Login error:', e); res.status(500).json({ error: 'Server error.' }); }
 });
 
-app.get('/api/account/profile/:accountId', (req, res) => {
-  const pr = playerDB[req.params.accountId];
-  if (!pr) return res.status(404).json({ error: 'Not found.' });
-  res.json(pr);
+app.get('/api/account/profile/:playfabId', async (req, res) => {
+  try {
+    const profile = await buildProfileFromPlayFab(req.params.playfabId, null);
+    res.json(profile);
+  } catch(e) { res.status(500).json({ error: 'Could not fetch profile.' }); }
 });
 
-function getProfileById(accountId) {
-  if (!playerDB[accountId]) {
-    playerDB[accountId] = { id: accountId, name: 'Snake', coins: 750, totalScore: 0, totalKills: 0, gamesPlayed: 0, highScore: 0, unlockedCosmetics: ['title_rookie'], equippedTrail: null, equippedTitle: null, equippedBadge: null, firstSeen: Date.now(), lastSeen: Date.now() };
-  }
-  return playerDB[accountId];
+// Build a unified profile by pulling inventory + stats from PlayFab
+async function buildProfileFromPlayFab(playfabId, displayName) {
+  // Get inventory (owned cosmetics)
+  const invResult = await pfRequest('/Server/GetUserInventory', { PlayFabId: playfabId }, true);
+  const inventory = invResult.data?.Inventory || [];
+  const ownedCosmetics = inventory.map(i => i.ItemId);
+  if (!ownedCosmetics.includes('title_rookie')) ownedCosmetics.push('title_rookie');
+
+  // Get virtual currency (coins)
+  const coins = invResult.data?.VirtualCurrency?.GC || 0;
+
+  // Get stats
+  const statsResult = await pfRequest('/Server/GetPlayerStatistics', { PlayFabId: playfabId }, true);
+  const stats = {};
+  (statsResult.data?.Statistics || []).forEach(s => { stats[s.StatisticName] = s.Value; });
+
+  // Get user data (equipped cosmetics)
+  const dataResult = await pfRequest('/Server/GetUserData', { PlayFabId: playfabId, Keys: ['equippedTrail','equippedTitle','equippedBadge'] }, true);
+  const udata = dataResult.data?.Data || {};
+
+  const profile = {
+    id: playfabId,
+    name: displayName || 'Snake',
+    coins,
+    totalScore:  stats['TotalScore']  || 0,
+    totalKills:  stats['TotalKills']  || 0,
+    gamesPlayed: stats['GamesPlayed'] || 0,
+    highScore:   stats['HighScore']   || 0,
+    unlockedCosmetics: ownedCosmetics,
+    equippedTrail: udata.equippedTrail?.Value || null,
+    equippedTitle: udata.equippedTitle?.Value || null,
+    equippedBadge: udata.equippedBadge?.Value || null,
+  };
+
+  // Cache in memory for this session
+  playerDB[playfabId] = profile;
+  return profile;
 }
 
-function getProfile(accountId, name) {
-  const key = accountId || ('guest:' + (name || '').toLowerCase().trim());
+// Get or build a profile — uses cache first, falls back for guests
+function getProfile(playfabId, name) {
+  const key = playfabId || ('guest:' + (name || '').toLowerCase().trim());
   if (!playerDB[key]) {
-    playerDB[key] = { id: key, name: name || 'Snake', coins: 750, totalScore: 0, totalKills: 0, gamesPlayed: 0, highScore: 0, unlockedCosmetics: ['title_rookie'], equippedTrail: null, equippedTitle: null, equippedBadge: null, firstSeen: Date.now(), lastSeen: Date.now(), isGuest: !accountId };
+    playerDB[key] = {
+      id: key, name: name || 'Snake', coins: 0,
+      totalScore: 0, totalKills: 0, gamesPlayed: 0, highScore: 0,
+      unlockedCosmetics: ['title_rookie'],
+      equippedTrail: null, equippedTitle: null, equippedBadge: null,
+      isGuest: !playfabId,
+    };
   }
   const p = playerDB[key];
-  p.lastSeen = Date.now();
   if (name && p.name !== name) p.name = name;
   return p;
+}
+
+// Save stats back to PlayFab after a game ends
+async function saveStatsToPlayFab(playfabId, score, kills, gamesPlayed, highScore) {
+  if (!playfabId || playfabId.startsWith('guest:')) return;
+  await pfRequest('/Server/UpdatePlayerStatistics', {
+    PlayFabId: playfabId,
+    Statistics: [
+      { StatisticName: 'TotalScore',  Value: score },
+      { StatisticName: 'TotalKills',  Value: kills },
+      { StatisticName: 'GamesPlayed', Value: gamesPlayed },
+      { StatisticName: 'HighScore',   Value: highScore },
+    ],
+  }, true).catch(e => console.error('[PlayFab] Stats save error:', e.message));
+}
+
+// Save equipped cosmetics to PlayFab user data
+async function saveEquippedToPlayFab(playfabId, trail, title, badge) {
+  if (!playfabId || playfabId.startsWith('guest:')) return;
+  const data = {};
+  if (trail !== undefined) data.equippedTrail = trail || '';
+  if (title !== undefined) data.equippedTitle = title || '';
+  if (badge !== undefined) data.equippedBadge = badge || '';
+  await pfRequest('/Server/UpdateUserData', { PlayFabId: playfabId, Data: data }, true)
+    .catch(e => console.error('[PlayFab] UserData save error:', e.message));
+}
+
+// Grant a cosmetic item to a player via PlayFab
+async function grantCosmeticPlayFab(playfabId, itemId) {
+  return pfRequest('/Server/GrantItemsToUser', {
+    PlayFabId: playfabId,
+    ItemIds: [itemId],
+    CatalogVersion: 'Z3N0_v1',
+  }, true);
+}
+
+// Subtract coins via PlayFab
+async function subtractCoinsPlayFab(playfabId, amount) {
+  return pfRequest('/Server/SubtractUserVirtualCurrency', {
+    PlayFabId: playfabId,
+    VirtualCurrency: 'GC',
+    Amount: amount,
+  }, true);
+}
+
+// Add coins via PlayFab
+async function addCoinsPlayFab(playfabId, amount) {
+  return pfRequest('/Server/AddUserVirtualCurrency', {
+    PlayFabId: playfabId,
+    VirtualCurrency: 'GC',
+    Amount: amount,
+  }, true);
+}
 }
 
 // ============================================================
@@ -128,6 +240,8 @@ const CATALOG_PATHS = [
   './Z3N0_PlayFab_Catalog.json',
   './Z3N0_PlayFab_Catalog__1_.json',
   './Z3N0_PlayFab_Catalog_1.json',
+  './title-12F9AF-Z3N0_v1__1_.json',
+  './title-12F9AF-Z3N0_v1.json',
 ];
 let catalogLoaded = false;
 for (const cp of CATALOG_PATHS) {
@@ -170,6 +284,7 @@ if (!COSMETICS['title_rookie']) {
 let players = {}, orbs = {}, powerUps = {}, portals = {};
 let activeEvent = null, leaderboard = [], serverKillFeed = [], globalKillCount = 0;
 let dailyTopKiller = { name: null, kills: 0 };
+let serverFrame = 0;
 
 // ============================================================
 //  ORBS  (added mega orbs)
@@ -317,6 +432,8 @@ function tickBot(bot) {
   bot._turnTimer--;
   bot._boostTimer--;
   bot._tauntTimer--;
+  bot._tickCount = (bot._tickCount || 0) + 1;
+  const fullTick = bot._tickCount % 2 === 0;
 
   // Anti-stuck detection
   if (dsq(h, { x: bot._prevX, y: bot._prevY }) < 4) bot._stuckTimer++;
@@ -332,27 +449,33 @@ function tickBot(bot) {
 
   // Near power-up
   let nearPU = null, nearPUD = 400 * 400;
+  if (fullTick) {
   for (const pid in powerUps) {
     const pu = powerUps[pid], d = dsq(h, pu);
     if (d < nearPUD) { nearPUD = d; nearPU = pu; }
+  }
   }
 
   // Find nearest human
   const arr = Object.values(players);
   let huntTarget = null, huntD = Infinity;
+  if (fullTick) {
   for (const other of arr) {
     if (other.id === bot.id || other.dead || other.isBot || !other.segments.length) continue;
     if (other._graceUntil && Date.now() < other._graceUntil) continue;
     const d = dsq(h, other.segments[0]);
     if (d < huntD) { huntD = d; huntTarget = other; }
   }
+  }
 
   // Evade much-bigger snakes nearby
   let evadeTarget = null;
+  if (fullTick) {
   for (const other of arr) {
     if (other.id === bot.id || other.dead || !other.segments.length) continue;
     const d = dsq(h, other.segments[0]);
     if (d < 180 * 180 && other.segments.length > bot.segments.length * 1.4) { evadeTarget = other; break; }
+  }
   }
 
   const aggrRange = profile.aggression > 0.8 ? 1600 * 1600 : 1000 * 1000;
@@ -433,12 +556,14 @@ function killPlayer(player, killer) {
   globalKillCount++;
 
   if (!player.isBot && player.socketId) {
-    const pr = getProfile(player.accountId || player.playfabId, player.name);
+    const pr = getProfile(player.playfabId || player.accountId, player.name);
     pr.totalScore += player.score;
-    pr.coins += player.sessionCoins;
-    pr.gamesPlayed++;
-    if (player.score > pr.highScore) pr.highScore = player.score;
-    saveDB();
+    pr.totalKills  = (pr.totalKills || 0);
+    pr.gamesPlayed = (pr.gamesPlayed || 0) + 1;
+    if (player.score > (pr.highScore || 0)) pr.highScore = player.score;
+    // Persist to PlayFab asynchronously
+    saveStatsToPlayFab(player.playfabId, pr.totalScore, pr.totalKills, pr.gamesPlayed, pr.highScore);
+    if (player.sessionCoins > 0) addCoinsPlayFab(player.playfabId, player.sessionCoins).catch(()=>{});
   }
 
   // Drop orbs generously
@@ -479,11 +604,12 @@ function killPlayer(player, killer) {
     }
 
     if (!killer.isBot) {
-      const pr = getProfile(killer.accountId || killer.playfabId, killer.name);
-      pr.totalKills++;
+      const pr = getProfile(killer.playfabId || killer.accountId, killer.name);
+      pr.totalKills = (pr.totalKills || 0) + 1;
       if (killer.killStreak >= 3) {
         const bonus = killer.killStreak * 12;
-        killer.sessionCoins += bonus; pr.coins += bonus;
+        killer.sessionCoins += bonus;
+        addCoinsPlayFab(killer.playfabId, bonus).catch(()=>{});
         io.to(killer.socketId).emit('killStreakBonus', { streak: killer.killStreak, bonusCoins: bonus });
       }
     }
@@ -658,11 +784,13 @@ function checkCollisions() {
     if (h.x < -10 || h.x > MAP_SIZE + 10 || h.y < -10 || h.y > MAP_SIZE + 10) { killPlayer(p, null); continue; }
     if (p.activePowerUps?.frozen && now > p.activePowerUps.frozen.until) { delete p.activePowerUps.frozen; p.speed = SNAKE_SPEED; }
 
-    // Orb pickup
+    // Orb pickup - fast bounding box pre-check before expensive sqrt
     for (const oid in orbs) {
       const o = orbs[oid];
+      const dx = h.x - o.x, dy = h.y - o.y;
       const r = p.width + o.size;
-      if (dsq(h, o) < r * r) {
+      if (dx > r || dx < -r || dy > r || dy < -r) continue; // fast reject
+      if (dx*dx + dy*dy < r * r) {
         p.growBuffer += GROW_PER_ORB * o.value;
         p.score += o.value;
         p.sessionCoins += Math.ceil(o.value / 3);
@@ -732,6 +860,7 @@ function checkCollisions() {
 // ============================================================
 function gameTick() {
   const now = Date.now();
+  serverFrame++;
   for (const pid in players) {
     const p = players[pid];
     if (p.dead || !p.alive) continue;
@@ -756,6 +885,7 @@ function gameTick() {
   }
   checkCollisions();
 
+  if (serverFrame % 10 === 0) {
   leaderboard = Object.values(players).filter(p => !p.dead)
     .sort((a, b) => b.segments.length - a.segments.length)
     .slice(0, 10)
@@ -764,6 +894,7 @@ function gameTick() {
       skin: p.skin, isOwner: p.isOwner, isBot: p.isBot || false,
       equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge, killStreak: p.killStreak || 0,
     }));
+  }
 }
 
 setInterval(gameTick, TICK_MS);
@@ -820,7 +951,7 @@ io.on('connection', socket => {
     const safeSkin = isOwner ? skin : (OWNER_SKINS.has(skin) ? 'classic' : skin);
     const cx = MAP_SIZE / 2, cy = MAP_SIZE / 2;
     const x = cx + (Math.random() - 0.5) * 1800, y = cy + (Math.random() - 0.5) * 1800;
-    const profileKey = accountId || playfabId || null;
+    const profileKey = playfabId || accountId || null;
     const pr = getProfile(profileKey, name);
 
     const player = {
@@ -868,24 +999,39 @@ io.on('connection', socket => {
     p.angle = angle; p.boosting = !!boosting;
   });
 
-  socket.on('buyCosmetic', ({ cosmeticId }) => {
+  socket.on('buyCosmetic', async ({ cosmeticId }) => {
     const p = players[socket.playerId]; if (!p) return;
     const c = COSMETICS[cosmeticId];
     if (!c) { socket.emit('cosmeticError', 'Item not found.'); return; }
     if (c.ownerOnly) { socket.emit('cosmeticError', 'Owner-only!'); return; }
-    const pr = getProfile(p.accountId || p.playfabId, p.name);
+    const pr = getProfile(p.playfabId || p.accountId, p.name);
     if (pr.unlockedCosmetics.includes(cosmeticId)) { socket.emit('cosmeticError', 'Already owned!'); return; }
-    if (c.price > 0) {
-      const total = pr.coins + p.sessionCoins;
-      if (total < c.price) { socket.emit('cosmeticError', `Need ${c.price} coins`); return; }
-      let rem = c.price;
-      if (p.sessionCoins >= rem) p.sessionCoins -= rem;
-      else { rem -= p.sessionCoins; p.sessionCoins = 0; pr.coins -= rem; }
+
+    if (!p.playfabId) {
+      // Guest — just grant locally for the session
+      if (c.price > 0 && p.sessionCoins < c.price) { socket.emit('cosmeticError', `Need ${c.price} coins`); return; }
+      if (c.price > 0) p.sessionCoins -= c.price;
+      pr.unlockedCosmetics.push(cosmeticId);
+      p.unlockedCosmetics.push(cosmeticId);
+      socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: p.sessionCoins, unlockedCosmetics: pr.unlockedCosmetics });
+      return;
     }
-    pr.unlockedCosmetics.push(cosmeticId);
-    p.unlockedCosmetics.push(cosmeticId);
-    saveDB();
-    socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: pr.coins + p.sessionCoins, unlockedCosmetics: pr.unlockedCosmetics });
+
+    // PlayFab purchase
+    try {
+      if (c.price > 0) {
+        const sub = await subtractCoinsPlayFab(p.playfabId, c.price);
+        if (sub.code !== 200) { socket.emit('cosmeticError', sub.errorMessage || 'Not enough coins.'); return; }
+        pr.coins = sub.data?.Balance ?? Math.max(0, (pr.coins || 0) - c.price);
+      }
+      await grantCosmeticPlayFab(p.playfabId, cosmeticId);
+      pr.unlockedCosmetics.push(cosmeticId);
+      p.unlockedCosmetics.push(cosmeticId);
+      socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: (pr.coins || 0) + p.sessionCoins, unlockedCosmetics: pr.unlockedCosmetics });
+    } catch(e) {
+      console.error('[PlayFab] buyCosmetic error:', e);
+      socket.emit('cosmeticError', 'Purchase failed, try again.');
+    }
   });
 
   socket.on('equipCosmetic', ({ cosmeticId }) => {
@@ -893,22 +1039,22 @@ io.on('connection', socket => {
     const c = COSMETICS[cosmeticId]; if (!c) return;
     if (c.ownerOnly && !p.isOwner) { socket.emit('cosmeticError', 'Owner-only!'); return; }
     if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId) && c.price > 0) { socket.emit('cosmeticError', "You don't own this!"); return; }
-    const pr = getProfile(p.accountId || p.playfabId, p.name);
+    const pr = getProfile(p.playfabId || p.accountId, p.name);
     if (c.type === 'trail') { p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId; }
     else if (c.type === 'title') { const txt = c.text || c.name; p.equippedTitle = txt; pr.equippedTitle = txt; }
     else if (c.type === 'badge') { p.equippedBadge = cosmeticId; pr.equippedBadge = cosmeticId; }
-    saveDB();
+    saveEquippedToPlayFab(p.playfabId, pr.equippedTrail, pr.equippedTitle, pr.equippedBadge);
     const badgeEmoji = p.equippedBadge ? (COSMETICS[p.equippedBadge]?.emoji || p.equippedBadge) : null;
     socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: badgeEmoji, equippedBadgeId: p.equippedBadge });
   });
 
   socket.on('unequipCosmetic', ({ slot }) => {
     const p = players[socket.playerId]; if (!p) return;
-    const pr = getProfile(p.accountId || p.playfabId, p.name);
+    const pr = getProfile(p.playfabId || p.accountId, p.name);
     if (slot === 'trail') { p.equippedTrail = null; pr.equippedTrail = null; }
     if (slot === 'title') { p.equippedTitle = null; pr.equippedTitle = null; }
     if (slot === 'badge') { p.equippedBadge = null; pr.equippedBadge = null; }
-    saveDB();
+    saveEquippedToPlayFab(p.playfabId, pr.equippedTrail, pr.equippedTitle, pr.equippedBadge);
     socket.emit('cosmeticEquipped', { cosmeticId: null, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: null, equippedBadgeId: null });
   });
 
@@ -926,7 +1072,17 @@ io.on('connection', socket => {
       case 'giveSize':
         if (target) { const n = parseInt(value) || 50, tail = target.segments[target.segments.length-1]; for (let i = 0; i < n * SEG_DIST; i++) target.segments.push({ x: tail.x, y: tail.y }); target.score += n * 10; if (target.socketId) io.to(target.socketId).emit('systemMessage', `📏 +${n} size!`); socket.emit('ownerSuccess', 'Size given'); } break;
       case 'giveCoins':
-        if (target && !target.isBot) { const n = parseInt(value) || 100, pr = getProfile(target.accountId || target.playfabId, target.name); pr.coins += n; saveDB(); if (target.socketId) { io.to(target.socketId).emit('coinsGranted', { amount: n, newBalance: pr.coins }); io.to(target.socketId).emit('systemMessage', `💰 +${n} coins!`); } socket.emit('ownerSuccess', 'Coins given'); } break;
+        if (target && !target.isBot) {
+          const n = parseInt(value) || 100;
+          const pr = getProfile(target.playfabId || target.accountId, target.name);
+          pr.coins = (pr.coins || 0) + n;
+          addCoinsPlayFab(target.playfabId, n).catch(()=>{});
+          if (target.socketId) {
+            io.to(target.socketId).emit('coinsGranted', { amount: n, newBalance: pr.coins });
+            io.to(target.socketId).emit('systemMessage', `💰 +${n} coins!`);
+          }
+          socket.emit('ownerSuccess', 'Coins given');
+        } break;
       case 'spawnPowerUp': spawnPowerUp(); socket.emit('ownerSuccess', 'Spawned!'); break;
       case 'spawnPortals': spawnPortalPair(); socket.emit('ownerSuccess', 'Portals!'); break;
       case 'broadcast': io.emit('ownerBroadcast', { message: value }); socket.emit('ownerSuccess', 'Sent!'); break;
@@ -946,9 +1102,9 @@ io.on('connection', socket => {
 
   socket.on('disconnect', () => {
     const p = players[socket.playerId];
-    if (p && !p.isBot) {
-      if (!p.dead) killPlayer(p, null);
-      // killPlayer already schedules deletion via setTimeout; don't double-delete
+    if (p && !p.isBot && !p.dead) {
+      p.dead = true; // Mark dead immediately to prevent race condition double-kill
+      killPlayer(p, null);
     }
   });
 });
@@ -1018,14 +1174,15 @@ app.get('/api/admin/players', adminAuth, (_, res) => {
   Object.values(players).filter(p => !p.isBot).forEach(p => { live[p.accountId || p.playfabId || ('guest:' + p.name.toLowerCase())] = p; });
   res.json(Object.values(playerDB).map(pr => { const p = live[pr.id]; return { name: pr.name, online: !!p, coins: pr.coins + (p ? p.sessionCoins : 0), totalScore: pr.totalScore + (p ? p.score : 0), totalKills: pr.totalKills + (p ? p.kills || 0 : 0), gamesPlayed: pr.gamesPlayed, highScore: pr.highScore, unlockedCosmetics: pr.unlockedCosmetics, currentSize: p ? p.segments.length : 0, currentSkin: p ? p.skin : null, firstSeen: pr.firstSeen, lastSeen: pr.lastSeen }; }));
 });
-app.post('/api/admin/giveCoins', adminAuth, (req, res) => {
+app.post('/api/admin/giveCoins', adminAuth, async (req, res) => {
   const { name, amount } = req.body;
   const pr = Object.values(playerDB).find(p => p.name.toLowerCase() === name.toLowerCase());
   if (!pr) return res.status(404).json({ error: 'Not found' });
-  pr.coins += parseInt(amount) || 0;
-  saveDB();
+  const n = parseInt(amount) || 0;
+  pr.coins = (pr.coins || 0) + n;
+  if (pr.id && !pr.id.startsWith('guest:')) addCoinsPlayFab(pr.id, n).catch(()=>{});
   const lp = Object.values(players).find(p => !p.isBot && p.name.toLowerCase() === name.toLowerCase());
-  if (lp?.socketId) io.to(lp.socketId).emit('coinsGranted', { amount, newBalance: pr.coins });
+  if (lp?.socketId) io.to(lp.socketId).emit('coinsGranted', { amount: n, newBalance: pr.coins });
   res.json({ success: true, newBalance: pr.coins });
 });
 
