@@ -230,7 +230,6 @@ async function addCoinsPlayFab(playfabId, amount) {
     Amount: amount,
   }, true);
 }
-}
 
 // ============================================================
 //  COSMETICS
