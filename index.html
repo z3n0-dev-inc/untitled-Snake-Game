@@ -447,6 +447,55 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:1000;b
   <div id="fps"></div>
   <div id="portal-notif"></div>
   <button style="position:absolute;top:14px;left:106px;background:rgba(255,204,0,.08);border:1px solid rgba(255,204,0,.22);border-radius:8px;padding:8px 11px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--gold);cursor:pointer;pointer-events:all;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(10px)" id="hudShopBtn">Shop</button>
+  <button style="position:absolute;top:14px;left:188px;background:rgba(255,68,255,.08);border:1px solid rgba(255,68,255,.25);border-radius:8px;padding:8px 11px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ff88ff;cursor:pointer;pointer-events:all;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(10px);display:none" id="ownerPanelBtn">👑 Panel</button>
+</div>
+
+<!-- ══ OWNER PANEL ══ -->
+<div id="M_owner" style="position:fixed;inset:0;background:rgba(8,9,26,.94);z-index:1300;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(18px);opacity:0;pointer-events:none;transition:opacity .2s">
+  <div style="background:#0c0d20;border:1px solid rgba(255,68,255,.2);border-radius:14px;width:min(560px,96vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 28px 80px rgba(0,0,0,.85);position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:1.5px;background:linear-gradient(90deg,#ff44ff,rgba(255,68,255,.08))"></div>
+    <div style="padding:18px 22px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.05em;color:#ff88ff">👑 Owner Panel</div>
+      <button class="modal-close" id="ownerPanelClose">✕</button>
+    </div>
+    <div style="padding:18px 22px;overflow-y:auto;display:flex;flex-direction:column;gap:14px">
+      <!-- Player list -->
+      <div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:rgba(255,68,255,.7);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Live Players</div>
+        <div id="op_players" style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto"></div>
+        <button onclick="ownerRefreshPlayers()" style="margin-top:8px;padding:6px 14px;background:rgba(255,68,255,.06);border:1px solid rgba(255,68,255,.2);border-radius:6px;color:#ff88ff;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer">↺ Refresh</button>
+      </div>
+
+      <!-- Give Coins -->
+      <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:14px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:rgba(255,68,255,.7);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Give Coins</div>
+        <div style="display:flex;gap:7px">
+          <input id="op_coins_target" placeholder="Player ID" style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:8px 11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;outline:none">
+          <input id="op_coins_amount" placeholder="Amount" type="number" style="width:90px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:8px 11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;outline:none">
+          <button onclick="ownerGiveCoins()" style="padding:8px 16px;background:rgba(245,200,66,.07);border:1px solid rgba(245,200,66,.25);border-radius:7px;color:var(--gold);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer">Give 💰</button>
+        </div>
+      </div>
+      <!-- Kick / Kill -->
+      <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:14px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:rgba(255,68,255,.7);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Actions</div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <input id="op_action_target" placeholder="Player ID" style="flex:1;min-width:130px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:8px 11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;outline:none">
+          <button onclick="ownerKick()" style="padding:8px 14px;background:rgba(232,56,79,.08);border:1px solid rgba(232,56,79,.25);border-radius:7px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer">Kick</button>
+          <button onclick="ownerKill()" style="padding:8px 14px;background:rgba(232,56,79,.12);border:1px solid rgba(232,56,79,.35);border-radius:7px;color:#fca5a5;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer">Kill ☠️</button>
+        </div>
+      </div>
+      <!-- Broadcast -->
+      <div style="border-top:1px solid rgba(255,255,255,.05);padding-top:14px">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;color:rgba(255,68,255,.7);letter-spacing:.14em;text-transform:uppercase;margin-bottom:8px">Broadcast Message</div>
+        <div style="display:flex;gap:7px">
+          <input id="op_broadcast" placeholder="Message to all players…" style="flex:1;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:7px;padding:8px 11px;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;outline:none">
+          <button onclick="ownerBroadcast()" style="padding:8px 14px;background:rgba(155,93,229,.08);border:1px solid rgba(155,93,229,.25);border-radius:7px;color:#c4b5fd;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;cursor:pointer">Send</button>
+        </div>
+      </div>
+      <!-- Status -->
+      <div id="op_status" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green);min-height:16px;text-align:center"></div>
+    </div>
+  </div>
 </div>
 
 <div id="event-notif"></div>
@@ -575,7 +624,7 @@ let wasdAngle=0; // current angle from WASD keys
 let wasdKeys={up:false,down:false,left:false,right:false};
 let shakeX=0, shakeY=0, shakeMag=0;
 let profileCoins=0, sessionCoins=0;
-let equippedTrail=null, equippedTitle=null, equippedBadge=null;
+let equippedTrail=null, equippedTitle=null, equippedBadge=null, equippedBadgeId=null;
 let ownedCosmetics=[];
 let cosmeticsCatalog={};
 let comboCount=0, comboTm=null;
@@ -668,12 +717,14 @@ socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,
   ownedCosmetics=profile.unlockedCosmetics||[];
   equippedTrail=profile.equippedTrail||null;
   equippedTitle=profile.equippedTitle||null;
-  equippedBadge=profile.equippedBadge||null;
+  equippedBadge=profile.equippedBadge||null;       // emoji for rendering
+  equippedBadgeId=profile.equippedBadgeId||null;   // ID for shop isEquipped check
   if(loggedInAccount) document.getElementById('auth-banner-coins').textContent='💰 '+profileCoins;
   myStartTime=Date.now();
   alive=true; dead=false;
   myKills=0; myScore=0; myLength=10; myCoins=0;
   comboCount=0; activePowerUps={};
+  startInputLoop();
   document.getElementById('S_menu').classList.add('hide');
   document.getElementById('S_death').classList.add('hide');
   document.getElementById('hud').style.display='block';
@@ -681,6 +732,11 @@ socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,
   const mpEl=document.getElementById('music-player');
   if(mpEl) mpEl.classList.add('game-mode');
   updateHUDCoins();
+  if(isOwner){
+    isOwnerClient=true;
+    const ob=document.getElementById('ownerPanelBtn');
+    if(ob) ob.style.display='block';
+  }
   if(rafId) cancelAnimationFrame(rafId);
   rafId=requestAnimationFrame(loop);
   const kfEl=document.getElementById('kf');
@@ -703,21 +759,7 @@ socket.on('gameState',({players,leaderboard:lb,activeEvent:ae,powerUps:pus,porta
     myScore=me.score||0;
     myLength=me.segments?me.segments.length:myLength;
     activePowerUps=me.activePowerUps||{};
-    updateHUD(); updatePowerUpHUD();
-    if(me.segments&&me.segments.length){
-      const h=me.segments[0];
-      camX+=(h.x-gc.width/2-camX)*0.18;
-      camY+=(h.y-gc.height/2-camY)*0.18;
-      camX=Math.max(-gc.width*.1,Math.min(mapSz-gc.width*.9,camX));
-      camY=Math.max(-gc.height*.1,Math.min(mapSz-gc.height*.9,camY));
-      const bd=Math.min(h.x,h.y,mapSz-h.x,mapSz-h.y);
-      const vig=document.getElementById('vign');
-      if(bd<500){
-        const iv=Math.min(1,(500-bd)/500);
-        vig.style.opacity=iv;
-        vig.style.background=`radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(255,34,51,${iv*.5}) 100%)`;
-      }else{vig.style.opacity=0;}
-    }
+    // Camera and HUD updates are handled in the render loop (loop()) for smooth 60fps motion
   }
 });
 
@@ -762,6 +804,7 @@ socket.on('playerLeft',id=>{delete serverPlayers[id];});
 socket.on('playerJoined',({name,isOwner})=>{if(name!==myName)toast((isOwner?'👑 ':'')+esc(name)+' joined','blue');});
 socket.on('youDied',({killerName,coinsEarned,score,length,kills})=>{
   alive=false; dead=true;
+  stopInputLoop();
   sfxDie(); doFlash('rgba(255,34,51,.55)'); doShake(18);
   const survived=Math.round((Date.now()-myStartTime)/1000);
   document.getElementById('d_killer').textContent=esc(killerName);
@@ -830,10 +873,11 @@ socket.on('cosmeticBought',({cosmeticId,newCoinBalance,unlockedCosmetics})=>{
   const c=cosmeticsCatalog[cosmeticId];
   if(c) toast('Got '+c.emoji+' '+(c.name||cosmeticId)+'!','gold');
 });
-socket.on('cosmeticEquipped',({equippedTrail:et,equippedTitle:ett,equippedBadge:eb})=>{
+socket.on('cosmeticEquipped',({equippedTrail:et,equippedTitle:ett,equippedBadge:eb,equippedBadgeId:ebid})=>{
   if(et!==undefined) equippedTrail=et;
   if(ett!==undefined) equippedTitle=ett;
-  if(eb!==undefined) equippedBadge=eb;
+  if(eb!==undefined) equippedBadge=eb;         // emoji for rendering
+  if(ebid!==undefined) equippedBadgeId=ebid;   // ID for shop logic
   renderShop();
 });
 socket.on('cosmeticError',msg=>toast(msg,'red'));
@@ -922,7 +966,15 @@ function sendInput(){
   }
   socket.emit('input',{angle,boosting});
 }
-setInterval(sendInput,16);
+let _inputInterval=null;
+function startInputLoop(){
+  if(_inputInterval) clearInterval(_inputInterval);
+  _inputInterval=setInterval(sendInput,33);
+}
+function stopInputLoop(){
+  if(_inputInterval){clearInterval(_inputInterval);_inputInterval=null;}
+}
+startInputLoop();
 
 // ── PARTICLES ────────────────────────────────────────────────
 function spawnFX(wx,wy,col,n){
@@ -1618,42 +1670,80 @@ function calcFPS(ts){
   if(showFPS&&ts-fpsLast>600){if(fpsD)fpsD.textContent=fpsArr.length+' fps';fpsLast=ts;}
 }
 
+// ── COSMETIC HELPERS ─────────────────────────────────────────
+function isEquipped(item){
+  if(!item) return false;
+  if(item.type==='trail') return equippedTrail===item.id;
+  if(item.type==='badge') return equippedBadgeId===item.id;
+  if(item.type==='title') return equippedTitle===item.text||equippedTitle===item.name;
+  return false;
+}
+
 // ── FALLBACK COSMETICS CATALOG ────────────────────────────────
 // Used when server catalog is empty (no JSON file present)
 const FALLBACK_CATALOG = {
-  // Trails
-  trail_fire:     {id:'trail_fire',     type:'trail', name:'Fire Trail',      price:200,  emoji:'🔥', rarity:'rare',      ownerOnly:false, glow:'#ff4400'},
-  trail_ice:      {id:'trail_ice',      type:'trail', name:'Ice Trail',       price:200,  emoji:'❄️', rarity:'rare',      ownerOnly:false, glow:'#00ccff'},
-  trail_gold:     {id:'trail_gold',     type:'trail', name:'Gold Trail',      price:400,  emoji:'✨', rarity:'epic',      ownerOnly:false, glow:'#ffd700'},
-  trail_electric: {id:'trail_electric', type:'trail', name:'Electric Trail',  price:300,  emoji:'⚡', rarity:'rare',      ownerOnly:false, glow:'#00ffff'},
-  trail_toxic:    {id:'trail_toxic',    type:'trail', name:'Toxic Trail',     price:150,  emoji:'☠️', rarity:'common',    ownerOnly:false, glow:'#88ff00'},
+  // Trails — IDs match PlayFab catalog
+  trail_fire:     {id:'trail_fire',     type:'trail', name:'Fire Trail',      price:300,  emoji:'🔥', rarity:'rare',      ownerOnly:false, glow:'#ff4400'},
+  trail_ice:      {id:'trail_ice',      type:'trail', name:'Ice Trail',       price:300,  emoji:'❄️', rarity:'rare',      ownerOnly:false, glow:'#00ccff'},
+  trail_electric: {id:'trail_electric', type:'trail', name:'Electric Trail',  price:400,  emoji:'⚡', rarity:'rare',      ownerOnly:false, glow:'#00ffff'},
+  trail_toxic:    {id:'trail_toxic',    type:'trail', name:'Toxic Trail',     price:350,  emoji:'☣️', rarity:'rare',      ownerOnly:false, glow:'#88ff00'},
+  trail_gold:     {id:'trail_gold',     type:'trail', name:'Gold Trail',      price:500,  emoji:'✨', rarity:'epic',      ownerOnly:false, glow:'#ffd700'},
   trail_rainbow:  {id:'trail_rainbow',  type:'trail', name:'Rainbow Trail',   price:600,  emoji:'🌈', rarity:'epic',      ownerOnly:false, glow:'rainbow'},
   trail_void:     {id:'trail_void',     type:'trail', name:'Void Trail',      price:500,  emoji:'🌑', rarity:'epic',      ownerOnly:false, glow:'#6600aa'},
-  trail_blood:    {id:'trail_blood',    type:'trail', name:'Blood Trail',     price:350,  emoji:'🩸', rarity:'rare',      ownerOnly:false, glow:'#cc0000'},
+  trail_blood:    {id:'trail_blood',    type:'trail', name:'Blood Trail',     price:400,  emoji:'🩸', rarity:'rare',      ownerOnly:false, glow:'#cc0000'},
   trail_cosmic:   {id:'trail_cosmic',   type:'trail', name:'Cosmic Trail',    price:700,  emoji:'🌌', rarity:'legendary', ownerOnly:false, glow:'#4488ff'},
-  trail_plasma:   {id:'trail_plasma',   type:'trail', name:'Plasma Trail',    price:450,  emoji:'💜', rarity:'epic',      ownerOnly:false, glow:'#ff00ff'},
-  trail_neon:     {id:'trail_neon',     type:'trail', name:'Neon Trail',      price:300,  emoji:'💗', rarity:'rare',      ownerOnly:false, glow:'#ff00aa'},
-  trail_lava:     {id:'trail_lava',     type:'trail', name:'Lava Trail',      price:400,  emoji:'🌋', rarity:'epic',      ownerOnly:false, glow:'#ff2200'},
-  trail_emerald:  {id:'trail_emerald',  type:'trail', name:'Emerald Trail',   price:350,  emoji:'💚', rarity:'rare',      ownerOnly:false, glow:'#00ff88'},
-  trail_angel:    {id:'trail_angel',    type:'trail', name:'Angel Trail',     price:800,  emoji:'👼', rarity:'legendary', ownerOnly:false, glow:'#ffffff'},
-  // Titles
-  title_rookie:   {id:'title_rookie',   type:'title', name:'[ROOKIE]',        price:0,    emoji:'🐍', text:'[ROOKIE]',   rarity:'common',    ownerOnly:false},
-  title_hunter:   {id:'title_hunter',   type:'title', name:'[HUNTER]',        price:100,  emoji:'🎯', text:'[HUNTER]',   rarity:'common',    ownerOnly:false},
-  title_slayer:   {id:'title_slayer',   type:'title', name:'[SLAYER]',        price:250,  emoji:'⚔️', text:'[SLAYER]',   rarity:'rare',      ownerOnly:false},
-  title_legend:   {id:'title_legend',   type:'title', name:'[LEGEND]',        price:600,  emoji:'🏆', text:'[LEGEND]',   rarity:'epic',      ownerOnly:false},
-  title_viper:    {id:'title_viper',    type:'title', name:'[VIPER]',         price:180,  emoji:'🐍', text:'[VIPER]',    rarity:'common',    ownerOnly:false},
-  title_ghost:    {id:'title_ghost',    type:'title', name:'[GHOST]',         price:300,  emoji:'👻', text:'[GHOST]',    rarity:'rare',      ownerOnly:false},
-  title_chaos:    {id:'title_chaos',    type:'title', name:'[CHAOS]',         price:450,  emoji:'💥', text:'[CHAOS]',    rarity:'epic',      ownerOnly:false},
-  title_mythic:   {id:'title_mythic',   type:'title', name:'[MYTHIC]',        price:1200, emoji:'⚡', text:'[MYTHIC]',   rarity:'legendary', ownerOnly:false},
-  // Badges
-  badge_flame:    {id:'badge_flame',    type:'badge', name:'Flame Badge',     price:120,  emoji:'🔥', rarity:'common',    ownerOnly:false},
-  badge_skull:    {id:'badge_skull',    type:'badge', name:'Skull Badge',     price:150,  emoji:'💀', rarity:'common',    ownerOnly:false},
-  badge_crown:    {id:'badge_crown',    type:'badge', name:'Crown Badge',     price:350,  emoji:'👑', rarity:'rare',      ownerOnly:false},
-  badge_diamond:  {id:'badge_diamond',  type:'badge', name:'Diamond Badge',   price:500,  emoji:'💎', rarity:'epic',      ownerOnly:false},
-  badge_star:     {id:'badge_star',     type:'badge', name:'Star Badge',      price:200,  emoji:'⭐', rarity:'common',    ownerOnly:false},
-  badge_dragon:   {id:'badge_dragon',   type:'badge', name:'Dragon Badge',    price:700,  emoji:'🐉', rarity:'legendary', ownerOnly:false},
-  badge_lightning:{id:'badge_lightning',type:'badge', name:'Lightning Badge', price:280,  emoji:'⚡', rarity:'rare',      ownerOnly:false},
-  badge_moon:     {id:'badge_moon',     type:'badge', name:'Moon Badge',      price:220,  emoji:'🌙', rarity:'rare',      ownerOnly:false},
+  trail_plasma:   {id:'trail_plasma',   type:'trail', name:'Plasma Trail',    price:500,  emoji:'💜', rarity:'epic',      ownerOnly:false, glow:'#ff00ff'},
+  trail_neon:     {id:'trail_neon',     type:'trail', name:'Neon Trail',      price:350,  emoji:'💗', rarity:'rare',      ownerOnly:false, glow:'#ff00aa'},
+  trail_lava:     {id:'trail_lava',     type:'trail', name:'Lava Trail',      price:450,  emoji:'🌋', rarity:'epic',      ownerOnly:false, glow:'#ff2200'},
+  trail_emerald:  {id:'trail_emerald',  type:'trail', name:'Emerald Trail',   price:400,  emoji:'💚', rarity:'rare',      ownerOnly:false, glow:'#00ff88'},
+  trail_angel:    {id:'trail_angel',    type:'trail', name:'Angel Trail',     price:900,  emoji:'👼', rarity:'legendary', ownerOnly:false, glow:'#ffffff'},
+  trail_nature:   {id:'trail_nature',   type:'trail', name:'Nature Trail',    price:300,  emoji:'🌿', rarity:'rare',      ownerOnly:false, glow:'#44ff44'},
+  trail_ocean:    {id:'trail_ocean',    type:'trail', name:'Ocean Trail',     price:350,  emoji:'🌊', rarity:'rare',      ownerOnly:false, glow:'#00aaff'},
+  trail_shadow:   {id:'trail_shadow',   type:'trail', name:'Shadow Trail',    price:400,  emoji:'🌑', rarity:'epic',      ownerOnly:false, glow:'#8888ff'},
+  trail_storm:    {id:'trail_storm',    type:'trail', name:'Storm Trail',     price:450,  emoji:'⛈️', rarity:'epic',      ownerOnly:false, glow:'#aaccff'},
+  trail_thunder:  {id:'trail_thunder',  type:'trail', name:'Thunder Trail',   price:500,  emoji:'⚡', rarity:'epic',      ownerOnly:false, glow:'#ffff00'},
+  trail_rose:     {id:'trail_rose',     type:'trail', name:'Rose Trail',      price:350,  emoji:'🌹', rarity:'rare',      ownerOnly:false, glow:'#ff66aa'},
+  trail_copper:   {id:'trail_copper',   type:'trail', name:'Copper Trail',    price:300,  emoji:'🟤', rarity:'rare',      ownerOnly:false, glow:'#ff8822'},
+  // Titles — IDs match PlayFab catalog
+  title_rookie:   {id:'title_rookie',   type:'title', name:'[ROOKIE]',        price:0,    emoji:'🐍', text:'[ROOKIE]',        rarity:'common',    ownerOnly:false},
+  title_snake:    {id:'title_snake',    type:'title', name:'[SNAKE]',         price:100,  emoji:'🐍', text:'[SNAKE]',         rarity:'common',    ownerOnly:false},
+  title_hunter:   {id:'title_hunter',  type:'title', name:'[HUNTER]',        price:150,  emoji:'🎯', text:'[HUNTER]',        rarity:'common',    ownerOnly:false},
+  title_phantom:  {id:'title_phantom', type:'title', name:'[PHANTOM]',       price:200,  emoji:'👻', text:'[PHANTOM]',       rarity:'common',    ownerOnly:false},
+  title_viper:    {id:'title_viper',   type:'title', name:'[VIPER]',         price:200,  emoji:'🐍', text:'[VIPER]',         rarity:'common',    ownerOnly:false},
+  title_killer:   {id:'title_killer',  type:'title', name:'[KILLER]',        price:300,  emoji:'💀', text:'[KILLER]',        rarity:'rare',      ownerOnly:false},
+  title_beast:    {id:'title_beast',   type:'title', name:'[BEAST]',         price:300,  emoji:'🔥', text:'[BEAST]',         rarity:'rare',      ownerOnly:false},
+  title_titan:    {id:'title_titan',   type:'title', name:'[TITAN]',         price:400,  emoji:'💪', text:'[TITAN]',         rarity:'rare',      ownerOnly:false},
+  title_shadow:   {id:'title_shadow',  type:'title', name:'[SHADOW]',        price:400,  emoji:'🌑', text:'[SHADOW]',        rarity:'rare',      ownerOnly:false},
+  title_reaper:   {id:'title_reaper',  type:'title', name:'[REAPER]',        price:500,  emoji:'⚔️', text:'[REAPER]',        rarity:'epic',      ownerOnly:false},
+  title_elite:    {id:'title_elite',   type:'title', name:'[ELITE]',         price:500,  emoji:'💎', text:'[ELITE]',         rarity:'epic',      ownerOnly:false},
+  title_legend:   {id:'title_legend',  type:'title', name:'[LEGEND]',        price:700,  emoji:'⭐', text:'[LEGEND]',        rarity:'epic',      ownerOnly:false},
+  title_destroyer:{id:'title_destroyer',type:'title',name:'[DESTROYER]',     price:800,  emoji:'💥', text:'[DESTROYER]',     rarity:'legendary', ownerOnly:false},
+  title_warlord:  {id:'title_warlord', type:'title', name:'[WARLORD]',       price:900,  emoji:'⚔️', text:'[WARLORD]',       rarity:'legendary', ownerOnly:false},
+  title_galaxy:   {id:'title_galaxy',  type:'title', name:'[GALAXY]',        price:1000, emoji:'🌌', text:'[GALAXY]',        rarity:'legendary', ownerOnly:false},
+  title_overlord: {id:'title_overlord',type:'title', name:'[OVERLORD]',      price:1200, emoji:'👑', text:'[OVERLORD]',      rarity:'legendary', ownerOnly:false},
+  // Badges — IDs match PlayFab catalog
+  badge_snake:    {id:'badge_snake',    type:'badge', name:'Snake',           price:100,  emoji:'🐍', rarity:'common',    ownerOnly:false},
+  badge_heart:    {id:'badge_heart',    type:'badge', name:'Heart',           price:100,  emoji:'❤️', rarity:'common',    ownerOnly:false},
+  badge_fire:     {id:'badge_fire',     type:'badge', name:'Fire',            price:120,  emoji:'🔥', rarity:'common',    ownerOnly:false},
+  badge_ice:      {id:'badge_ice',      type:'badge', name:'Ice',             price:120,  emoji:'❄️', rarity:'common',    ownerOnly:false},
+  badge_ghost:    {id:'badge_ghost',    type:'badge', name:'Ghost',           price:150,  emoji:'👻', rarity:'common',    ownerOnly:false},
+  badge_toxic:    {id:'badge_toxic',    type:'badge', name:'Toxic',           price:150,  emoji:'☣️', rarity:'common',    ownerOnly:false},
+  badge_sword:    {id:'badge_sword',    type:'badge', name:'Sword',           price:180,  emoji:'⚔️', rarity:'common',    ownerOnly:false},
+  badge_skull:    {id:'badge_skull',    type:'badge', name:'Skull',           price:200,  emoji:'💀', rarity:'rare',      ownerOnly:false},
+  badge_spider:   {id:'badge_spider',   type:'badge', name:'Spider',          price:200,  emoji:'🕷️', rarity:'rare',      ownerOnly:false},
+  badge_robot:    {id:'badge_robot',    type:'badge', name:'Robot',           price:200,  emoji:'🤖', rarity:'rare',      ownerOnly:false},
+  badge_thunder:  {id:'badge_thunder',  type:'badge', name:'Thunder',         price:250,  emoji:'⚡', rarity:'rare',      ownerOnly:false},
+  badge_demon:    {id:'badge_demon',    type:'badge', name:'Demon',           price:280,  emoji:'😈', rarity:'rare',      ownerOnly:false},
+  badge_rocket:   {id:'badge_rocket',   type:'badge', name:'Rocket',          price:280,  emoji:'🚀', rarity:'rare',      ownerOnly:false},
+  badge_alien:    {id:'badge_alien',    type:'badge', name:'Alien',           price:300,  emoji:'👽', rarity:'rare',      ownerOnly:false},
+  badge_star:     {id:'badge_star',     type:'badge', name:'Star',            price:300,  emoji:'⭐', rarity:'rare',      ownerOnly:false},
+  badge_nuclear:  {id:'badge_nuclear',  type:'badge', name:'Nuclear',         price:350,  emoji:'☢️', rarity:'epic',      ownerOnly:false},
+  badge_diamond:  {id:'badge_diamond',  type:'badge', name:'Diamond',         price:400,  emoji:'💎', rarity:'epic',      ownerOnly:false},
+  badge_dragon:   {id:'badge_dragon',   type:'badge', name:'Dragon',          price:500,  emoji:'🐉', rarity:'epic',      ownerOnly:false},
+  badge_lightning:{id:'badge_lightning',type:'badge', name:'Lightning',       price:350,  emoji:'🌩️', rarity:'rare',      ownerOnly:false},
+  badge_infinity: {id:'badge_infinity', type:'badge', name:'Infinity',        price:600,  emoji:'♾️', rarity:'epic',      ownerOnly:false},
+  badge_crystal:  {id:'badge_crystal',  type:'badge', name:'Crystal',         price:500,  emoji:'💠', rarity:'epic',      ownerOnly:false},
+  badge_crown:    {id:'badge_crown',    type:'badge', name:'Crown',           price:700,  emoji:'👑', rarity:'legendary', ownerOnly:false},
 };
 
 // ── SHOP ─────────────────────────────────────────────────────
@@ -1678,22 +1768,65 @@ function setShopMainTab(tab){
 function renderOwnedTab(){
   const grid=document.getElementById('owned_grid'); if(!grid) return;
   const cat=getActiveCatalog();
-  // Include all items in ownedCosmetics array, including owner items
-  const owned=Object.values(cat).filter(i=>ownedCosmetics.includes(i.id)||i.price===0);
+
+  // Build a complete set of owned items:
+  // 1. Items from the catalog that are in ownedCosmetics
+  // 2. Items from the catalog that are free (price===0)
+  // 3. Owner-exclusive items that are in ownedCosmetics (even if ownerOnly)
+  // 4. Synthesize entries for owned IDs not found in catalog but found in TRAIL_CONFIGS
+  const catItems = Object.values(cat);
+  const ownedSet = new Set(ownedCosmetics);
+  const itemsById = {};
+  for(const i of catItems) itemsById[i.id]=i;
+
+  // Add synthetic entries for owner trail IDs in ownedCosmetics that aren't in catalog
+  for(const id of ownedCosmetics){
+    if(!itemsById[id]){
+      const tcfg=TRAIL_CONFIGS[id];
+      if(tcfg){
+        // Synthesize a display item from TRAIL_CONFIGS
+        const isOwnerTrail=tcfg.owner===true||id.startsWith('owner_trail_');
+        const isMythic=tcfg.mythic===true;
+        itemsById[id]={
+          id, type:'trail',
+          name: id.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+          price:0, emoji:'✨',
+          rarity: isMythic?'mythic':isOwnerTrail?'legendary':'epic',
+          ownerOnly: isOwnerTrail, glow: tcfg.glow||'#ffffff',
+          text: null,
+        };
+      } else if(id.startsWith('owner_')||id.startsWith('title_')||id.startsWith('badge_')){
+        // Generic fallback for unknown owned IDs
+        const type=id.startsWith('title_')?'title':id.startsWith('badge_')?'badge':'trail';
+        itemsById[id]={
+          id, type,
+          name: id.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()),
+          price:0, emoji: type==='title'?'👑':type==='badge'?'⭐':'✨',
+          rarity:'legendary', ownerOnly:id.startsWith('owner_'), text:'['+id.toUpperCase()+']',
+        };
+      }
+    }
+  }
+
+  // Filter to owned items (include ownerOnly items if in ownedCosmetics)
+  const owned=Object.values(itemsById).filter(i=>ownedSet.has(i.id)||i.price===0);
+
   if(!owned.length){
     grid.innerHTML=`<div style="grid-column:1/-1;padding:28px;text-align:center;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em">you don't own any cosmetics yet 😔<br><br><span style="font-size:10px">head to the Store tab to grab some!</span></div>`;
     return;
   }
-  // Sort: equipped first, then by type, then by rarity
+  // Sort: equipped first, then owner items, then by rarity
   const RARITY_ORDER = {mythic:0,legendary:1,epic:2,rare:3,common:4};
   owned.sort((a,b)=>{
-    const ae=(a.type==='trail'&&equippedTrail===a.id)||(a.type==='badge'&&equippedBadge===a.emoji)||(a.type==='title'&&equippedTitle===a.text);
-    const be=(b.type==='trail'&&equippedTrail===b.id)||(b.type==='badge'&&equippedBadge===b.emoji)||(b.type==='title'&&equippedTitle===b.text);
+    const ae=isEquipped(a);
+    const be=isEquipped(b);
     if(ae&&!be)return -1; if(be&&!ae)return 1;
+    // Owner items float above normal items
+    if(a.ownerOnly&&!b.ownerOnly)return -1; if(b.ownerOnly&&!a.ownerOnly)return 1;
     return (RARITY_ORDER[a.rarity]||4)-(RARITY_ORDER[b.rarity]||4);
   });
   grid.innerHTML=owned.map(i=>{
-    const equipped=(i.type==='trail'&&equippedTrail===i.id)||(i.type==='badge'&&equippedBadge===i.emoji)||(i.type==='title'&&equippedTitle===i.text);
+    const equipped=isEquipped(i);
     const rc=RARITY_COLORS[i.rarity]||'#94a3b8';
     const ownerTag=i.ownerOnly?'<span style="font-size:7px;color:#ff88ff"> 👑</span>':'';
     let btn=equipped
@@ -1704,7 +1837,7 @@ function renderOwnedTab(){
     return `<div class="${cls}" style="${bs}">
       <div style="font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:${rc};letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">${i.rarity||'common'}${i.ownerOnly?' · OWNER':''}</div>
       <div class="shop-item-icon">${i.emoji}${ownerTag}</div>
-      <div class="shop-item-name">${(i.name||'').replace(/\s*\[OWNER\]|\s*\[MYTHIC OWNER\]/g,'')}</div>
+      <div class="shop-item-name">${((i.name||'').replace(/^[\p{Emoji}\s]+/u,'').replace(/\s*\[OWNER\]|\s*\[MYTHIC OWNER\]/g,'').trim()||i.id)}</div>
       ${btn}
     </div>`;
   }).join('');
@@ -1722,13 +1855,13 @@ function renderShop(){
 
   function item(i,isO){
     const owned=ownedCosmetics.includes(i.id)||i.price===0;
-    const equipped=(i.type==='trail'&&equippedTrail===i.id)||(i.type==='badge'&&equippedBadge===i.emoji)||(i.type==='title'&&equippedTitle===i.text);
+    const equipped=isEquipped(i);
     const rc=RARITY_COLORS[i.rarity]||'#94a3b8';
     let cls='shop-item'; if(equipped)cls+=' equipped'; else if(owned)cls+=' owned';
     const rar=`<div style="font-family:'JetBrains Mono',monospace;font-size:7px;font-weight:700;color:${rc};letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px">${i.rarity||'common'}${isO?' · OWNER':''}</div>`;
     let btn='';
     if(isO&&!owned){
-      btn=`<div style="width:100%;padding:4px;background:rgba(255,68,255,.06);border:1px solid rgba(255,68,255,.25);border-radius:4px;color:#ff88ff;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;text-align:center">👑 OWNER</div>`;
+      btn=`<div style="width:100%;padding:4px;background:rgba(255,68,255,.06);border:1px solid rgba(255,68,255,.25);border-radius:4px;color:#ff88ff;font-family:'JetBrains Mono',monospace;font-size:8px;font-weight:700;text-align:center">👑 OWNER ONLY</div>`;
     }else if(equipped){
       btn=`<button class="shop-equip-btn" style="background:rgba(0,255,136,.12);border-color:rgba(0,255,136,.5)" onclick="unequipItem('${i.id}','${i.type}')">✓ On</button>`;
     }else if(owned){
@@ -1737,7 +1870,7 @@ function renderShop(){
       btn=`<button class="shop-buy-btn" onclick="buyItem('${i.id}')"${total>=i.price?'':' disabled'}>💰 ${i.price}</button>`;
     }
     const bs=isO?'border-color:rgba(255,68,255,.35);background:rgba(255,68,255,.04)':'';
-    const nm=(i.name||'').replace(/\s*\[OWNER\]|\s*\[MYTHIC OWNER\]/g,'');
+    const nm=(i.name||'').replace(/^[\p{Emoji}\s]+/u,'').replace(/\s*\[OWNER\]|\s*\[MYTHIC OWNER\]/g,'').trim()||i.name||i.id;
     return `<div class="${cls}" style="${bs}">${rar}<div class="shop-item-icon">${i.emoji}</div><div class="shop-item-name">${nm}</div>${btn}</div>`;
   }
 
@@ -1772,18 +1905,22 @@ function buyItem(id){
 }
 function equipItem(id){
   socket.emit('equipCosmetic',{cosmeticId:id});
-  // Optimistic local update for fallback catalog
+  // Optimistic local update
   const cat=getActiveCatalog();
-  const item=cat[id]; if(!item) return;
-  if(item.type==='trail') equippedTrail=id;
-  else if(item.type==='badge') equippedBadge=item.emoji;
-  else if(item.type==='title') equippedTitle=item.text;
+  const item=cat[id];
+  if(item){
+    if(item.type==='trail') equippedTrail=id;
+    else if(item.type==='badge'){ equippedBadgeId=id; equippedBadge=item.emoji; }
+    else if(item.type==='title') equippedTitle=item.text||item.name;
+  } else if(TRAIL_CONFIGS[id]){
+    equippedTrail=id;
+  }
   renderShop();
 }
 function unequipItem(id,type){
   socket.emit('unequipCosmetic',{slot:type});
   if(type==='trail') equippedTrail=null;
-  else if(type==='badge') equippedBadge=null;
+  else if(type==='badge'){ equippedBadge=null; equippedBadgeId=null; }
   else if(type==='title') equippedTitle=null;
   renderShop();
 }
@@ -1795,7 +1932,80 @@ function openShop(){
 }
 function closeShop(){document.getElementById('M_shop').classList.remove('on');}
 
-// ── BACKGROUND MUSIC ──────────────────────────────────────────
+// ── OWNER PANEL ──────────────────────────────────────────────
+let isOwnerClient = false;
+let ownerPanelOpen = false;
+let livePlayers = [];
+
+socket.on('playerList', (players) => {
+  livePlayers = players || [];
+  renderOwnerPlayerList();
+});
+
+socket.on('ownerSuccess', (msg) => {
+  const s = document.getElementById('op_status');
+  if(s){ s.textContent = '✓ ' + msg; s.style.color = 'var(--green)'; setTimeout(() => { if(s) s.textContent = ''; }, 3000); }
+  toast(msg, 'ok');
+});
+socket.on('ownerError', (msg) => {
+  const s = document.getElementById('op_status');
+  if(s){ s.textContent = '✗ ' + msg; s.style.color = '#fca5a5'; setTimeout(() => { if(s) s.textContent = ''; }, 3000); }
+  toast(msg, 'red');
+});
+
+function openOwnerPanel(){
+  document.getElementById('M_owner').style.opacity = '1';
+  document.getElementById('M_owner').style.pointerEvents = 'all';
+  ownerPanelOpen = true;
+  ownerRefreshPlayers();
+}
+function closeOwnerPanel(){
+  document.getElementById('M_owner').style.opacity = '0';
+  document.getElementById('M_owner').style.pointerEvents = 'none';
+  ownerPanelOpen = false;
+}
+function ownerRefreshPlayers(){
+  if(!ownerPass) return;
+  socket.emit('ownerAction', { action:'getPlayers', password: ownerPass });
+}
+function renderOwnerPlayerList(){
+  const c = document.getElementById('op_players'); if(!c) return;
+  if(!livePlayers.length){ c.innerHTML = '<div style="color:var(--muted);font-size:11px">No players online</div>'; return; }
+  c.innerHTML = livePlayers.map(p =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:rgba(255,255,255,.025);border-radius:6px;cursor:pointer" onclick="fillPlayerId('${p.id}')">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--muted)">${p.id.slice(0,8)}…</span>
+      <span style="font-size:11px;font-weight:600;color:${p.isOwner?'#ffd700':'#fff'};flex:1">${esc(p.name)}</span>
+      <span style="font-size:9px;color:var(--muted)">len:${p.length} 💰${p.coins}</span>
+    </div>`
+  ).join('');
+}
+function fillPlayerId(id){
+  ['op_coins_target','op_action_target'].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=id; });
+}
+
+function ownerGiveCoins(){
+  const tid=document.getElementById('op_coins_target').value.trim();
+  const amt=document.getElementById('op_coins_amount').value.trim();
+  if(!tid||!amt){ toast('Fill in player ID and amount','red'); return; }
+  socket.emit('ownerAction',{action:'giveCoins',targetId:tid,value:amt,password:ownerPass});
+}
+function ownerKick(){
+  const tid=document.getElementById('op_action_target').value.trim();
+  if(!tid){ toast('Enter player ID','red'); return; }
+  if(!confirm('Kick this player?')) return;
+  socket.emit('ownerAction',{action:'kick',targetId:tid,value:'Kicked by owner.',password:ownerPass});
+}
+function ownerKill(){
+  const tid=document.getElementById('op_action_target').value.trim();
+  if(!tid){ toast('Enter player ID','red'); return; }
+  socket.emit('ownerAction',{action:'instaKill',targetId:tid,password:ownerPass});
+}
+function ownerBroadcast(){
+  const msg=document.getElementById('op_broadcast').value.trim();
+  if(!msg){ toast('Enter a message','red'); return; }
+  socket.emit('ownerAction',{action:'broadcast',value:msg,password:ownerPass});
+  document.getElementById('op_broadcast').value='';
+}
 let bgAudio=null, bgPlaying=false;
 function initBGMusic(){
   if(bgAudio) return;
@@ -1865,6 +2075,11 @@ document.querySelectorAll('.mr-tab').forEach(b=>b.addEventListener('click',()=>s
   document.getElementById('shopBtn').onclick=openShop;
   document.getElementById('shopClose').onclick=closeShop;
   document.getElementById('hudShopBtn').onclick=openShop;
+  const opBtn=document.getElementById('ownerPanelBtn');
+  if(opBtn) opBtn.onclick=openOwnerPanel;
+  const opClose=document.getElementById('ownerPanelClose');
+  if(opClose) opClose.onclick=closeOwnerPanel;
+  document.getElementById('M_owner').addEventListener('click',e=>{if(e.target===e.currentTarget)closeOwnerPanel();});
   // Shop backdrop click to close
   document.getElementById('M_shop').addEventListener('click',e=>{if(e.target===e.currentTarget)closeShop();});
   // Owner toggle
@@ -1980,6 +2195,25 @@ function loop(ts){
     const end=activePowerUps[type]?.end||activePowerUps[type]?.until||0;
     if(end&&now>=end) delete activePowerUps[type];
   }
+  // Smooth camera update every frame (not on network packet) for buttery 60fps movement
+  const me=serverPlayers[myId];
+  if(me&&me.segments&&me.segments.length){
+    const h=me.segments[0];
+    camX+=(h.x-gc.width/2-camX)*0.12;
+    camY+=(h.y-gc.height/2-camY)*0.12;
+    camX=Math.max(-gc.width*.1,Math.min(mapSz-gc.width*.9,camX));
+    camY=Math.max(-gc.height*.1,Math.min(mapSz-gc.height*.9,camY));
+    // Vignette near borders
+    if(frame%4===0){
+      const bd=Math.min(h.x,h.y,mapSz-h.x,mapSz-h.y);
+      const vig=document.getElementById('vign');
+      if(bd<500){
+        const iv=Math.min(1,(500-bd)/500);
+        vig.style.opacity=iv;
+        vig.style.background=`radial-gradient(ellipse at 50% 50%,transparent 45%,rgba(255,34,51,${iv*.5}) 100%)`;
+      }else{vig.style.opacity=0;}
+    }
+  }
   ctx.save();
   ctx.translate(shakeX,shakeY);
   drawBG(ts/1000);
@@ -1989,12 +2223,12 @@ function loop(ts){
   drawOrbs(ts/1000);
   drawPowerUps();
   for(const pid in serverPlayers){if(pid!==myId)drawSnake(serverPlayers[pid],false);}
-  const me=serverPlayers[myId];
   if(me) drawSnake(me,true);
   if(particlesOn) drawParts();
   ctx.restore();
   if(frame%8===0) drawMM();
   if(frame%6===0) updatePowerUpHUD();
+  if(frame%4===0) updateHUD();
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
