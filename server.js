@@ -761,19 +761,82 @@ function checkPortals(p) {
 function applyMagnet(p) {
   if (!p.activePowerUps?.magnet || Date.now() >= p.activePowerUps.magnet.until) return;
   const h = p.segments[0];
-  for (const oid in orbs) {
-    const o = orbs[oid], d2 = dsq(h, o);
-    if (d2 < 320 * 320 && d2 > 1) { const d = Math.sqrt(d2), pull = Math.min(500 / d, 5); o.x += (h.x - o.x) / d * pull; o.y += (h.y - o.y) / d * pull; }
+  const nearIds = getNearbyOrbIds(h.x, h.y, 320 + GRID_CELL);
+  for (const oid of nearIds) {
+    const o = orbs[oid];
+    if (!o) continue;
+    const dx = h.x - o.x, dy = h.y - o.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < 320 * 320 && d2 > 1) {
+      const d = Math.sqrt(d2), pull = Math.min(500 / d, 5);
+      removeOrbFromGrid(o);
+      o.x += dx / d * pull;
+      o.y += dy / d * pull;
+      addOrbToGrid(o);
+    }
   }
 }
 
 // ============================================================
-//  COLLISION
+//  SPATIAL GRID — fast orb & snake lookups
+// ============================================================
+const GRID_CELL = 120; // px per cell
+const GRID_W = Math.ceil(MAP_SIZE / GRID_CELL) + 1;
+
+// Orb grid: cellKey -> Set of orb ids
+const orbGrid = new Map();
+
+function orbCellKey(x, y) {
+  return (((x / GRID_CELL) | 0)) + ',' + (((y / GRID_CELL) | 0));
+}
+
+function addOrbToGrid(o) {
+  const k = orbCellKey(o.x, o.y);
+  if (!orbGrid.has(k)) orbGrid.set(k, new Set());
+  orbGrid.get(k).add(o.id);
+  o._cell = k;
+}
+
+function removeOrbFromGrid(o) {
+  if (o._cell && orbGrid.has(o._cell)) {
+    orbGrid.get(o._cell).delete(o.id);
+  }
+}
+
+function getNearbyOrbIds(x, y, radius) {
+  const r = Math.ceil(radius / GRID_CELL);
+  const cx = (x / GRID_CELL) | 0;
+  const cy = (y / GRID_CELL) | 0;
+  const result = [];
+  for (let dx = -r; dx <= r; dx++) {
+    for (let dy = -r; dy <= r; dy++) {
+      const k = (cx + dx) + ',' + (cy + dy);
+      const cell = orbGrid.get(k);
+      if (cell) for (const id of cell) result.push(id);
+    }
+  }
+  return result;
+}
+
+// Rebuild grid with existing orbs on startup
+for (const oid in orbs) addOrbToGrid(orbs[oid]);
+
+// Patch mkOrb to auto-register in grid
+const _mkOrb = mkOrb;
+function mkOrbTracked(x, y, golden, mega) {
+  const o = _mkOrb(x, y, golden, mega);
+  addOrbToGrid(o);
+  return o;
+}
+
+// ============================================================
+//  COLLISION — spatial grid orb lookup + optimized snake check
 // ============================================================
 function checkCollisions() {
-  // Snapshot alive players to avoid mutation issues mid-loop
-  const arr = Object.values(players).filter(p => !p.dead);
+  const arr = [];
+  for (const pid in players) { const p = players[pid]; if (!p.dead) arr.push(p); }
   const now = Date.now();
+
   for (const p of arr) {
     if (p.dead) continue;
     const h = p.segments[0];
@@ -783,27 +846,23 @@ function checkCollisions() {
     if (h.x < -10 || h.x > MAP_SIZE + 10 || h.y < -10 || h.y > MAP_SIZE + 10) { killPlayer(p, null); continue; }
     if (p.activePowerUps?.frozen && now > p.activePowerUps.frozen.until) { delete p.activePowerUps.frozen; p.speed = SNAKE_SPEED; }
 
-    // Orb pickup - fast bounding box pre-check before expensive sqrt
-    for (const oid in orbs) {
+    // ── Orb pickup via spatial grid ──────────────────────────
+    const pickupR = p.width + 16; // max orb size is 16
+    const nearOrbs = getNearbyOrbIds(h.x, h.y, pickupR + GRID_CELL);
+    for (const oid of nearOrbs) {
       const o = orbs[oid];
+      if (!o) continue;
       const dx = h.x - o.x, dy = h.y - o.y;
       const r = p.width + o.size;
-      if (dx > r || dx < -r || dy > r || dy < -r) continue; // fast reject
-      if (dx*dx + dy*dy < r * r) {
+      if (dx * dx + dy * dy < r * r) {
         p.growBuffer += GROW_PER_ORB * o.value;
         p.score += o.value;
         p.sessionCoins += Math.ceil(o.value / 3);
+        removeOrbFromGrid(o);
         delete orbs[oid];
-        const neo = mkOrb(); orbs[neo.id] = neo;
-        // Only broadcast orbEaten to players who can see this position
-        for (const pid2 in players) {
-          const p2 = players[pid2];
-          if (p2.isBot || !p2.socketId || p2.dead) continue;
-          if (!p2.segments.length) continue;
-          if (dsq(p2.segments[0], h) <= VIEW_RADIUS_SQ) {
-            io.to(p2.socketId).emit('orbEaten', { oid, newOrb: neo, eaterId: p.id, golden: o.golden, mega: o.mega });
-          }
-        }
+        const neo = mkOrbTracked();
+        orbs[neo.id] = neo;
+        orbEatenBatch.push({ oid, newOrb: neo, eaterId: p.id, pos: { x: h.x, y: h.y }, golden: o.golden, mega: o.mega });
         break;
       }
     }
@@ -815,26 +874,37 @@ function checkCollisions() {
 
     if (isGhost || inGrace) continue;
 
-    // Snake vs snake collisions
+    // ── Snake vs snake — only check snakes within range ──────
+    const hw = p.width;
     for (const other of arr) {
       if (other.id === p.id || other.dead) continue;
       const otherGhost = other.ghostUntil && now < other.ghostUntil;
       if (otherGhost) continue;
-      const segs = other.segments;
+      const oh = other.segments[0];
 
-      // Body collision
-      for (let si = 4; si < segs.length; si += (si < 25 ? 1 : 2)) {
-        const r = p.width + other.width - 5;
-        if (dsq(h, segs[si]) < r * r) {
+      // Quick distance cull — skip if heads are very far apart
+      const hdx = h.x - oh.x, hdy = h.y - oh.y;
+      const maxReach = (other.segments.length * 0.022 + hw + other.width + 20);
+      if (hdx * hdx + hdy * hdy > maxReach * maxReach * 400) continue;
+
+      const segs = other.segments;
+      const r = hw + other.width - 5;
+      const r2sq = r * r;
+
+      // Body collision — step size grows with distance for performance
+      for (let si = 4; si < segs.length; si += (si < 20 ? 1 : si < 60 ? 2 : 4)) {
+        const s = segs[si];
+        const sdx = h.x - s.x, sdy = h.y - s.y;
+        if (sdx * sdx + sdy * sdy < r2sq) {
           if (p.shieldActive) { p.shieldActive = false; if (p.activePowerUps) delete p.activePowerUps.shield; if (p.socketId) io.to(p.socketId).emit('shieldPopped', {}); break; }
           killPlayer(p, other); break;
         }
       }
       if (p.dead) break;
 
-      // Head-on — rage wins; smaller loses; equal = no kill
-      const r2 = p.width + other.width;
-      if (dsq(h, segs[0]) < r2 * r2) {
+      // Head-on
+      const r3 = hw + other.width;
+      if (hdx * hdx + hdy * hdy < r3 * r3) {
         const pRage = p.activePowerUps?.rage && now < (p.activePowerUps.rage?.until || 0);
         const oRage = other.activePowerUps?.rage && now < (other.activePowerUps.rage?.until || 0);
         if (pRage && !oRage) {
@@ -847,7 +917,6 @@ function checkCollisions() {
           if (p.shieldActive) { p.shieldActive = false; if (p.socketId) io.to(p.socketId).emit('shieldPopped', {}); }
           else killPlayer(p, other);
         }
-        // Equal size: both survive (bounce effect emerges naturally)
       }
       if (p.dead) break;
     }
@@ -857,9 +926,12 @@ function checkCollisions() {
 // ============================================================
 //  GAME TICK
 // ============================================================
+const orbEatenBatch = [];
+
 function gameTick() {
   const now = Date.now();
   serverFrame++;
+
   for (const pid in players) {
     const p = players[pid];
     if (p.dead || !p.alive) continue;
@@ -868,27 +940,29 @@ function gameTick() {
     const frozen = p.activePowerUps?.frozen && now < p.activePowerUps.frozen.until;
     const spd = frozen ? SNAKE_SPEED * 0.3 : (p.boosting ? BOOST_SPEED : (p.speed || SNAKE_SPEED));
     const h = p.segments[0];
+
+    // unshift is unavoidable for correct ordering but we limit segment array growth
     p.segments.unshift({ x: h.x + Math.cos(p.angle) * spd, y: h.y + Math.sin(p.angle) * spd });
 
     if (p.growBuffer > 0) p.growBuffer--;
     else p.segments.pop();
 
-    // Boosting slightly shrinks snake for strategic depth
     if (p.boosting && p.segments.length > INIT_LEN * SEG_DIST * 2 && Math.random() < 0.18) {
       const tail = p.segments[p.segments.length - 1];
-      const o = mkOrb(tail.x, tail.y); o.size = 7; o.value = 1;
+      const o = mkOrbTracked(tail.x, tail.y); o.size = 7; o.value = 1;
       orbs[o.id] = o; p.segments.pop();
     }
 
     p.width = Math.max(6, Math.min(28, 6 + p.segments.length * 0.022));
   }
+
   checkCollisions();
 
   if (serverFrame % 10 === 0) {
-  leaderboard = Object.values(players).filter(p => !p.dead)
-    .sort((a, b) => b.segments.length - a.segments.length)
-    .slice(0, 10)
-    .map((p, i) => ({
+    const alive = [];
+    for (const pid in players) { const p = players[pid]; if (!p.dead) alive.push(p); }
+    alive.sort((a, b) => b.segments.length - a.segments.length);
+    leaderboard = alive.slice(0, 10).map((p, i) => ({
       rank: i + 1, id: p.id, name: p.name, length: p.segments.length, score: p.score,
       skin: p.skin, isOwner: p.isOwner, isBot: p.isBot || false,
       equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge, killStreak: p.killStreak || 0,
@@ -899,41 +973,84 @@ function gameTick() {
 setInterval(gameTick, TICK_MS);
 
 // ============================================================
-//  STATE BROADCAST
+//  STATE BROADCAST — optimized
 // ============================================================
 function buildState(p) {
-  let segs = p.segments;
-  if (segs.length > 140) segs = segs.filter((_, i) => i < 30 || i % 2 === 0);
-  // Resolve badge ID to emoji for client rendering
+  const segs = p.segments;
+  const len = segs.length;
+  // Thin segments: keep head (first 20), then every 2nd segment
+  let out;
+  if (len <= 60) {
+    out = segs;
+  } else {
+    out = [];
+    for (let i = 0; i < len; i++) {
+      if (i < 20 || i % 2 === 0) out.push(segs[i]);
+    }
+  }
   const badgeId = p.equippedBadge || null;
   const badgeEmoji = badgeId ? (COSMETICS[badgeId]?.emoji || badgeId) : null;
+  const now = Date.now();
   return {
-    segments: segs, angle: p.angle, skin: p.skin, grantedSkin: p.grantedSkin || null,
+    segments: out, angle: p.angle, skin: p.skin, grantedSkin: p.grantedSkin || null,
     name: p.name, width: p.width, boosting: p.boosting,
     isOwner: p.isOwner, isBot: p.isBot || false,
     equippedTrail: p.equippedTrail || null, equippedTitle: p.equippedTitle || null,
     equippedBadge: badgeEmoji, equippedBadgeId: badgeId,
-    activePowerUps: p.activePowerUps || {}, ghostUntil: p.ghostUntil || 0, shieldActive: p.shieldActive || false,
-    killStreak: p.killStreak || 0, score: p.score,
-    raging: !!(p.activePowerUps?.rage && Date.now() < (p.activePowerUps.rage?.until || 0)),
-    inGrace: !!(p._graceUntil && Date.now() < p._graceUntil),
+    activePowerUps: p.activePowerUps || {}, ghostUntil: p.ghostUntil || 0,
+    shieldActive: p.shieldActive || false, killStreak: p.killStreak || 0, score: p.score,
+    raging: !!(p.activePowerUps?.rage && now < (p.activePowerUps.rage?.until || 0)),
+    inGrace: !!(p._graceUntil && now < p._graceUntil),
   };
 }
 
+// Cache these arrays so we don't rebuild every broadcast cycle
+let _puArr = [], _ptArr = [];
+let _puDirty = true, _ptDirty = true;
+function markPUDirty() { _puDirty = true; }
+function markPTDirty() { _ptDirty = true; }
+
 setInterval(() => {
-  const alive = Object.values(players).filter(p => !p.dead);
+  if (_puDirty) { _puArr = Object.values(powerUps); _puDirty = false; }
+  if (_ptDirty) { _ptArr = Object.values(portals); _ptDirty = false; }
+
+  // Pre-build alive player list once
+  const alive = [];
+  for (const pid in players) {
+    const p = players[pid];
+    if (!p.dead && p.segments.length) alive.push(p);
+  }
+
+  // Flush batched orbEaten events to nearby players
+  if (orbEatenBatch.length) {
+    const batch = orbEatenBatch.splice(0);
+    for (const ev of batch) {
+      for (const p2 of alive) {
+        if (p2.isBot || !p2.socketId) continue;
+        if (dsq(p2.segments[0], ev.pos) <= VIEW_RADIUS_SQ) {
+          io.to(p2.socketId).emit('orbEaten', { oid: ev.oid, newOrb: ev.newOrb, eaterId: ev.eaterId, golden: ev.golden, mega: ev.mega });
+        }
+      }
+    }
+  }
+
   for (const pid in players) {
     const me = players[pid];
     if (me.isBot || !me.socketId || me.dead) continue;
     const mh = me.segments[0];
     if (!mh) continue;
-    const state = {}; state[me.id] = buildState(me);
+
+    const state = {};
+    state[me.id] = buildState(me);
     for (const p of alive) {
       if (p.id === me.id) continue;
-      // Include bots only if within view radius (same as humans) to reduce payload
       if (dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ) state[p.id] = buildState(p);
     }
-    io.to(me.socketId).emit('gameState', { players: state, leaderboard, activeEvent, powerUps: Object.values(powerUps), portals: Object.values(portals), myCoins: me.sessionCoins });
+    io.to(me.socketId).emit('gameState', {
+      players: state, leaderboard, activeEvent,
+      powerUps: _puArr, portals: _ptArr,
+      myCoins: me.sessionCoins,
+    });
   }
 }, BROADCAST_MS);
 
