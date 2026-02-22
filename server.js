@@ -24,14 +24,14 @@ const OWNER_PASSWORD  = 'Z3N0ISKING';
 const ADMIN_PASS      = 'Z3N0ADMIN';
 const MAP_SIZE        = 5000;         // Smaller map = more action
 const ORB_COUNT       = 800;          // More orbs = faster, more satisfying growth
-const TICK_MS         = 33;
-const BROADCAST_MS    = 50; // Must be >= TICK_MS; no point broadcasting faster than we simulate
+const TICK_MS         = 50;  // 20 ticks/sec — good balance of smoothness vs CPU on Chromebook
+const BROADCAST_MS    = 100; // 10 broadcasts/sec — plenty for a snake game, much lighter CPU
 const SNAKE_SPEED     = 3.4;          // Slightly faster base speed
 const BOOST_SPEED     = 6.2;          // More satisfying boost
 const SEG_DIST        = 11;
 const INIT_LEN        = 8;
 const GROW_PER_ORB    = 4;            // Grow faster for more satisfaction
-const BOT_COUNT       = 5;            // 5 bots for constant action
+const BOT_COUNT       = 2;            // 2 bots
 const VIEW_RADIUS_SQ  = 2600 * 2600;
 const MAX_PLAYERS     = 50;
 const NEW_PLAYER_GRACE = 3000;        // 3s spawn protection
@@ -258,6 +258,10 @@ function buildCosmeticsFromCatalog(items) {
   }
   if (!COSMETICS['title_rookie']) {
     COSMETICS['title_rookie'] = { id: 'title_rookie', type: 'title', name: '[ROOKIE]', price: 0, emoji: '🐍', text: '[ROOKIE]', rarity: 'common', ownerOnly: false };
+  }
+  // owner_badge_crown is not in the PlayFab catalog but is the default badge for the owner — always ensure it exists
+  if (!COSMETICS['owner_badge_crown']) {
+    COSMETICS['owner_badge_crown'] = { id: 'owner_badge_crown', type: 'badge', name: 'Owner Crown', price: 0, emoji: '👑', rarity: 'mythic', ownerOnly: true };
   }
   console.log(`[INFO] Loaded ${Object.keys(COSMETICS).length} cosmetics from PlayFab catalog.`);
 }
@@ -565,12 +569,12 @@ function killPlayer(player, killer) {
     if (player.sessionCoins > 0) addCoinsPlayFab(player.playfabId, player.sessionCoins).catch(()=>{});
   }
 
-  // Drop orbs generously
+  // Drop orbs — CRITICAL: use mkOrbTracked so orbs register in spatial grid and can be picked up
   const dropN = Math.min(Math.floor(player.segments.length / 2), 100);
   const dropped = [];
   for (let i = 0; i < dropN; i++) {
     const seg = player.segments[Math.random() * player.segments.length | 0];
-    const o = mkOrb(seg.x + (Math.random() - 0.5) * 50, seg.y + (Math.random() - 0.5) * 50);
+    const o = mkOrbTracked(seg.x + (Math.random() - 0.5) * 50, seg.y + (Math.random() - 0.5) * 50);
     o.size = 9; o.value = 2; o.color = '#ffaa33';
     orbs[o.id] = o; dropped.push(o);
   }
@@ -954,6 +958,9 @@ function gameTick() {
     }
 
     p.width = Math.max(6, Math.min(28, 6 + p.segments.length * 0.022));
+
+    // Hard cap to prevent runaway memory/CPU on very long snakes
+    if (p.segments.length > 600) p.segments.length = 600;
   }
 
   checkCollisions();
@@ -975,36 +982,69 @@ setInterval(gameTick, TICK_MS);
 // ============================================================
 //  STATE BROADCAST — optimized
 // ============================================================
+// ============================================================
+//  STATE BROADCAST — fully optimized
+// ============================================================
+
+// Pre-compute a state object per player once per broadcast cycle.
+// All viewers who can see that player share the SAME object — no redundant work.
+const EMPTY_PU = {};
+
 function buildState(p) {
   const segs = p.segments;
   const len = segs.length;
-  // Thin segments: keep head (first 20), then every 2nd segment
   let out;
-  if (len <= 60) {
+  if (len <= 50) {
     out = segs;
   } else {
-    out = [];
+    out = new Array(Math.ceil(len / 2) + 20);
+    let oi = 0;
     for (let i = 0; i < len; i++) {
-      if (i < 20 || i % 2 === 0) out.push(segs[i]);
+      if (i < 20 || i % 2 === 0) out[oi++] = segs[i];
     }
+    out.length = oi;
   }
+
+  // Resolve badge — always emit emoji for rendering, with robust fallback
   const badgeId = p.equippedBadge || null;
-  const badgeEmoji = badgeId ? (COSMETICS[badgeId]?.emoji || badgeId) : null;
+  const badgeEmoji = badgeId
+    ? (COSMETICS[badgeId]?.emoji || (badgeId.length <= 4 ? badgeId : '🏅'))
+    : null;
+
+  // Resolve trail — send both id and display name so client can render color/effect
+  const trailId = p.equippedTrail || null;
+  const trailData = trailId ? (COSMETICS[trailId] || { id: trailId, color: '#ffffff' }) : null;
+
+  // Resolve title — send the text directly
+  const titleText = p.equippedTitle || null;
+
   const now = Date.now();
+  const pu = p.activePowerUps && Object.keys(p.activePowerUps).length ? p.activePowerUps : EMPTY_PU;
+
   return {
-    segments: out, angle: p.angle, skin: p.skin, grantedSkin: p.grantedSkin || null,
-    name: p.name, width: p.width, boosting: p.boosting,
-    isOwner: p.isOwner, isBot: p.isBot || false,
-    equippedTrail: p.equippedTrail || null, equippedTitle: p.equippedTitle || null,
-    equippedBadge: badgeEmoji, equippedBadgeId: badgeId,
-    activePowerUps: p.activePowerUps || {}, ghostUntil: p.ghostUntil || 0,
-    shieldActive: p.shieldActive || false, killStreak: p.killStreak || 0, score: p.score,
+    segments: out,
+    angle: p.angle,
+    skin: p.grantedSkin || p.skin,  // always show granted skin if set
+    name: p.name,
+    width: p.width,
+    boosting: p.boosting,
+    isOwner: p.isOwner,
+    isBot: p.isBot || false,
+    equippedTrail: trailId,
+    trailColor: trailData?.glow || trailData?.color || null,
+    equippedTitle: titleText,
+    equippedBadge: badgeEmoji,
+    equippedBadgeId: badgeId,
+    activePowerUps: pu,
+    ghostUntil: p.ghostUntil || 0,
+    shieldActive: p.shieldActive || false,
+    killStreak: p.killStreak || 0,
+    score: p.score,
     raging: !!(p.activePowerUps?.rage && now < (p.activePowerUps.rage?.until || 0)),
     inGrace: !!(p._graceUntil && now < p._graceUntil),
   };
 }
 
-// Cache these arrays so we don't rebuild every broadcast cycle
 let _puArr = [], _ptArr = [];
 let _puDirty = true, _ptDirty = true;
 function markPUDirty() { _puDirty = true; }
@@ -1014,14 +1054,18 @@ setInterval(() => {
   if (_puDirty) { _puArr = Object.values(powerUps); _puDirty = false; }
   if (_ptDirty) { _ptArr = Object.values(portals); _ptDirty = false; }
 
-  // Pre-build alive player list once
+  // Build alive list + pre-compute state for every alive player ONCE
   const alive = [];
+  const stateCache = new Map(); // player id -> state object
   for (const pid in players) {
     const p = players[pid];
-    if (!p.dead && p.segments.length) alive.push(p);
+    if (!p.dead && p.segments.length) {
+      alive.push(p);
+      stateCache.set(p.id, buildState(p));
+    }
   }
 
-  // Flush batched orbEaten events to nearby players
+  // Flush batched orbEaten events
   if (orbEatenBatch.length) {
     const batch = orbEatenBatch.splice(0);
     for (const ev of batch) {
@@ -1034,21 +1078,27 @@ setInterval(() => {
     }
   }
 
-  for (const pid in players) {
-    const me = players[pid];
-    if (me.isBot || !me.socketId || me.dead) continue;
+  // Send each human player only what they can see
+  for (const me of alive) {
+    if (me.isBot || !me.socketId) continue;
     const mh = me.segments[0];
     if (!mh) continue;
 
     const state = {};
-    state[me.id] = buildState(me);
+    state[me.id] = stateCache.get(me.id);
     for (const p of alive) {
       if (p.id === me.id) continue;
-      if (dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ) state[p.id] = buildState(p);
+      if (dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ) {
+        state[p.id] = stateCache.get(p.id);
+      }
     }
+
     io.to(me.socketId).emit('gameState', {
-      players: state, leaderboard, activeEvent,
-      powerUps: _puArr, portals: _ptArr,
+      players: state,
+      leaderboard,
+      activeEvent,
+      powerUps: _puArr,
+      portals: _ptArr,
       myCoins: me.sessionCoins,
     });
   }
@@ -1070,6 +1120,10 @@ io.on('connection', socket => {
     const profileKey = playfabId || accountId || null;
     const pr = getProfile(profileKey, name);
 
+    // Resolve equippedTitle: pr.equippedTitle stores item ID, we need display text for in-game
+    const titleItemId = pr.equippedTitle || null;
+    const titleDisplayText = isOwner ? '[Z3N0]' : (titleItemId ? (COSMETICS[titleItemId]?.text || COSMETICS[titleItemId]?.name || titleItemId) : null);
+
     const player = {
       id: uuidv4(), socketId: socket.id, isBot: false,
       name: pr.name || name || 'Snake', skin: safeSkin, grantedSkin: null,
@@ -1078,8 +1132,10 @@ io.on('connection', socket => {
       angle: 0, speed: SNAKE_SPEED, boosting: false,
       growBuffer: 0, score: 0, sessionCoins: 0, kills: 0,
       width: 8, dead: false, alive: true, isOwner, effect: null,
-      equippedTrail: pr.equippedTrail, equippedTitle: isOwner ? '[Z3N0]' : pr.equippedTitle,
-      equippedBadge: isOwner ? 'owner_badge_crown' : pr.equippedBadge,
+      equippedTrail: pr.equippedTrail || null,
+      equippedTitle: titleDisplayText,   // display text for in-game rendering
+      equippedTitleId: isOwner ? null : titleItemId,  // item ID for persistence
+      equippedBadge: isOwner ? 'owner_badge_crown' : (pr.equippedBadge || null),
       unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...(pr.unlockedCosmetics || ['title_rookie'])],
       activePowerUps: {}, ghostUntil: 0, shieldActive: false, killStreak: 0,
       _graceUntil: Date.now() + NEW_PLAYER_GRACE,
@@ -1097,9 +1153,10 @@ io.on('connection', socket => {
         gamesPlayed: pr.gamesPlayed, highScore: pr.highScore,
         unlockedCosmetics: player.unlockedCosmetics,
         equippedTrail: player.equippedTrail,
-        equippedTitle: player.equippedTitle,
-        equippedBadgeId: player.equippedBadge,
-        equippedBadge: player.equippedBadge ? (COSMETICS[player.equippedBadge]?.emoji || player.equippedBadge) : null,
+        equippedTitle: player.equippedTitle,           // display text
+        equippedTitleId: player.equippedTitleId,       // item ID for shop isEquipped check
+        equippedBadgeId: player.equippedBadge,         // item ID
+        equippedBadge: player.equippedBadge ? (COSMETICS[player.equippedBadge]?.emoji || '👑') : null,  // emoji for rendering
         isGuest: !accountId && !playfabId,
       },
       cosmeticsCatalog: COSMETICS,
@@ -1156,9 +1213,17 @@ io.on('connection', socket => {
     if (c.ownerOnly && !p.isOwner) { socket.emit('cosmeticError', 'Owner-only!'); return; }
     if (!p.isOwner && !p.unlockedCosmetics.includes(cosmeticId) && c.price > 0) { socket.emit('cosmeticError', "You don't own this!"); return; }
     const pr = getProfile(p.playfabId || p.accountId, p.name);
-    if (c.type === 'trail') { p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId; }
-    else if (c.type === 'title') { const txt = c.text || c.name; p.equippedTitle = txt; pr.equippedTitle = txt; }
-    else if (c.type === 'badge') { p.equippedBadge = cosmeticId; pr.equippedBadge = cosmeticId; }
+    if (c.type === 'trail') {
+      p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId;
+    } else if (c.type === 'title') {
+      const displayText = c.text || c.name;
+      p.equippedTitle = displayText;      // in-game display text
+      p.equippedTitleId = cosmeticId;     // item ID for client shop
+      pr.equippedTitle = cosmeticId;      // save item ID to PlayFab
+    } else if (c.type === 'badge') {
+      p.equippedBadge = cosmeticId;       // item ID resolved to emoji in buildState
+      pr.equippedBadge = cosmeticId;      // save item ID to PlayFab
+    }
     saveEquippedToPlayFab(p.playfabId, pr.equippedTrail, pr.equippedTitle, pr.equippedBadge);
     const badgeEmoji = p.equippedBadge ? (COSMETICS[p.equippedBadge]?.emoji || p.equippedBadge) : null;
     socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: badgeEmoji, equippedBadgeId: p.equippedBadge });
@@ -1168,7 +1233,7 @@ io.on('connection', socket => {
     const p = players[socket.playerId]; if (!p) return;
     const pr = getProfile(p.playfabId || p.accountId, p.name);
     if (slot === 'trail') { p.equippedTrail = null; pr.equippedTrail = null; }
-    if (slot === 'title') { p.equippedTitle = null; pr.equippedTitle = null; }
+    if (slot === 'title') { p.equippedTitle = null; p.equippedTitleId = null; pr.equippedTitle = null; }
     if (slot === 'badge') { p.equippedBadge = null; pr.equippedBadge = null; }
     saveEquippedToPlayFab(p.playfabId, pr.equippedTrail, pr.equippedTitle, pr.equippedBadge);
     socket.emit('cosmeticEquipped', { cosmeticId: null, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: null, equippedBadgeId: null });
@@ -1238,12 +1303,12 @@ function eventName(t) {
 
 function applyEvent(ev) {
   if (ev.type === 'speedBoost') for (const p of Object.values(players)) p.speed = SNAKE_SPEED * 2;
-  if (ev.type === 'orbFrenzy') { for (let i = 0; i < 500; i++) { const o = mkOrb(); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
+  if (ev.type === 'orbFrenzy') { for (let i = 0; i < 500; i++) { const o = mkOrbTracked(); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
   if (ev.type === 'shrinkAll') for (const p of Object.values(players)) if (!p.isOwner) p.segments = p.segments.slice(0, Math.max(INIT_LEN * SEG_DIST, p.segments.length >> 1));
   if (ev.type === 'growAll') for (const p of Object.values(players)) { const t = p.segments[p.segments.length-1]; for (let i = 0; i < 60 * SEG_DIST; i++) p.segments.push({ x: t.x, y: t.y }); }
   if (ev.type === 'powerUpRain') { for (let i = 0; i < 25; i++) spawnPowerUp(); }
-  if (ev.type === 'goldRush') { for (let i = 0; i < 40; i++) { const o = mkOrb(undefined, undefined, true); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
-  if (ev.type === 'megaOrbs') { for (let i = 0; i < 20; i++) { const o = mkOrb(undefined, undefined, false, true); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
+  if (ev.type === 'goldRush') { for (let i = 0; i < 40; i++) { const o = mkOrbTracked(undefined, undefined, true); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
+  if (ev.type === 'megaOrbs') { for (let i = 0; i < 20; i++) { const o = mkOrbTracked(undefined, undefined, false, true); orbs[o.id] = o; } io.emit('orbFrenzy', Object.values(orbs)); }
   if (ev.type === 'berserk') {
     const now = Date.now();
     for (const p of Object.values(players)) {
