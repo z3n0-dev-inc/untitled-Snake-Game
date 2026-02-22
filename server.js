@@ -232,49 +232,49 @@ async function addCoinsPlayFab(playfabId, amount) {
 }
 
 // ============================================================
-//  COSMETICS
+//  COSMETICS — loaded from PlayFab catalog at startup
 // ============================================================
-let PLAYFAB_CATALOG = { Catalog: [] };
-const CATALOG_PATHS = [
-  './Z3N0_PlayFab_Catalog.json',
-  './Z3N0_PlayFab_Catalog__1_.json',
-  './Z3N0_PlayFab_Catalog_1.json',
-  './title-12F9AF-Z3N0_v1__1_.json',
-  './title-12F9AF-Z3N0_v1.json',
-];
-let catalogLoaded = false;
-for (const cp of CATALOG_PATHS) {
-  try {
-    const full = path.resolve(__dirname, cp);
-    if (fs.existsSync(full)) {
-      PLAYFAB_CATALOG = JSON.parse(fs.readFileSync(full, 'utf8'));
-      console.log(`[INFO] Loaded PlayFab catalog from: ${cp} (${PLAYFAB_CATALOG.Catalog?.length || 0} items)`);
-      catalogLoaded = true;
-      break;
-    }
-  } catch(e) { console.log(`[WARN] Failed to load ${cp}:`, e.message); }
-}
-if (!catalogLoaded) console.log('[INFO] No PlayFab catalog JSON found, using fallback.');
-
 const COSMETICS = {};
-// Helper to strip leading emoji from PlayFab DisplayName (e.g. "🔥 Fire Trail" -> "Fire Trail")
+
 function stripEmojiPrefix(str) {
   return (str || '').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}☯☮✝☪✡☸☺☻♈-♓♠♣♥♦♟♩♪♫♬☀☁☂☃☄★☆☇☈☉☊☋☌☍☎☏✁-✄✆-✈✉✌-✏✒✓✔✕✖✗✘✙✚✛✜✝✞✟✠✡✢✣✤✥✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀-❄❅-❊❋❌❍❎❏❐❑❒❓❔❕❖❗❘❙❚❛❜❝❞❟❠❡❢❣❤❥-❧❨-❬❭❮❯❰❱❲❳❴❵]/u, '').replace(/^\s+/, '');
 }
-for (const item of PLAYFAB_CATALOG.Catalog) {
-  let custom = {};
-  try { custom = JSON.parse(item.CustomData || '{}'); } catch(e) {}
-  const rawName = item.DisplayName || item.ItemId;
-  COSMETICS[item.ItemId] = {
-    id: item.ItemId, type: custom.type || 'badge',
-    name: stripEmojiPrefix(rawName),
-    price: item.VirtualCurrencyPrices?.GC ?? 0, emoji: custom.emoji || '?',
-    glow: custom.glow || null, text: custom.text || null,
-    rarity: custom.rarity || 'common', ownerOnly: custom.ownerOnly === true, tags: item.Tags || [],
-  };
+
+function buildCosmeticsFromCatalog(items) {
+  for (const item of items) {
+    let custom = {};
+    try { custom = JSON.parse(item.CustomData || '{}'); } catch(e) {}
+    const rawName = item.DisplayName || item.ItemId;
+    COSMETICS[item.ItemId] = {
+      id: item.ItemId, type: custom.type || 'badge',
+      name: stripEmojiPrefix(rawName),
+      price: item.VirtualCurrencyPrices?.GC ?? 0,
+      emoji: custom.emoji || '?',
+      glow: custom.glow || null, text: custom.text || null,
+      rarity: custom.rarity || 'common',
+      ownerOnly: custom.ownerOnly === true,
+      tags: item.Tags || [],
+    };
+  }
+  if (!COSMETICS['title_rookie']) {
+    COSMETICS['title_rookie'] = { id: 'title_rookie', type: 'title', name: '[ROOKIE]', price: 0, emoji: '🐍', text: '[ROOKIE]', rarity: 'common', ownerOnly: false };
+  }
+  console.log(`[INFO] Loaded ${Object.keys(COSMETICS).length} cosmetics from PlayFab catalog.`);
 }
-if (!COSMETICS['title_rookie']) {
-  COSMETICS['title_rookie'] = { id: 'title_rookie', type: 'title', name: '[ROOKIE]', price: 0, emoji: '🐍', text: '[ROOKIE]', rarity: 'common', ownerOnly: false };
+
+async function loadCatalogFromPlayFab() {
+  try {
+    const result = await pfRequest('/Server/GetCatalogItems', { CatalogVersion: 'Z3N0_v1' }, true);
+    if (result.code === 200 && result.data?.Catalog?.length) {
+      buildCosmeticsFromCatalog(result.data.Catalog);
+    } else {
+      console.warn('[WARN] PlayFab catalog fetch failed:', result.errorMessage || 'Empty catalog');
+      buildCosmeticsFromCatalog([]);
+    }
+  } catch(e) {
+    console.error('[ERROR] Could not load catalog from PlayFab:', e.message);
+    buildCosmeticsFromCatalog([]);
+  }
 }
 
 // ============================================================
@@ -1186,9 +1186,15 @@ app.post('/api/admin/giveCoins', adminAuth, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🐍 Z3N0 Snake Realm ULTRA — port ${PORT}`);
-  console.log(`👑 Owner: ${OWNER_PASSWORD}  🔐 Admin: ${ADMIN_PASS}`);
-  console.log(`🤖 ${BOT_COUNT} bots | Map: ${MAP_SIZE}x${MAP_SIZE} | 🌟 ${ORB_COUNT} orbs | 🛡️ Spawn grace: ${NEW_PLAYER_GRACE}ms`);
-  console.log(`🔥 New: Rage PU | ✂️ Shrink PU | 💎 Mega Orbs | 🔥 Berserk Event`);
-});
+
+async function main() {
+  await loadCatalogFromPlayFab();
+  server.listen(PORT, () => {
+    console.log(`🐍 Z3N0 Snake Realm ULTRA — port ${PORT}`);
+    console.log(`👑 Owner: ${OWNER_PASSWORD}  🔐 Admin: ${ADMIN_PASS}`);
+    console.log(`🤖 ${BOT_COUNT} bots | Map: ${MAP_SIZE}x${MAP_SIZE} | 🌟 ${ORB_COUNT} orbs | 🛡️ Spawn grace: ${NEW_PLAYER_GRACE}ms`);
+    console.log(`🔥 New: Rage PU | ✂️ Shrink PU | 💎 Mega Orbs | 🔥 Berserk Event`);
+  });
+}
+
+main();
