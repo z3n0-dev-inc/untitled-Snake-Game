@@ -670,6 +670,8 @@ async function doLogin(){
     showAuthMsg('login-msg','Logged in!','ok');
     if(document.getElementById('login-remember').checked) saveAuthLocal(d);
     setLoggedIn(d); profileCoins=d.profile?.coins||0;
+    // Update ownedCosmetics from PlayFab profile
+    if(d.profile?.unlockedCosmetics) ownedCosmetics=d.profile.unlockedCosmetics;
     toast('Welcome, '+d.displayName+'!','ok'); switchTab('play');
   }catch(e){showAuthMsg('login-msg','Server error.','err');}
 }
@@ -686,6 +688,7 @@ async function doRegister(){
     if(!r.ok){showAuthMsg('reg-msg',d.error||'Registration failed.','err');return;}
     showAuthMsg('reg-msg','Account created!','ok');
     saveAuthLocal(d); setLoggedIn(d); profileCoins=d.profile?.coins||0;
+    if(d.profile?.unlockedCosmetics) ownedCosmetics=d.profile.unlockedCosmetics;
     toast('Welcome, '+d.displayName+'!','ok'); switchTab('play');
   }catch(e){showAuthMsg('reg-msg','Server error.','err');}
 }
@@ -694,7 +697,7 @@ async function doRegister(){
 let socket;
 try{
   if(typeof io==='undefined') throw new Error('no io');
-  socket=io({transports:['websocket','polling']});
+  socket=io({transports:['websocket'],upgrade:false});
 }catch(e){
   console.warn('Socket.IO not available:',e.message);
   socket={on:()=>{},emit:()=>{},connected:false};
@@ -948,6 +951,7 @@ document.addEventListener('touchend',e=>{
   }
 },{passive:true});
 
+let _lastSentAngle = null, _lastSentBoosting = false;
 function sendInput(){
   if(!alive||!myId) return;
   const me=serverPlayers[myId];
@@ -964,6 +968,9 @@ function sendInput(){
       angle=Math.atan2(mY-gc.height/2,mX-gc.width/2);
     }
   }
+  // Only send if angle changed meaningfully or boost state changed
+  if(_lastSentAngle!==null && Math.abs(angle-_lastSentAngle)<0.015 && boosting===_lastSentBoosting) return;
+  _lastSentAngle=angle; _lastSentBoosting=boosting;
   socket.emit('input',{angle,boosting});
 }
 let _inputInterval=null;
@@ -2141,8 +2148,8 @@ function startGame(){
     name:myName,
     skin:selSkin,
     password:ownerPass,
-    accountId:loggedInAccount?loggedInAccount.accountId:null,
-    playfabId:null,
+    playfabId:loggedInAccount?loggedInAccount.playfabId:null,
+    accountId:null,
   });
 }
 
