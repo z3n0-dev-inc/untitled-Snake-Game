@@ -2,6 +2,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -23,7 +26,7 @@ const ADMIN_PASS      = 'Z3N0ADMIN';
 const MAP_SIZE        = 5000;         // Smaller map = more action
 const ORB_COUNT       = 800;          // More orbs = faster, more satisfying growth
 const TICK_MS         = 33;
-const BROADCAST_MS    = 40;
+const BROADCAST_MS    = 50; // Must be >= TICK_MS; no point broadcasting faster than we simulate
 const SNAKE_SPEED     = 3.4;          // Slightly faster base speed
 const BOOST_SPEED     = 6.2;          // More satisfying boost
 const SEG_DIST        = 11;
@@ -40,11 +43,27 @@ const OWNER_SKINS = new Set([
 ]);
 
 // ============================================================
-//  ACCOUNT DB
+//  ACCOUNT DB  (persisted to disk as JSON)
 // ============================================================
 const accountDB = {};
 const playerDB  = {};
-const crypto = require('crypto');
+const DATA_DIR = __dirname;
+const ACCOUNTS_FILE = path.join(DATA_DIR, 'z3n0_accounts.json');
+const PLAYERS_FILE  = path.join(DATA_DIR, 'z3n0_players.json');
+
+function loadDB() {
+  try { Object.assign(accountDB, JSON.parse(fs.readFileSync(ACCOUNTS_FILE, 'utf8'))); console.log(`[DB] Loaded ${Object.keys(accountDB).length} accounts`); } catch(e) {}
+  try { Object.assign(playerDB,  JSON.parse(fs.readFileSync(PLAYERS_FILE,  'utf8'))); console.log(`[DB] Loaded ${Object.keys(playerDB).length} player profiles`); } catch(e) {}
+}
+let _saveTm = null;
+function saveDB() {
+  clearTimeout(_saveTm);
+  _saveTm = setTimeout(() => {
+    try { fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accountDB)); } catch(e) { console.error('[DB] Failed to save accounts:', e.message); }
+    try { fs.writeFileSync(PLAYERS_FILE,  JSON.stringify(playerDB));  } catch(e) { console.error('[DB] Failed to save players:', e.message); }
+  }, 2000); // debounce 2s so rapid changes don't hammer disk
+}
+loadDB();
 function hashPass(p) { return crypto.createHash('sha256').update(p + 'z3n0salt_ULTRA_2024').digest('hex'); }
 function genAccountId() { return 'acc_' + uuidv4(); }
 
@@ -59,6 +78,7 @@ app.post('/api/account/register', (req, res) => {
   const accountId = genAccountId(), now = Date.now();
   accountDB[key] = { accountId, username: username.trim(), displayName: displayName.trim(), passwordHash: hashPass(password), createdAt: now, lastLogin: now };
   playerDB[accountId] = { id: accountId, name: displayName.trim(), coins: 750, totalScore: 0, totalKills: 0, gamesPlayed: 0, highScore: 0, unlockedCosmetics: ['title_rookie'], equippedTrail: null, equippedTitle: null, equippedBadge: null, firstSeen: now, lastSeen: now };
+  saveDB();
   res.json({ success: true, accountId, displayName: displayName.trim(), token: hashPass(accountId + password), profile: getProfileById(accountId) });
 });
 
@@ -72,6 +92,7 @@ app.post('/api/account/login', (req, res) => {
   acc.lastLogin = Date.now();
   const pr = getProfileById(acc.accountId);
   pr.lastSeen = Date.now();
+  saveDB();
   res.json({ success: true, accountId: acc.accountId, displayName: acc.displayName, token: hashPass(acc.accountId + password), profile: pr });
 });
 
@@ -103,14 +124,37 @@ function getProfile(accountId, name) {
 //  COSMETICS
 // ============================================================
 let PLAYFAB_CATALOG = { Catalog: [] };
-try { PLAYFAB_CATALOG = require('./Z3N0_PlayFab_Catalog.json'); } catch(e) { console.log('[INFO] No PlayFab catalog JSON, using fallback.'); }
+const CATALOG_PATHS = [
+  './Z3N0_PlayFab_Catalog.json',
+  './Z3N0_PlayFab_Catalog__1_.json',
+  './Z3N0_PlayFab_Catalog_1.json',
+];
+let catalogLoaded = false;
+for (const cp of CATALOG_PATHS) {
+  try {
+    const full = path.resolve(__dirname, cp);
+    if (fs.existsSync(full)) {
+      PLAYFAB_CATALOG = JSON.parse(fs.readFileSync(full, 'utf8'));
+      console.log(`[INFO] Loaded PlayFab catalog from: ${cp} (${PLAYFAB_CATALOG.Catalog?.length || 0} items)`);
+      catalogLoaded = true;
+      break;
+    }
+  } catch(e) { console.log(`[WARN] Failed to load ${cp}:`, e.message); }
+}
+if (!catalogLoaded) console.log('[INFO] No PlayFab catalog JSON found, using fallback.');
 
 const COSMETICS = {};
+// Helper to strip leading emoji from PlayFab DisplayName (e.g. "🔥 Fire Trail" -> "Fire Trail")
+function stripEmojiPrefix(str) {
+  return (str || '').replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}☯☮✝☪✡☸☺☻♈-♓♠♣♥♦♟♩♪♫♬☀☁☂☃☄★☆☇☈☉☊☋☌☍☎☏✁-✄✆-✈✉✌-✏✒✓✔✕✖✗✘✙✚✛✜✝✞✟✠✡✢✣✤✥✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀-❄❅-❊❋❌❍❎❏❐❑❒❓❔❕❖❗❘❙❚❛❜❝❞❟❠❡❢❣❤❥-❧❨-❬❭❮❯❰❱❲❳❴❵]/u, '').replace(/^\s+/, '');
+}
 for (const item of PLAYFAB_CATALOG.Catalog) {
   let custom = {};
   try { custom = JSON.parse(item.CustomData || '{}'); } catch(e) {}
+  const rawName = item.DisplayName || item.ItemId;
   COSMETICS[item.ItemId] = {
-    id: item.ItemId, type: custom.type || 'badge', name: item.DisplayName,
+    id: item.ItemId, type: custom.type || 'badge',
+    name: stripEmojiPrefix(rawName),
     price: item.VirtualCurrencyPrices?.GC ?? 0, emoji: custom.emoji || '?',
     glow: custom.glow || null, text: custom.text || null,
     rarity: custom.rarity || 'common', ownerOnly: custom.ownerOnly === true, tags: item.Tags || [],
@@ -191,7 +235,10 @@ function spawnPowerUp(nearX, nearY) {
     ? Math.max(margin, Math.min(MAP_SIZE - margin, nearY + (Math.random() - 0.5) * 400))
     : margin + Math.random() * (MAP_SIZE - margin * 2);
   powerUps[id] = { id, type, x, y, spawnedAt: Date.now() };
-  io.emit('powerUpSpawned', powerUps[id]);
+  // Only broadcast if there are connected players (avoid startup noise)
+  if (io.engine && io.engine.clientsCount > 0) {
+    io.emit('powerUpSpawned', powerUps[id]);
+  }
 }
 
 for (let i = 0; i < 14; i++) spawnPowerUp();
@@ -328,10 +375,14 @@ function tickBot(bot) {
     bot.angle = lerpAngle(bot.angle, Math.atan2(nearPU.y - h.y, nearPU.x - h.x), 0.20);
     bot.boosting = nearPUD < 120 * 120;
   } else {
-    // Orb hunt (orbhunters prefer golden orbs)
+    // Orb hunt (orbhunters prefer golden orbs) — only scan a subset for performance
     let nearOrb = null, nearD = 700 * 700;
-    for (const oid in orbs) {
-      const o = orbs[oid];
+    const orbKeys = Object.keys(orbs);
+    const scanCount = Math.min(orbKeys.length, 120); // cap scan to avoid O(800) every tick
+    const startIdx = (Math.random() * orbKeys.length) | 0;
+    for (let oi = 0; oi < scanCount; oi++) {
+      const o = orbs[orbKeys[(startIdx + oi) % orbKeys.length]];
+      if (!o) continue;
       const weight = profile.style === 'orbhunter' && o.golden ? 0.3 : 1;
       const d = dsq(h, o) * weight;
       if (d < nearD) { nearD = d; nearOrb = o; }
@@ -387,6 +438,7 @@ function killPlayer(player, killer) {
     pr.coins += player.sessionCoins;
     pr.gamesPlayed++;
     if (player.score > pr.highScore) pr.highScore = player.score;
+    saveDB();
   }
 
   // Drop orbs generously
@@ -399,7 +451,21 @@ function killPlayer(player, killer) {
     orbs[o.id] = o; dropped.push(o);
   }
 
-  io.emit('playerDied', { id: player.id, killerName: killer ? killer.name : 'the wall', droppedOrbs: dropped, position: player.segments[0], length: player.segments.length });
+  // Emit death event - send droppedOrbs only to nearby players to avoid huge payload flood
+  const deathPos = player.segments[0];
+  for (const pid2 in players) {
+    const p2 = players[pid2];
+    if (p2.isBot || !p2.socketId || p2.dead) continue;
+    if (!p2.segments.length) continue;
+    const nearby = dsq(p2.segments[0], deathPos) <= VIEW_RADIUS_SQ;
+    io.to(p2.socketId).emit('playerDied', {
+      id: player.id,
+      killerName: killer ? killer.name : 'the wall',
+      droppedOrbs: nearby ? dropped : [],
+      position: deathPos,
+      length: player.segments.length,
+    });
+  }
 
   if (killer) {
     const baseCoins = Math.floor(player.score * 0.2) + 15;
@@ -517,7 +583,7 @@ function applyPowerUp(p, pu) {
     case 'shield':
       p.shieldActive = true;
       p.activePowerUps.shield = { start: now, end: now + cfg.duration, until: now + cfg.duration };
-      setTimeout(() => { p.shieldActive = false; if (p.activePowerUps) delete p.activePowerUps.shield; }, cfg.duration);
+      setTimeout(() => { if (!p.dead) p.shieldActive = false; if (p.activePowerUps) delete p.activePowerUps.shield; }, cfg.duration);
       break;
     case 'ghost':
       p.activePowerUps.ghost = { start: now, end: now + cfg.duration, until: now + cfg.duration };
@@ -580,7 +646,8 @@ function applyMagnet(p) {
 //  COLLISION
 // ============================================================
 function checkCollisions() {
-  const arr = Object.values(players);
+  // Snapshot alive players to avoid mutation issues mid-loop
+  const arr = Object.values(players).filter(p => !p.dead);
   const now = Date.now();
   for (const p of arr) {
     if (p.dead) continue;
@@ -601,7 +668,15 @@ function checkCollisions() {
         p.sessionCoins += Math.ceil(o.value / 3);
         delete orbs[oid];
         const neo = mkOrb(); orbs[neo.id] = neo;
-        io.emit('orbEaten', { oid, newOrb: neo, eaterId: p.id, golden: o.golden, mega: o.mega });
+        // Only broadcast orbEaten to players who can see this position
+        for (const pid2 in players) {
+          const p2 = players[pid2];
+          if (p2.isBot || !p2.socketId || p2.dead) continue;
+          if (!p2.segments.length) continue;
+          if (dsq(p2.segments[0], h) <= VIEW_RADIUS_SQ) {
+            io.to(p2.socketId).emit('orbEaten', { oid, newOrb: neo, eaterId: p.id, golden: o.golden, mega: o.mega });
+          }
+        }
         break;
       }
     }
@@ -699,11 +774,15 @@ setInterval(gameTick, TICK_MS);
 function buildState(p) {
   let segs = p.segments;
   if (segs.length > 140) segs = segs.filter((_, i) => i < 30 || i % 2 === 0);
+  // Resolve badge ID to emoji for client rendering
+  const badgeId = p.equippedBadge || null;
+  const badgeEmoji = badgeId ? (COSMETICS[badgeId]?.emoji || badgeId) : null;
   return {
     segments: segs, angle: p.angle, skin: p.skin, grantedSkin: p.grantedSkin || null,
     name: p.name, width: p.width, boosting: p.boosting,
     isOwner: p.isOwner, isBot: p.isBot || false,
-    equippedTrail: p.equippedTrail || null, equippedTitle: p.equippedTitle || null, equippedBadge: p.equippedBadge || null,
+    equippedTrail: p.equippedTrail || null, equippedTitle: p.equippedTitle || null,
+    equippedBadge: badgeEmoji, equippedBadgeId: badgeId,
     activePowerUps: p.activePowerUps || {}, ghostUntil: p.ghostUntil || 0, shieldActive: p.shieldActive || false,
     killStreak: p.killStreak || 0, score: p.score,
     raging: !!(p.activePowerUps?.rage && Date.now() < (p.activePowerUps.rage?.until || 0)),
@@ -721,7 +800,8 @@ setInterval(() => {
     const state = {}; state[me.id] = buildState(me);
     for (const p of alive) {
       if (p.id === me.id) continue;
-      if (p.isBot || dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ) state[p.id] = buildState(p);
+      // Include bots only if within view radius (same as humans) to reduce payload
+      if (dsq(mh, p.segments[0]) <= VIEW_RADIUS_SQ) state[p.id] = buildState(p);
     }
     io.to(me.socketId).emit('gameState', { players: state, leaderboard, activeEvent, powerUps: Object.values(powerUps), portals: Object.values(portals), myCoins: me.sessionCoins });
   }
@@ -752,7 +832,7 @@ io.on('connection', socket => {
       growBuffer: 0, score: 0, sessionCoins: 0, kills: 0,
       width: 8, dead: false, alive: true, isOwner, effect: null,
       equippedTrail: pr.equippedTrail, equippedTitle: isOwner ? '[Z3N0]' : pr.equippedTitle,
-      equippedBadge: isOwner ? '👑' : pr.equippedBadge,
+      equippedBadge: isOwner ? 'owner_badge_crown' : pr.equippedBadge,
       unlockedCosmetics: isOwner ? Object.keys(COSMETICS) : [...(pr.unlockedCosmetics || ['title_rookie'])],
       activePowerUps: {}, ghostUntil: 0, shieldActive: false, killStreak: 0,
       _graceUntil: Date.now() + NEW_PLAYER_GRACE,
@@ -765,7 +845,16 @@ io.on('connection', socket => {
       playerId: player.id, isOwner, mapSize: MAP_SIZE,
       orbs: Object.values(orbs), powerUps: Object.values(powerUps), portals: Object.values(portals),
       killFeed: serverKillFeed,
-      profile: { coins: pr.coins, totalScore: pr.totalScore, totalKills: pr.totalKills, gamesPlayed: pr.gamesPlayed, highScore: pr.highScore, unlockedCosmetics: player.unlockedCosmetics, equippedTrail: player.equippedTrail, equippedTitle: player.equippedTitle, equippedBadge: player.equippedBadge, isGuest: !accountId && !playfabId },
+      profile: {
+        coins: pr.coins, totalScore: pr.totalScore, totalKills: pr.totalKills,
+        gamesPlayed: pr.gamesPlayed, highScore: pr.highScore,
+        unlockedCosmetics: player.unlockedCosmetics,
+        equippedTrail: player.equippedTrail,
+        equippedTitle: player.equippedTitle,
+        equippedBadgeId: player.equippedBadge,
+        equippedBadge: player.equippedBadge ? (COSMETICS[player.equippedBadge]?.emoji || player.equippedBadge) : null,
+        isGuest: !accountId && !playfabId,
+      },
       cosmeticsCatalog: COSMETICS,
       graceMs: NEW_PLAYER_GRACE,
     });
@@ -795,6 +884,7 @@ io.on('connection', socket => {
     }
     pr.unlockedCosmetics.push(cosmeticId);
     p.unlockedCosmetics.push(cosmeticId);
+    saveDB();
     socket.emit('cosmeticBought', { cosmeticId, newCoinBalance: pr.coins + p.sessionCoins, unlockedCosmetics: pr.unlockedCosmetics });
   });
 
@@ -806,8 +896,10 @@ io.on('connection', socket => {
     const pr = getProfile(p.accountId || p.playfabId, p.name);
     if (c.type === 'trail') { p.equippedTrail = cosmeticId; pr.equippedTrail = cosmeticId; }
     else if (c.type === 'title') { const txt = c.text || c.name; p.equippedTitle = txt; pr.equippedTitle = txt; }
-    else if (c.type === 'badge') { p.equippedBadge = c.emoji; pr.equippedBadge = c.emoji; }
-    socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge });
+    else if (c.type === 'badge') { p.equippedBadge = cosmeticId; pr.equippedBadge = cosmeticId; }
+    saveDB();
+    const badgeEmoji = p.equippedBadge ? (COSMETICS[p.equippedBadge]?.emoji || p.equippedBadge) : null;
+    socket.emit('cosmeticEquipped', { cosmeticId, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: badgeEmoji, equippedBadgeId: p.equippedBadge });
   });
 
   socket.on('unequipCosmetic', ({ slot }) => {
@@ -816,7 +908,8 @@ io.on('connection', socket => {
     if (slot === 'trail') { p.equippedTrail = null; pr.equippedTrail = null; }
     if (slot === 'title') { p.equippedTitle = null; pr.equippedTitle = null; }
     if (slot === 'badge') { p.equippedBadge = null; pr.equippedBadge = null; }
-    socket.emit('cosmeticEquipped', { cosmeticId: null, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: p.equippedBadge });
+    saveDB();
+    socket.emit('cosmeticEquipped', { cosmeticId: null, equippedTrail: p.equippedTrail, equippedTitle: p.equippedTitle, equippedBadge: null, equippedBadgeId: null });
   });
 
   socket.on('ownerAction', ({ action, targetId, value, password }) => {
@@ -829,10 +922,11 @@ io.on('connection', socket => {
         if (target) { killPlayer(target, null); if (target.socketId) io.to(target.socketId).emit('systemMessage', '☠️ Eliminated by Z3N0'); socket.emit('ownerSuccess', `Killed ${target.name}`); } break;
       case 'giveSkin':
         if (target) { target.skin = value; target.grantedSkin = value; if (target.socketId) io.to(target.socketId).emit('skinGranted', { skin: value }); socket.emit('ownerSuccess', 'Gave skin'); } break;
+
       case 'giveSize':
         if (target) { const n = parseInt(value) || 50, tail = target.segments[target.segments.length-1]; for (let i = 0; i < n * SEG_DIST; i++) target.segments.push({ x: tail.x, y: tail.y }); target.score += n * 10; if (target.socketId) io.to(target.socketId).emit('systemMessage', `📏 +${n} size!`); socket.emit('ownerSuccess', 'Size given'); } break;
       case 'giveCoins':
-        if (target && !target.isBot) { const n = parseInt(value) || 100, pr = getProfile(target.accountId || target.playfabId, target.name); pr.coins += n; if (target.socketId) { io.to(target.socketId).emit('coinsGranted', { amount: n, newBalance: pr.coins }); io.to(target.socketId).emit('systemMessage', `💰 +${n} coins!`); } socket.emit('ownerSuccess', 'Coins given'); } break;
+        if (target && !target.isBot) { const n = parseInt(value) || 100, pr = getProfile(target.accountId || target.playfabId, target.name); pr.coins += n; saveDB(); if (target.socketId) { io.to(target.socketId).emit('coinsGranted', { amount: n, newBalance: pr.coins }); io.to(target.socketId).emit('systemMessage', `💰 +${n} coins!`); } socket.emit('ownerSuccess', 'Coins given'); } break;
       case 'spawnPowerUp': spawnPowerUp(); socket.emit('ownerSuccess', 'Spawned!'); break;
       case 'spawnPortals': spawnPortalPair(); socket.emit('ownerSuccess', 'Portals!'); break;
       case 'broadcast': io.emit('ownerBroadcast', { message: value }); socket.emit('ownerSuccess', 'Sent!'); break;
@@ -853,10 +947,8 @@ io.on('connection', socket => {
   socket.on('disconnect', () => {
     const p = players[socket.playerId];
     if (p && !p.isBot) {
-      if (p.sessionCoins > 0) { const pr = getProfile(p.accountId || p.playfabId, p.name); pr.coins += p.sessionCoins; }
-      p.sessionCoins = 0;
-      killPlayer(p, null);
-      setTimeout(() => { delete players[socket.playerId]; io.emit('playerLeft', socket.playerId); }, 500);
+      if (!p.dead) killPlayer(p, null);
+      // killPlayer already schedules deletion via setTimeout; don't double-delete
     }
   });
 });
@@ -931,6 +1023,7 @@ app.post('/api/admin/giveCoins', adminAuth, (req, res) => {
   const pr = Object.values(playerDB).find(p => p.name.toLowerCase() === name.toLowerCase());
   if (!pr) return res.status(404).json({ error: 'Not found' });
   pr.coins += parseInt(amount) || 0;
+  saveDB();
   const lp = Object.values(players).find(p => !p.isBot && p.name.toLowerCase() === name.toLowerCase());
   if (lp?.socketId) io.to(lp.socketId).emit('coinsGranted', { amount, newBalance: pr.coins });
   res.json({ success: true, newBalance: pr.coins });
