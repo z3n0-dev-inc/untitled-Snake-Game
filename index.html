@@ -624,7 +624,7 @@ let wasdAngle=0; // current angle from WASD keys
 let wasdKeys={up:false,down:false,left:false,right:false};
 let shakeX=0, shakeY=0, shakeMag=0;
 let profileCoins=0, sessionCoins=0;
-let equippedTrail=null, equippedTitle=null, equippedBadge=null, equippedBadgeId=null;
+let equippedTrail=null, equippedTitle=null, equippedBadge=null, equippedBadgeId=null, equippedTitleId=null;
 let ownedCosmetics=[];
 let cosmeticsCatalog={};
 let comboCount=0, comboTm=null;
@@ -720,6 +720,7 @@ socket.on('joined',({playerId,isOwner,mapSize,orbs,powerUps,portals,killFeed:kf,
   ownedCosmetics=profile.unlockedCosmetics||[];
   equippedTrail=profile.equippedTrail||null;
   equippedTitle=profile.equippedTitle||null;
+  equippedTitleId=profile.equippedTitleId||null;
   equippedBadge=profile.equippedBadge||null;       // emoji for rendering
   equippedBadgeId=profile.equippedBadgeId||null;   // ID for shop isEquipped check
   if(loggedInAccount) document.getElementById('auth-banner-coins').textContent='💰 '+profileCoins;
@@ -876,9 +877,11 @@ socket.on('cosmeticBought',({cosmeticId,newCoinBalance,unlockedCosmetics})=>{
   const c=cosmeticsCatalog[cosmeticId];
   if(c) toast('Got '+c.emoji+' '+(c.name||cosmeticId)+'!','gold');
 });
-socket.on('cosmeticEquipped',({equippedTrail:et,equippedTitle:ett,equippedBadge:eb,equippedBadgeId:ebid})=>{
+socket.on('cosmeticEquipped',({cosmeticId,equippedTrail:et,equippedTitle:ett,equippedBadge:eb,equippedBadgeId:ebid})=>{
   if(et!==undefined) equippedTrail=et;
   if(ett!==undefined) equippedTitle=ett;
+  if(cosmeticId&&cosmeticsCatalog[cosmeticId]?.type==='title') equippedTitleId=cosmeticId||null;
+  else if(cosmeticId===null) equippedTitleId=null;
   if(eb!==undefined) equippedBadge=eb;         // emoji for rendering
   if(ebid!==undefined) equippedBadgeId=ebid;   // ID for shop logic
   renderShop();
@@ -1682,7 +1685,7 @@ function isEquipped(item){
   if(!item) return false;
   if(item.type==='trail') return equippedTrail===item.id;
   if(item.type==='badge') return equippedBadgeId===item.id;
-  if(item.type==='title') return equippedTitle===item.text||equippedTitle===item.name;
+  if(item.type==='title') return equippedTitleId===item.id||(equippedTitle&&(equippedTitle===item.text||equippedTitle===item.name));
   return false;
 }
 
@@ -1918,7 +1921,7 @@ function equipItem(id){
   if(item){
     if(item.type==='trail') equippedTrail=id;
     else if(item.type==='badge'){ equippedBadgeId=id; equippedBadge=item.emoji; }
-    else if(item.type==='title') equippedTitle=item.text||item.name;
+    else if(item.type==='title'){ equippedTitle=item.text||item.name; equippedTitleId=id; }
   } else if(TRAIL_CONFIGS[id]){
     equippedTrail=id;
   }
@@ -1928,7 +1931,7 @@ function unequipItem(id,type){
   socket.emit('unequipCosmetic',{slot:type});
   if(type==='trail') equippedTrail=null;
   else if(type==='badge'){ equippedBadge=null; equippedBadgeId=null; }
-  else if(type==='title') equippedTitle=null;
+  else if(type==='title'){ equippedTitle=null; equippedTitleId=null; }
   renderShop();
 }
 function openShop(){
